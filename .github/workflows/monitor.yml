@@ -1,0 +1,128 @@
+name: Senedd policy monitor
+
+on:
+  schedule:
+    # 06.30 UTC on weekdays. In British Summer Time that is 07.30, so the
+    # dashboard and digest are waiting before the working day starts.
+    # Cron in GitHub Actions is always UTC — it does not follow BST.
+    - cron: "30 6 * * 1-5"
+    # A lighter weekend run, so a Friday-evening publication is not missed.
+    - cron: "30 8 * * 6"
+  workflow_dispatch:        # lets anyone run it on demand from the Actions tab
+
+# Only one run at a time: two concurrent runs would both try to commit the
+# archive and one would fail on a push conflict.
+concurrency:
+  group: senedd-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write           # needed to commit the updated archive
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the tests first
+        # A broken collector must not quietly publish a misleading dashboard.
+        # 95 tests, under a second, and they have already caught bugs that
+        # produced wrong results rather than errors.
+        run: python -m tests.test_monitor
+
+      - name: Restore the archive from the committed SQL export
+        # This is what makes the archive cumulative. The archive is stored as
+        # plain SQL text, not as the SQLite binary — git deltas text, the diff
+        # is readable, and an unchanged archive produces no commit at all.
+        # On the very first run there is no export yet; that is handled.
+        run: python -m monitor.cli restore --from data/archive.sql
+
+      - name: Collect, score and store
+        env:
+          MONITOR_MAILBOX: ${{ secrets.MONITOR_MAILBOX }}
+          MONITOR_GRAPH_TOKEN: ${{ secrets.MONITOR_GRAPH_TOKEN }}
+        # --govwales-route mailbox stops the unreachable gov.wales RSS being
+        # reported as a broken source on a host where it can never work.
+        # `|| true` because collect exits non-zero when a source fails, and we
+        # still want the dashboard built and the failure surfaced on it.
+        run: |
+          python -m monitor.cli \
+            --govwales-route mailbox \
+            collect --days 21 || true
+
+      - name: Build the dashboard
+        run: python -m monitor.cli dashboard --out out/index.html
+
+      - name: Send the daily digest
+        env:
+          MONITOR_FROM: ${{ secrets.MONITOR_FROM }}
+          MONITOR_TO: ${{ secrets.MONITOR_TO }}
+          MONITOR_SMTP_HOST: ${{ secrets.MONITOR_SMTP_HOST }}
+          MONITOR_SMTP_USER: ${{ secrets.MONITOR_SMTP_USER }}
+          MONITOR_SMTP_PASS: ${{ secrets.MONITOR_SMTP_PASS }}
+        # Skipped automatically if SMTP is not configured — `send()` is a dry
+        # run unless a host is present, so a half-configured repo cannot spam
+        # a distribution list.
+        run: python -m monitor.cli digest --days 1 --send
+
+      - name: Alert on anything critical
+        env:
+          MONITOR_FROM: ${{ secrets.MONITOR_FROM }}
+          MONITOR_TO: ${{ secrets.MONITOR_TO }}
+          MONITOR_SMTP_HOST: ${{ secrets.MONITOR_SMTP_HOST }}
+          MONITOR_SMTP_USER: ${{ secrets.MONITOR_SMTP_USER }}
+          MONITOR_SMTP_PASS: ${{ secrets.MONITOR_SMTP_PASS }}
+        run: python -m monitor.cli alert --send
+
+      - name: Write the permanent weekly record
+        # One fixed HTML page per complete ISO week. Re-scoring the archive later
+        # does not change an existing snapshot, which is what makes it an audit
+        # trail rather than just a view.
+        run: python -m monitor.cli snapshots --out out/weeks
+
+      - name: Publish the dashboard as a downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: senedd-dashboard-${{ github.run_number }}
+          path: out/
+          retention-days: 90
+
+      - name: Commit the updated archive and weekly records
+        run: |
+          python -m monitor.cli export --out data/archive.sql
+          git config user.name  "senedd-monitor"
+          git config user.email "senedd-monitor@nrla.org.uk"
+          git add data/archive.sql out/weeks
+          if git diff --staged --quiet; then
+            # Genuinely nothing new. The export is deterministic, so identical
+            # data produces an identical file and therefore no commit — which is
+            # exactly what should happen during recess.
+            echo "Archive unchanged — nothing to commit."
+          else
+            git commit -m "Archive update $(date -u +'%Y-%m-%d')"
+            # Rebase in case a manual run committed while this one was working.
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push
+          fi
+
+      - name: Report run health in the job summary
+        if: always()
+        run: |
+          {
+            echo "## Senedd monitor run"
+            echo ""
+            python -m monitor.cli stats
+          } >> "$GITHUB_STEP_SUMMARY"
