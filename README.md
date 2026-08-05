@@ -7,10 +7,23 @@ alerting, a searchable archive and deadline tracking.
 Read `SPECIFICATION.md` for the design, the verified data-source findings and the
 deployment recommendation. This file is the operator's guide.
 
-**If a run went green but you received nothing, read `TROUBLESHOOTING.md` first.**
-That was a design fault, not a mistake by the operator, and it is fixed: the
-briefing now appears on the Actions run page itself, and an unconfigured or failed
-email says so loudly instead of passing quietly.
+## Where to read it
+
+Three places, none of which need any credential, any server or any IT request:
+
+| Where | What it is |
+|---|---|
+| **`BRIEFING.md`** in this repository | One permanent URL, always current, rendered by GitHub. **Bookmark this.** Works on a private repository — which GitHub Pages does not. |
+| **A dated issue, every weekday** | This is the email. GitHub notifies watchers when an issue opens, so the briefing arrives in Outlook with nothing configured. Also a bookmarkable page, and issue search gives full-text search across every briefing ever sent. |
+| **`briefings/2026-W32.md`** | The permanent weekly record, committed on every run. |
+
+Not receiving the email? Check **Watch → All Activity** on the repository page.
+
+SMTP (`MONITOR_SMTP_*`) is now an *optional upgrade* — a formatted digest from an
+NRLA address — rather than a prerequisite. Earlier versions made delivery depend
+on five secrets that needed an IT request, which meant nothing arrived at all.
+
+**If a run went green but you received nothing, read `TROUBLESHOOTING.md`.**
 
 ---
 
@@ -41,6 +54,7 @@ python -m monitor.cli dashboard --out out/index.html
 | `collect --days N` | Fetch, score and store. `--dashboard PATH` also rebuilds the page. Exits non-zero if any source returned nothing, so a scheduler can raise an alert. |
 | `dashboard --out PATH` | Rebuild the dashboard from the archive without fetching. |
 | `brief` | The same briefing as markdown. Piped into `$GITHUB_STEP_SUMMARY` by the workflow, so it appears on the Actions run page — no download and no email needed. |
+| `publish` | Writes `BRIEFING.md` and `briefings/YYYY-Wnn.md`, then opens the dated issue that GitHub emails to watchers. Uses the automatic `GITHUB_TOKEN` — nothing to configure. `--dry-run` to see what it would do. |
 | `digest --days N [--send]` | Build the periodic digest. **Dry run by default.** |
 | `alert [--send]` | Email unnotified Critical items only. **Dry run by default.** |
 | `search "rent control"` | Full-text search the whole archive. |

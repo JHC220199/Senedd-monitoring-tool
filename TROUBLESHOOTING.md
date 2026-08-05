@@ -30,20 +30,49 @@ successful run that emailed nothing and a successful run that had nothing to say
 looked identical. That is the exact failure this project keeps warning about: it
 looks like it worked, and it hasn't.
 
-## What changed
+## What changed — and the third attempt that was still wrong
 
-**The briefing is now on the run page itself.** Actions → click the latest run →
-the briefing is right there: Respond, Review, Coming up, with links and verbatim
-quotes. No download, no email, no server, no GitHub Pages. It works on a private
-repository, which Pages does not.
+**First fix: the briefing went onto the Actions run page.** Better than a zip in
+an artifact, but still wrong, and the verdict was again fair: *"this tool has
+still not produced any accessible dashboard or anything for me to actually view
+the output of it."*
 
-**Silence is now labelled.** If email is not configured, the run summary says so
-in a yellow box and adds a warning annotation at the top of the run. And if
-credentials *are* set but sending fails, the run goes **red** and names the
-missing or wrong variable, instead of shrugging.
+A CI log page is not a dashboard. Its URL changes every run, you cannot bookmark
+it, and nobody opens an Actions tab to read a policy briefing. Three attempts in
+a row, I had chosen places that were technically outputs rather than places a
+person would actually go.
 
-You get a usable tool before configuring any email at all. Email becomes a
-convenience rather than a prerequisite.
+**Second fix — the one that works. Three destinations, no credentials:**
+
+| Where | What it is |
+|---|---|
+| **`BRIEFING.md`** | One permanent URL, always current, rendered by GitHub. **Bookmark it.** Works on a private repository, unlike GitHub Pages. |
+| **A dated issue each weekday** | This *is* the email. GitHub emails watchers when an issue opens. Bookmarkable, and issue search covers every briefing ever sent. |
+| **`briefings/2026-Wnn.md`** | The permanent weekly record. |
+
+All three use `GITHUB_TOKEN`, which GitHub injects into every workflow run. There
+is nothing to configure, because a system that depends on a credential nobody has
+yet is not a system.
+
+**Silence is now labelled.** If SMTP credentials *are* set but sending fails, the
+run goes **red** and names the missing or wrong variable, instead of shrugging.
+Without them, nothing is broken — the issue email covers it, and the run summary
+says where the briefing went.
+
+## "I still haven't received an email"
+
+Two things to check, in order:
+
+1. **Watch → All Activity** on the repository page. GitHub only emails you about
+   issues if you are watching the repository at that level. As the owner you are
+   watching by default, but "Participating and @mentions" is not enough for an
+   issue you did not open.
+2. Your GitHub account's notification email, at
+   github.com/settings/notifications — confirm it is the address you actually
+   read, and that `notifications@github.com` is not being filtered by Exchange.
+
+If both are right, the briefing will arrive each weekday morning with the subject
+**"Senedd briefing — 6 August 2026"**.
 
 ---
 
