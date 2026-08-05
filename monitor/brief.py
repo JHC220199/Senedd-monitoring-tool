@@ -50,11 +50,23 @@ def render_markdown(items: list[Item], tax: Taxonomy,
                     report: RunReport | None = None,
                     upcoming: list[Item] | None = None,
                     today: date | None = None,
-                    dashboard_note: str = "") -> str:
-    """The whole briefing as GitHub-flavoured markdown."""
+                    dashboard_note: str = "",
+                    heading: str = "") -> str:
+    """The whole briefing as GitHub-flavoured markdown.
+
+    `heading` is set when the output is a standalone page (BRIEFING.md) rather
+    than a section of the Actions run summary, which supplies its own title.
+    """
     z = zones(items, tax, upcoming)
     today = today or date.today()
     out: list[str] = []
+
+    if heading:
+        out.append(f"# {heading}")
+        out.append("")
+        out.append(f"*As at {today.strftime('%A %d %B %Y')}. Rebuilt "
+                   "automatically on every run — there is nothing to refresh.*")
+        out.append("")
 
     # --- health first ----------------------------------------------------
     # If a source failed, that belongs at the top. A briefing that is quietly

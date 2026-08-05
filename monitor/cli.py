@@ -145,6 +145,107 @@ def _last_report(store: Store):
         sources_substituted=r.get("sources_substituted", []))
 
 
+def _briefing_markdown(args) -> str:
+    """Render the briefing once, so every destination shows the same thing.
+
+    `brief`, `publish` and the repository's BRIEFING.md all go through here. The
+    alternative — each building its own view — is how a dashboard and an email
+    end up disagreeing about what is outstanding.
+    """
+    from .brief import render_markdown
+    tax = Taxonomy.load(args.taxonomy)
+    store = Store(args.db)
+    try:
+        # Same inputs as the HTML dashboard, deliberately.
+        items = store.query(
+            min_score=float(tax.thresholds.get("dashboard_minimum", 25)))
+        return render_markdown(
+            items, tax, report=_last_report(store),
+            # Scheduled sittings only — consultations already arrive via the
+            # items, and mixing the sitting calendar into "Respond" is the bug
+            # that buried a real deadline under a dozen routine meetings.
+            upcoming=store.upcoming_deadlines(args.deadline_days,
+                                              include_kinds=["calendar"]),
+            dashboard_note=getattr(args, "note", ""),
+            heading=getattr(args, "heading", ""))
+    finally:
+        store.close()
+
+
+def cmd_publish(args) -> int:
+    """Publish the briefing somewhere a person will actually read it.
+
+    THREE DESTINATIONS, NO CREDENTIALS
+    ----------------------------------
+    Every previous "here is where to read it" was somewhere nobody would go: a
+    gitignored file, a zip inside a build artifact, then a CI log page whose URL
+    changes every run. And the email needed five SMTP secrets that require an IT
+    request, so it never arrived at all.
+
+    This uses GITHUB_TOKEN, which GitHub injects into every workflow run. There
+    is nothing to configure:
+
+      BRIEFING.md            bookmarkable, always current, renders on private repos
+      briefings/2026-Wnn.md  the permanent weekly record
+      a GitHub issue         which GitHub emails to watchers — this is the digest
+    """
+    from pathlib import Path
+    from . import publish as pub
+    from .weekly import iso_week
+
+    args.heading = "NRLA Senedd policy briefing"
+    text = _briefing_markdown(args)
+    written: list[str] = []
+
+    if not args.issue_only:
+        Path(args.file).write_text(text, encoding="utf-8")
+        written.append(args.file)
+
+        week_dir = Path(args.week_dir)
+        week_dir.mkdir(parents=True, exist_ok=True)
+        week_path = week_dir / f"{iso_week(date.today())}.md"
+        week_path.write_text(text, encoding="utf-8")
+        written.append(str(week_path))
+
+        for path in written:
+            print(f"Wrote {path}")
+
+    if args.no_issue:
+        print("Issue skipped (--no-issue).")
+        return 0
+
+    try:
+        repo, token = pub.env_repo_and_token()
+    except pub.GitHubError as error:
+        # Not fatal: the two files above are already written and committed, so
+        # the briefing is still readable. Only the email half is missing.
+        print(f"Not opening an issue: {error}")
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            print("::warning title=Briefing not emailed::"
+                  "The issue could not be opened, so no notification email was "
+                  "sent. BRIEFING.md is still up to date.")
+        return 0
+
+    title = args.title or pub.issue_title()
+    body = (text + "\n\n---\n\n<sub>You are receiving this because you watch "
+            "this repository. To change that, use the Watch menu on the "
+            "repository page. The same briefing is always at "
+            f"[BRIEFING.md](https://github.com/{repo}/blob/main/"
+            f"{args.file}).</sub>\n")
+
+    if args.dry_run:
+        print(f"DRY RUN — would open an issue in {repo}:\n  {title}\n"
+              f"  {len(body)} characters")
+        return 0
+
+    issue = pub.publish_issue(repo, token, title, body,
+                              close_previous=not args.keep_previous)
+    print(f"Opened issue #{issue['number']}: {issue['html_url']}")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::notice title=Briefing published::{issue['html_url']}")
+    return 0
+
+
 def cmd_brief(args) -> int:
     """The briefing as markdown, for the GitHub job summary or a terminal.
 
@@ -152,22 +253,7 @@ def cmd_brief(args) -> int:
     The HTML dashboard is gitignored and only reachable as a build artifact;
     markdown written to $GITHUB_STEP_SUMMARY appears on the run page itself.
     """
-    from .brief import render_markdown
-    tax = Taxonomy.load(args.taxonomy)
-    store = Store(args.db)
-
-    # Same inputs as the HTML dashboard, deliberately. The two formats must
-    # never disagree about what is outstanding.
-    items = store.query(
-        min_score=float(tax.thresholds.get("dashboard_minimum", 25)))
-    text = render_markdown(
-        items, tax, report=_last_report(store),
-        # Scheduled sittings only — consultations already arrive via the items,
-        # and mixing the sitting calendar into "Respond" is the bug that buried
-        # a real deadline under a dozen routine meetings.
-        upcoming=store.upcoming_deadlines(args.deadline_days,
-                                          include_kinds=["calendar"]),
-        dashboard_note=args.note)
+    text = _briefing_markdown(args)
     if args.out:
         from pathlib import Path
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
@@ -543,6 +629,28 @@ def main(argv: list[str] | None = None) -> int:
                    help="one line appended at the foot, e.g. where to find "
                         "the full dashboard")
     p.set_defaults(func=cmd_brief)
+
+    p = sub.add_parser(
+        "publish",
+        help="write BRIEFING.md and open the briefing issue GitHub emails")
+    p.add_argument("--days", type=int, default=21)
+    p.add_argument("--deadline-days", type=int, default=60)
+    p.add_argument("--file", default="BRIEFING.md",
+                   help="the always-current bookmarkable page")
+    p.add_argument("--week-dir", default="briefings",
+                   help="permanent per-week copies")
+    p.add_argument("--title", default="",
+                   help="issue title; defaults to today's date")
+    p.add_argument("--note", default="")
+    p.add_argument("--no-issue", action="store_true",
+                   help="write the files but do not open an issue")
+    p.add_argument("--issue-only", action="store_true",
+                   help="open the issue but do not write the files")
+    p.add_argument("--keep-previous", action="store_true",
+                   help="do not close the previous briefing issue")
+    p.add_argument("--dry-run", action="store_true",
+                   help="say what would be opened, and open nothing")
+    p.set_defaults(func=cmd_publish)
 
     p = sub.add_parser("digest", help="build the periodic digest")
     p.add_argument("--days", type=int, default=7)
