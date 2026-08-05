@@ -1292,6 +1292,15 @@ class TestPublish(unittest.TestCase):
         # An error that does not say how to fix it is only half an error.
         self.assertIn("issues: write", message)
 
+    def test_assignee_defaults_to_the_repository_owner(self):
+        from monitor.publish import default_assignee
+        # This is the delivery mechanism. Watch notifications were fragile —
+        # the repository showed "0 watching", so an issue-only design would have
+        # emailed nobody. GitHub always notifies an assignee.
+        self.assertEqual(default_assignee("JHC220199/Senedd-monitoring-tool"),
+                         "JHC220199")
+        self.assertEqual(default_assignee("nonsense"), "")
+
     def test_issue_title_carries_the_date(self):
         from monitor.publish import issue_title
         self.assertEqual(issue_title(date(2026, 8, 6)),
