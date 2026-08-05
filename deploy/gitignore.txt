@@ -1,0 +1,38 @@
+# READABLE COPY of .gitignore — see SETUP-GITHUB-BROWSER-ONLY.md step 5.
+# Files beginning with a dot are hidden by Windows and macOS, so a browser
+# drag-and-drop upload silently leaves .gitignore behind. This copy exists so
+# you can open it in Notepad, copy it, and paste it into GitHub's web editor.
+# It is not used by anything at runtime.
+
+# The working database is DERIVED — rebuilt from data/archive.sql on every run.
+# Committing the binary is what the SQL export exists to avoid; see
+# monitor/archive_io.py for the measurements.
+data/monitor.sqlite3
+data/monitor.sqlite3-journal
+data/monitor.sqlite3-wal
+data/monitor.sqlite3-shm
+data/*.sqlite3
+data/_*.sql
+
+# ...but the SQL export IS the archive and must be committed.
+!data/archive.sql
+
+# Secrets. On GitHub these live in repository secrets, never in a file.
+monitor.env
+*.env
+!deploy/monitor.env.example
+
+# Generated outputs. The dashboard is rebuilt every run; the weekly snapshots
+# are permanent records and ARE committed.
+out/index.html
+out/digest.html
+out/alert.html
+!out/weeks/
+
+logs/
+backups/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
