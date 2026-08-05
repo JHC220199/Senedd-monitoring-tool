@@ -227,20 +227,41 @@ def cmd_publish(args) -> int:
         return 0
 
     title = args.title or pub.issue_title()
-    body = (text + "\n\n---\n\n<sub>You are receiving this because you watch "
-            "this repository. To change that, use the Watch menu on the "
-            "repository page. The same briefing is always at "
+    if args.assign == "none":
+        assignees = []
+    else:
+        assignees = [a.strip() for a in
+                     (args.assign or pub.default_assignee(repo)).split(",")
+                     if a.strip()]
+
+    body = (text + "\n\n---\n\n<sub>You are receiving this because this "
+            "briefing is assigned to you. The same briefing is always at "
             f"[BRIEFING.md](https://github.com/{repo}/blob/main/"
-            f"{args.file}).</sub>\n")
+            f"{args.file}), and every past one is under "
+            f"[briefings/](https://github.com/{repo}/tree/main/"
+            f"{args.week_dir}).</sub>\n")
 
     if args.dry_run:
         print(f"DRY RUN — would open an issue in {repo}:\n  {title}\n"
+              f"  assigned to: {', '.join(assignees) or '(nobody)'}\n"
               f"  {len(body)} characters")
         return 0
 
     issue = pub.publish_issue(repo, token, title, body,
-                              close_previous=not args.keep_previous)
+                              close_previous=not args.keep_previous,
+                              assignees=assignees)
     print(f"Opened issue #{issue['number']}: {issue['html_url']}")
+
+    if issue.get("assignment_failed"):
+        # Say it out loud: an unassigned briefing may email nobody, which is the
+        # silent-nothing failure this whole design exists to prevent.
+        message = (f"Could not assign the briefing to "
+                   f"{', '.join(assignees)} — it was opened unassigned, so it "
+                   f"may not have emailed anyone. Check that the account has "
+                   f"repository access, or use --assign.")
+        print(f"WARNING: {message}")
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            print(f"::warning title=Briefing not assigned::{message}")
     if os.environ.get("GITHUB_ACTIONS") == "true":
         print(f"::notice title=Briefing published::{issue['html_url']}")
     return 0
@@ -646,6 +667,12 @@ def main(argv: list[str] | None = None) -> int:
                    help="write the files but do not open an issue")
     p.add_argument("--issue-only", action="store_true",
                    help="open the issue but do not write the files")
+    p.add_argument("--assign", default="",
+                   help="GitHub username(s) to assign, comma-separated. "
+                        "GitHub always emails an assignee regardless of their "
+                        "watch setting, which is why this is the delivery "
+                        "mechanism. Defaults to the repository owner; "
+                        "'none' to assign nobody.")
     p.add_argument("--keep-previous", action="store_true",
                    help="do not close the previous briefing issue")
     p.add_argument("--dry-run", action="store_true",

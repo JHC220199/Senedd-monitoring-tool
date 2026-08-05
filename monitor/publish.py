@@ -101,22 +101,47 @@ def ensure_label(repo: str, token: str, name: str = "briefing",
 
 
 def publish_issue(repo: str, token: str, title: str, body: str,
-                  close_previous: bool = True) -> dict:
+                  close_previous: bool = True,
+                  assignees: list[str] | None = None) -> dict:
     """Open a new briefing issue, optionally closing the previous one.
 
     A new issue per weekday is what produces the daily email — GitHub notifies
-    watchers on issue creation, not on issue edit. Closing yesterday's keeps the
-    open list showing today only; closed issues stay searchable forever, so
-    nothing is lost. Nothing is ever deleted.
+    on issue creation, not on issue edit. Closing yesterday's keeps the open list
+    showing today only; closed issues stay searchable forever, so nothing is
+    lost. Nothing is ever deleted.
+
+    WHY IT IS ASSIGNED, NOT JUST OPENED
+    -----------------------------------
+    Relying on watch notifications was fragile: the repository showed "0
+    watching", so the first design would have opened a perfectly good issue that
+    emailed nobody — the same silent-nothing failure in a new costume. GitHub
+    always notifies an issue's **assignee**, whatever their watch setting is. So
+    the briefing is assigned to a named person.
+
+    Assignment can legitimately fail — the account may be an organisation, or
+    lack repository access. That must not lose the briefing, so a failed
+    assignment is retried once without it and reported.
     """
     ensure_label(repo, token)
     previous = find_previous_briefing(repo, token) if close_previous else None
 
-    created = _request("POST", f"/repos/{repo}/issues", token, {
+    payload = {
         "title": title,
         "body": MARKER + "\n\n" + body,
         "labels": ["briefing"],
-    })
+    }
+    if assignees:
+        payload["assignees"] = assignees
+
+    try:
+        created = _request("POST", f"/repos/{repo}/issues", token, payload)
+    except GitHubError:
+        if not assignees:
+            raise
+        # Better an unassigned briefing than no briefing.
+        payload.pop("assignees")
+        created = _request("POST", f"/repos/{repo}/issues", token, payload)
+        created["assignment_failed"] = True
 
     if previous and previous["number"] != created["number"]:
         try:
@@ -130,6 +155,15 @@ def publish_issue(repo: str, token: str, title: str, body: str,
 def issue_title(today: date | None = None) -> str:
     today = today or date.today()
     return f"Senedd briefing — {today.strftime('%d %B %Y')}"
+
+
+def default_assignee(repo: str) -> str:
+    """Who to assign the briefing to, so GitHub definitely emails somebody.
+
+    The repository owner, which for a personal repository is the person who
+    needs to read it. Overridable with --assign for a shared or org repository.
+    """
+    return repo.split("/")[0] if "/" in repo else ""
 
 
 def env_repo_and_token() -> tuple[str, str]:
