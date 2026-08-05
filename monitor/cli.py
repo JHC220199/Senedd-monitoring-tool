@@ -2,6 +2,7 @@
 
     python -m monitor.cli collect  --days 14        Fetch, score and store
     python -m monitor.cli dashboard --out out/index.html
+    python -m monitor.cli brief                     The briefing as markdown
     python -m monitor.cli digest   [--send]         Build (and optionally send)
     python -m monitor.cli alert    [--send]         Critical items only
     python -m monitor.cli search   "rent control"   Query the archive
@@ -126,6 +127,106 @@ def cmd_dashboard(args) -> int:
     return 0
 
 
+def _last_report(store: Store):
+    """Rebuild the last run's health report from the archive, or None."""
+    runs = store.last_runs(1)
+    if not runs:
+        return None
+    from .pipeline import RunReport
+    from datetime import datetime as dt
+    r = runs[0]
+    return RunReport(
+        run_id=r["run_id"],
+        started_at=dt.fromisoformat(r["started_at"]),
+        finished_at=dt.fromisoformat(r["finished_at"]),
+        collected=r["collected"], stored=r["stored"],
+        errors=r["errors"], sources_attempted=r["sources"],
+        sources_failed=r.get("sources_failed", []),
+        sources_substituted=r.get("sources_substituted", []))
+
+
+def cmd_brief(args) -> int:
+    """The briefing as markdown, for the GitHub job summary or a terminal.
+
+    This is the answer to "the workflow went green but I have nothing to read".
+    The HTML dashboard is gitignored and only reachable as a build artifact;
+    markdown written to $GITHUB_STEP_SUMMARY appears on the run page itself.
+    """
+    from .brief import render_markdown
+    tax = Taxonomy.load(args.taxonomy)
+    store = Store(args.db)
+
+    # Same inputs as the HTML dashboard, deliberately. The two formats must
+    # never disagree about what is outstanding.
+    items = store.query(
+        min_score=float(tax.thresholds.get("dashboard_minimum", 25)))
+    text = render_markdown(
+        items, tax, report=_last_report(store),
+        # Scheduled sittings only — consultations already arrive via the items,
+        # and mixing the sitting calendar into "Respond" is the bug that buried
+        # a real deadline under a dozen routine meetings.
+        upcoming=store.upcoming_deadlines(args.deadline_days,
+                                          include_kinds=["calendar"]),
+        dashboard_note=args.note)
+    if args.out:
+        from pathlib import Path
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(text, encoding="utf-8")
+        print(f"Briefing written to {args.out} ({len(text)} characters)")
+    else:
+        print(text)
+    store.close()
+    return 0
+
+
+def _email_config() -> dict:
+    return {
+        "sender": os.environ.get("MONITOR_FROM", "senedd-monitor@nrla.org.uk"),
+        "smtp_host": os.environ.get("MONITOR_SMTP_HOST", ""),
+        "smtp_port": int(os.environ.get("MONITOR_SMTP_PORT", "587")),
+        "username": os.environ.get("MONITOR_SMTP_USER", ""),
+        "password": os.environ.get("MONITOR_SMTP_PASS", ""),
+    }
+
+
+def _report_not_sent(args, recipients: list[str], config: dict) -> int:
+    """Say precisely why no email left the building, and fail if asked to send.
+
+    WHY THIS IS LOUD
+    ----------------
+    The first live GitHub Actions run finished green having emailed nothing,
+    printed "Not sent (dry run, or SMTP not configured)" into a log nobody
+    opens, and exited 0. The operator's conclusion — that the tool did not
+    work — was correct in every way that matters.
+
+    A dry run must stay the default, so a mis-run script cannot mail a
+    distribution list. But `--send` is an explicit instruction, and failing to
+    carry it out is an error, not a quiet note. So: name the missing variable,
+    emit a GitHub annotation that surfaces on the run page, and exit non-zero.
+    """
+    missing = []
+    if not config["smtp_host"]:
+        missing.append("MONITOR_SMTP_HOST")
+    if not recipients:
+        missing.append("MONITOR_TO")
+
+    if not args.send:
+        print("Dry run — nothing sent. Add --send to email it.")
+        return 0
+
+    detail = ", ".join(missing) if missing else "the SMTP server refused it"
+    message = (f"--send was requested but no email could be sent: "
+               f"{detail} not set. "
+               f"Add the missing repository secrets under "
+               f"Settings > Secrets and variables > Actions.")
+    print(f"ERROR: {message}", file=sys.stderr)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        # Surfaces as a red annotation at the top of the run page, where it
+        # cannot be mistaken for a successful send.
+        print(f"::error title=No email sent::{message}")
+    return 3
+
+
 def cmd_digest(args) -> int:
     pipe, store, tax = _pipeline(args)
     items = pipe.items_for_digest(since_days=args.days)
@@ -148,19 +249,18 @@ def cmd_digest(args) -> int:
     print(f"\nSubject: {subject}")
     print(f"Items: {len(items)} · deadlines: {len(deadlines)}")
 
-    sent = alerts_mod.send(
-        subject, html_body, text_body,
-        sender=os.environ.get("MONITOR_FROM", "senedd-monitor@nrla.org.uk"),
-        recipients=[r.strip() for r in (args.to or
-                    os.environ.get("MONITOR_TO", "")).split(",") if r.strip()],
-        smtp_host=os.environ.get("MONITOR_SMTP_HOST", ""),
-        smtp_port=int(os.environ.get("MONITOR_SMTP_PORT", "587")),
-        username=os.environ.get("MONITOR_SMTP_USER", ""),
-        password=os.environ.get("MONITOR_SMTP_PASS", ""),
-        dry_run=not args.send)
-    print("Sent." if sent else "Not sent (dry run, or SMTP not configured).")
+    config = _email_config()
+    recipients = [r.strip() for r in (args.to or
+                  os.environ.get("MONITOR_TO", "")).split(",") if r.strip()]
+    sent = alerts_mod.send(subject, html_body, text_body,
+                           recipients=recipients, dry_run=not args.send,
+                           **config)
     store.close()
-    return 0
+    if sent:
+        print(f"Sent to {len(recipients)} "
+              f"{'recipient' if len(recipients) == 1 else 'recipients'}.")
+        return 0
+    return _report_not_sent(args, recipients, config)
 
 
 def cmd_alert(args) -> int:
@@ -182,25 +282,25 @@ def cmd_alert(args) -> int:
         Path(args.out).write_text(html_body, encoding="utf-8")
         print(f"Alert written to {args.out}")
 
-    sent = alerts_mod.send(
-        subject, html_body, text_body,
-        sender=os.environ.get("MONITOR_FROM", "senedd-monitor@nrla.org.uk"),
-        recipients=[r.strip() for r in (args.to or
-                    os.environ.get("MONITOR_TO", "")).split(",") if r.strip()],
-        smtp_host=os.environ.get("MONITOR_SMTP_HOST", ""),
-        smtp_port=int(os.environ.get("MONITOR_SMTP_PORT", "587")),
-        username=os.environ.get("MONITOR_SMTP_USER", ""),
-        password=os.environ.get("MONITOR_SMTP_PASS", ""),
-        dry_run=not args.send)
+    config = _email_config()
+    recipients = [r.strip() for r in (args.to or
+                  os.environ.get("MONITOR_TO", "")).split(",") if r.strip()]
+    sent = alerts_mod.send(subject, html_body, text_body,
+                           recipients=recipients, dry_run=not args.send,
+                           **config)
 
     if sent:
         store.mark_notified([i.uid for i in items])
         print("Sent, and items marked as notified.")
-    else:
-        print("Not sent (dry run, or SMTP not configured). "
-              "Items remain unnotified.")
+        store.close()
+        return 0
+
+    # Items deliberately stay unnotified, so a later successful run still
+    # reports them. A failed alert must not silently consume its own contents.
+    print("Items remain unnotified — they will be included in the next "
+          "successful alert.")
     store.close()
-    return 0
+    return _report_not_sent(args, recipients, config)
 
 
 def cmd_search(args) -> int:
@@ -431,6 +531,18 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("dashboard", help="rebuild the dashboard from the archive")
     p.add_argument("--out", default="out/index.html")
     p.set_defaults(func=cmd_dashboard)
+
+    p = sub.add_parser("brief",
+                       help="the briefing as markdown (for the Actions run page)")
+    p.add_argument("--days", type=int, default=14)
+    p.add_argument("--deadline-days", type=int, default=60)
+    p.add_argument("--out", default="",
+                   help="write to a file; default prints to stdout so it can "
+                        "be piped into $GITHUB_STEP_SUMMARY")
+    p.add_argument("--note", default="",
+                   help="one line appended at the foot, e.g. where to find "
+                        "the full dashboard")
+    p.set_defaults(func=cmd_brief)
 
     p = sub.add_parser("digest", help="build the periodic digest")
     p.add_argument("--days", type=int, default=7)

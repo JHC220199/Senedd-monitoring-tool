@@ -237,10 +237,15 @@ def _entry_payload(entry: dict, tax: Taxonomy) -> dict:
     }
 
 
-def render(items: list[Item], tax: Taxonomy, report: RunReport | None = None,
-           stats: dict | None = None, deadlines: list[Item] | None = None,
-           upcoming: list[Item] | None = None,
-           title: str = "Senedd policy monitor") -> str:
+def zones(items: list[Item], tax: Taxonomy,
+          upcoming: list[Item] | None = None) -> dict:
+    """Split the archive into the three working zones, once.
+
+    Extracted from `render()` so that the HTML dashboard and the markdown
+    briefing cannot disagree about what belongs in "Respond". They did briefly
+    disagree, and a to-do list that differs depending on which format you opened
+    it in is worse than having only one format.
+    """
     grouped = group_transcripts(items)
     payload = [_entry_payload(g, tax) for g in grouped]
 
@@ -276,8 +281,28 @@ def render(items: list[Item], tax: Taxonomy, report: RunReport | None = None,
     # ARCHIVE: everything, for search.
     archive = sorted(payload, key=lambda p: (p["date"] or ""), reverse=True)
 
-    closing_soon = sum(1 for p in respond if p["severity"] in ("now", "soon"))
-    tiers = sorted({t for p in payload for t in p["tiers"]})
+    return {
+        "payload": payload,
+        "respond": respond,
+        "undated": undated,
+        "review": review,
+        "coming": coming,
+        "archive": archive,
+        "closing_soon": sum(1 for p in respond
+                            if p["severity"] in ("now", "soon")),
+        "tiers": sorted({t for p in payload for t in p["tiers"]}),
+    }
+
+
+def render(items: list[Item], tax: Taxonomy, report: RunReport | None = None,
+           stats: dict | None = None, deadlines: list[Item] | None = None,
+           upcoming: list[Item] | None = None,
+           title: str = "Senedd policy monitor") -> str:
+    z = zones(items, tax, upcoming)
+    payload = z["payload"]
+    respond, undated, review = z["respond"], z["undated"], z["review"]
+    coming, archive = z["coming"], z["archive"]
+    closing_soon, tiers = z["closing_soon"], z["tiers"]
 
     errors = report.errors if report else []
     failed = report.sources_failed if report else []
