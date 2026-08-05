@@ -7,6 +7,11 @@ alerting, a searchable archive and deadline tracking.
 Read `SPECIFICATION.md` for the design, the verified data-source findings and the
 deployment recommendation. This file is the operator's guide.
 
+**If a run went green but you received nothing, read `TROUBLESHOOTING.md` first.**
+That was a design fault, not a mistake by the operator, and it is fixed: the
+briefing now appears on the Actions run page itself, and an unconfigured or failed
+email says so loudly instead of passing quietly.
+
 ---
 
 ## Get it running in five minutes
@@ -35,6 +40,7 @@ python -m monitor.cli dashboard --out out/index.html
 |---|---|
 | `collect --days N` | Fetch, score and store. `--dashboard PATH` also rebuilds the page. Exits non-zero if any source returned nothing, so a scheduler can raise an alert. |
 | `dashboard --out PATH` | Rebuild the dashboard from the archive without fetching. |
+| `brief` | The same briefing as markdown. Piped into `$GITHUB_STEP_SUMMARY` by the workflow, so it appears on the Actions run page — no download and no email needed. |
 | `digest --days N [--send]` | Build the periodic digest. **Dry run by default.** |
 | `alert [--send]` | Email unnotified Critical items only. **Dry run by default.** |
 | `search "rent control"` | Full-text search the whole archive. |
@@ -143,6 +149,13 @@ at `.github/workflows/monitor.yml` and goes live on push. `deploy/AUTOMATION.md`
 compares that against running it on an NRLA server, which is the only route that
 reaches gov.wales.
 
+**No command line, no paid account: read `SETUP-GITHUB-BROWSER-ONLY.md`.** GitHub
+Free includes unlimited private repositories, so nothing here needs paying for.
+The one trap is that a browser upload silently skips `.github` and `.gitignore` —
+and a missing `.github` means the schedule never runs, with no error shown. That
+guide handles it; `deploy/github-actions-workflow.yml` and `deploy/gitignore.txt`
+are readable copies of the two hidden files, kept identical by a test.
+
 The archive persists as `data/archive.sql` — plain SQL text, committed after every
 run, with the SQLite binary gitignored and rebuilt from it. `git log -p
 data/archive.sql` then shows exactly what the monitor found each day.
@@ -172,7 +185,7 @@ Set these in the environment, not in a file:
 
 ```bash
 export MONITOR_FROM="senedd-monitor@nrla.org.uk"
-export MONITOR_TO="policy@nrla.org.uk,joshua.helm-cowley@nrla.org.uk"
+export MONITOR_TO="first.last@nrla.org.uk,policy@nrla.org.uk"
 export MONITOR_SMTP_HOST="smtp.office365.com"
 export MONITOR_SMTP_PORT="587"
 export MONITOR_SMTP_USER="senedd-monitor@nrla.org.uk"
@@ -223,7 +236,7 @@ was produced" if you are tuning the taxonomy.
 ## Tests
 
 ```bash
-python -m tests.test_monitor        # 95 tests, no pytest needed
+python -m tests.test_monitor        # 109 tests, no pytest needed
 python -m pytest tests/ -q          # if you prefer pytest
 ```
 

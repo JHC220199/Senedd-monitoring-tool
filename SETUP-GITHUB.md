@@ -55,14 +55,16 @@ Settings → Secrets and variables → Actions → New repository secret:
 | Secret | Value |
 |---|---|
 | `MONITOR_FROM` | `senedd-monitor@nrla.org.uk` |
-| `MONITOR_TO` | `policy@nrla.org.uk,joshua.helm-cowley@nrla.org.uk` |
+| `MONITOR_TO` | `first.last@nrla.org.uk` — comma-separate several |
 | `MONITOR_SMTP_HOST` | `smtp.office365.com` |
 | `MONITOR_SMTP_USER` | `senedd-monitor@nrla.org.uk` |
 | `MONITOR_SMTP_PASS` | app password for a dedicated service account |
 
 If you skip these, nothing is emailed — `send()` stays in dry-run mode unless an
 SMTP host is present, so a half-configured repo cannot accidentally mail a
-distribution list.
+distribution list. **The run now says so on its own summary page** rather than
+going quietly green: see `TROUBLESHOOTING.md`. The briefing itself appears on the
+run page whether or not email is configured, so the tool is usable from day one.
 
 **4. Prove it works**
 
