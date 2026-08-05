@@ -1,0 +1,1039 @@
+# =============================================================================
+# NRLA Senedd Monitor — Relevance Taxonomy
+# =============================================================================
+# This file controls WHAT the monitor considers relevant and HOW LOUDLY it
+# shouts about it. It is designed to be edited by policy staff, not developers.
+#
+# HOW SCORING WORKS
+#   Every item collected (a speech, a written question, a consultation, a bill
+#   stage) is scored:
+#
+#       score = (sum of matched theme weights)
+#             + (sum of matched entity boosts)
+#             + (sum of matched signal boosts)
+#             x (source multiplier)
+#
+#   The score maps onto a priority band (see `bands` at the bottom), which
+#   decides whether an item triggers an immediate alert, appears in the daily
+#   digest, or simply sits in the searchable archive.
+#
+# MATCHING RULES
+#   - All matching is case-insensitive.
+#   - Terms are matched on WORD BOUNDARIES. "rent" will NOT match "current"
+#     or "different". This matters: a naive substring match on "rent" produces
+#     a flood of false positives, which is the single fastest way to get a
+#     monitoring tool ignored.
+#   - Multi-word terms are matched as phrases, tolerant of extra whitespace.
+#   - A theme fires ONCE at its full weight no matter how many of its terms
+#     match, but each DISTINCT theme that matches adds its own weight. An item
+#     about rent controls in the private rented sector therefore scores higher
+#     than one about rent controls alone, which is correct.
+#   - `exclude_if` terms veto a theme match. Use these to stop known
+#     false-positive patterns.
+#
+# EDITING GUIDANCE
+#   - Raise a weight if the team keeps saying "this should have been flagged".
+#   - Add an `exclude_if` term if the team keeps saying "this is noise".
+#   - Add new people to `entities` after every reshuffle or by-election.
+#   - Never delete a theme; set its weight to 0 to mute it. This preserves the
+#     historical scores in the archive so trend data stays comparable.
+# =============================================================================
+
+meta:
+  version: "1.0"
+  updated: "2026-08-04"
+  owner: "NRLA Policy Directorate"
+  senedd_term: 7          # Seventh Senedd, 2026-2030
+  review_due: "2026-09-14"  # Senedd returns from summer recess; re-verify people
+
+# -----------------------------------------------------------------------------
+# THEMES
+# -----------------------------------------------------------------------------
+# `weight` is the contribution to the score when any term in the theme matches.
+#   50  = existential for NRLA members (rent controls, eviction reform)
+#   35  = direct regulatory impact on landlords
+#   25  = strong indirect impact
+#   15  = context the team needs but that rarely needs action
+#   5   = background awareness only
+#
+# `tier` groups themes for the dashboard's filter chips and the digest's
+# section headings. Keep tier names short — they become UI labels.
+# -----------------------------------------------------------------------------
+
+themes:
+
+  # ---- TIER 1: the private rented sector itself -----------------------------
+
+  private_rented_sector:
+    label: "Private rented sector"
+    tier: "Private rented sector"
+    weight: 40
+    terms:
+      - private rented sector
+      - private rental sector
+      - PRS
+      - private landlord
+      - private landlords
+      - private rented
+      - private rental
+      - private tenant
+      - private tenants
+      - buy to let
+      - buy-to-let
+      - landlord
+      - landlords
+      - letting agent
+      - letting agents
+      - lettings agent
+      - lettings agents
+      - managing agent
+      - tenancy
+      - tenancies
+      - occupation contract
+      - occupation contracts
+      - contract-holder
+      - contract holder
+      - contract-holders
+      - contract holders
+    exclude_if:
+      # "social landlord" business is monitored separately under social_housing.
+      # Without this, every registered-social-landlord debate scores as PRS.
+      - registered social landlord
+      - registered social landlords
+      - social landlord
+      - social landlords
+      - housing association landlord
+
+  rent_controls_and_affordability:
+    label: "Rent controls & rent data"
+    tier: "Private rented sector"
+    weight: 50
+    terms:
+      - rent control
+      - rent controls
+      - rent regulation
+      - rent stabilisation
+      - rent stabilization
+      - rent freeze
+      - rent cap
+      - rent caps
+      - rent capping
+      - fair rent
+      - fair rents
+      - fairer rent
+      - fairer rents
+      - rent pressure zone
+      - rent pressure zones
+      - rent data
+      - rental data
+      - rent data sharing
+      - rent register
+      - rental register
+      - rent affordability
+      - rental affordability
+      - housing affordability
+      - unaffordable rent
+      - unaffordable rents
+      - rent increase
+      - rent increases
+      - rent rise
+      - rent rises
+      - rent arrears
+
+  evictions_and_possession:
+    label: "Evictions & possession"
+    tier: "Private rented sector"
+    weight: 50
+    terms:
+      - no fault eviction
+      - no-fault eviction
+      - no fault evictions
+      - no-fault evictions
+      - section 173
+      - s173
+      - section 21
+      - retaliatory eviction
+      - revenge eviction
+      - possession proceedings
+      - possession claim
+      - possession claims
+      - notice to quit
+      - eviction
+      - evictions
+      - evicted
+      - security of tenure
+      - unfair eviction
+      - unfair evictions
+
+  rent_smart_wales:
+    label: "Rent Smart Wales & licensing"
+    tier: "Private rented sector"
+    weight: 45
+    terms:
+      - Rent Smart Wales
+      - RSW
+      - landlord licensing
+      - landlord registration
+      - landlord register
+      - licensing scheme
+      - licensing schemes
+      - selective licensing
+      - additional licensing
+      - agent licensing
+      - unlicensed landlord
+      - unlicensed landlords
+      - fit and proper person
+      - fixed penalty notice
+      - fixed penalty notices
+      - rent stopping order
+      - rent repayment order
+      - rent repayment orders
+
+  tenancy_law:
+    label: "Tenancy law (Renting Homes)"
+    tier: "Private rented sector"
+    weight: 40
+    terms:
+      - Renting Homes
+      - Renting Homes (Wales) Act
+      - Renting Homes Wales Act
+      - written statement of contract
+      - standard occupation contract
+      - secure occupation contract
+      - converted contract
+      - converted contracts
+      - fitness for human habitation
+      - FFHH
+      - fit for human habitation
+      - model written statement
+      - Renters' Rights Act
+      - Renters Rights Act
+      - Renters Rights Bill
+
+  hmos_and_standards:
+    label: "HMOs & property standards"
+    tier: "Private rented sector"
+    weight: 35
+    terms:
+      - HMO
+      - HMOs
+      - house in multiple occupation
+      - houses in multiple occupation
+      - multiple occupation
+      - overcrowding
+      - housing health and safety rating
+      - HHSRS
+      - category 1 hazard
+      - category 2 hazard
+      - disrepair
+      - damp and mould
+      - damp
+      - mould
+      - Awaab
+      - hazard rating
+      - property standards
+      - housing standards
+      - decent homes
+
+  # ---- TIER 2: adjacent regulation with direct landlord cost ---------------
+
+  energy_efficiency:
+    label: "Energy efficiency & retrofit"
+    tier: "Property & energy"
+    weight: 35
+    terms:
+      - EPC
+      - EPCs
+      - energy performance certificate
+      - energy performance certificates
+      - minimum energy efficiency standard
+      - minimum energy efficiency standards
+      - MEES
+      - energy efficiency standard
+      - energy efficiency standards
+      - retrofit
+      - retrofitting
+      - decarbonisation of homes
+      - decarbonise homes
+      - Warm Homes
+      - Nest scheme
+      - Optimised Retrofit
+      - heat pump
+      - heat pumps
+      - fuel poverty
+      - fabric first
+      - solid wall insulation
+      - cavity wall insulation
+      - net zero homes
+      - Welsh housing quality standard
+      - WHQS
+
+  building_safety_and_leasehold:
+    label: "Building safety & leasehold"
+    tier: "Property & energy"
+    weight: 35
+    terms:
+      - Building Safety (Wales) Act
+      - Building Safety Wales Act
+      - building safety
+      - cladding
+      - remediation order
+      - remediation orders
+      - remediation contribution
+      - accountable person
+      - responsible person
+      - landlord's certificate
+      - landlords certificate
+      - leaseholder
+      - leaseholders
+      - leasehold
+      - commonhold
+      - service charge
+      - service charges
+      - ground rent
+      - ground rents
+      - enfranchisement
+      - lease extension
+      - managing agent regulation
+      - fire safety
+      - Residential Property Tribunal
+      - RPT Wales
+      - electrical safety
+      - EICR
+      - gas safety
+      - smoke alarm
+      - smoke alarms
+      - carbon monoxide
+
+  taxation_of_property:
+    label: "Property taxation"
+    tier: "Tax & finance"
+    weight: 35
+    terms:
+      - council tax premium
+      - council tax premiums
+      - second home premium
+      - second homes premium
+      - land transaction tax
+      - LTT
+      - higher rates residential
+      - non-domestic rates
+      - business rates
+      - council tax reduction scheme
+      - council tax
+      - empty homes
+      - empty property
+      - empty properties
+      - visitor levy
+      - tourism tax
+      - tourist tax
+      - visitor accommodation levy
+      - stamp duty
+      - capital gains
+      - mortgage interest relief
+
+  second_homes_and_short_term_lets:
+    label: "Second homes & short-term lets"
+    tier: "Planning & place"
+    weight: 35
+    terms:
+      - second home
+      - second homes
+      - holiday let
+      - holiday lets
+      - holiday letting
+      - short term let
+      - short-term let
+      - short term lets
+      - short-term lets
+      - self-catering
+      - self catering
+      - Airbnb
+      - Article 4
+      - Article 4 direction
+      - Article 4 directions
+      - class C5
+      - class C6
+      - use class C5
+      - use class C6
+      - 182 day
+      - 182 days
+      - 252 days
+      - visitor accommodation register
+      - statutory registration scheme
+      # Added after "Development of Tourism and Regulation of Visitor
+      # Accommodation (Wales) Act 2026" scored zero.
+      - visitor accommodation
+      - Regulation of Visitor Accommodation
+      - Development of Tourism
+      - tourism levy
+      - tourism accommodation
+      - registration scheme
+
+  # ---- TIER 3: the wider housing system -----------------------------------
+
+  housing_supply:
+    label: "Housing supply & development"
+    tier: "Planning & place"
+    weight: 25
+    terms:
+      - housing supply
+      - house building
+      - housebuilding
+      - new homes
+      - housing delivery
+      - affordable housing
+      - intermediate rent
+      - social homes
+      - Unnos
+      - development land
+      - land supply
+      - build to rent
+      - build-to-rent
+      - empty homes grant
+      - housing targets
+      - housing target
+
+  planning_system:
+    label: "Planning system"
+    tier: "Planning & place"
+    weight: 25
+    terms:
+      - Planning Policy Wales
+      - Future Wales
+      - local development plan
+      - local development plans
+      - LDP
+      - LDPs
+      - strategic development plan
+      - planning permission
+      - permitted development
+      - planning application
+      - planning applications
+      - change of use
+      - planning appeal
+      - planning appeals
+      - PEDW
+      - Planning and Environment Decisions Wales
+      - development management
+      - Section 106
+      - s106
+      - infrastructure levy
+      # Added after live Bill data showed "Planning (Wales) Act 2026" scoring
+      # zero. Legislation titles are terse, so the theme needs the phrasings that
+      # actually appear in them. Bare "planning" is deliberately NOT listed —
+      # it would match "planning to consult", "workforce planning" and similar.
+      - Planning (Wales) Act
+      - Planning Act
+      - Planning Bill
+      - planning system
+      - planning reform
+      - planning legislation
+      - planning authority
+      - planning authorities
+      - planning consent
+      - planning policy
+      - planning guidance
+
+  homelessness:
+    label: "Homelessness"
+    tier: "Housing system"
+    weight: 25
+    terms:
+      - homelessness
+      - homeless
+      - rough sleeping
+      - rough sleeper
+      - rough sleepers
+      - temporary accommodation
+      - bed and breakfast accommodation
+      - priority need
+      - intentionality
+      - intentionally homeless
+      - prevention duty
+      - local connection
+      - housing first
+      - Housing (Wales) Act 2014
+      - Homelessness and Social Housing Allocation
+      - right to adequate housing
+      - adequate housing
+
+  social_housing:
+    label: "Social housing"
+    tier: "Housing system"
+    weight: 15
+    terms:
+      - social housing
+      - social rent
+      - council housing
+      - council houses
+      - housing association
+      - housing associations
+      - registered social landlord
+      - registered social landlords
+      - RSL
+      - RSLs
+      - housing waiting list
+      - housing waiting lists
+      - allocation policy
+      - allocations policy
+      - right to buy
+      - community right to buy
+      - community asset
+      - community assets
+
+  welfare_and_support:
+    label: "Welfare & tenant finances"
+    tier: "Housing system"
+    weight: 20
+    terms:
+      - local housing allowance
+      - LHA
+      - housing benefit
+      - universal credit
+      - discretionary housing payment
+      - discretionary housing payments
+      - discretionary assistance fund
+      - benefit cap
+      - direct payment to landlord
+      - direct payments to landlords
+      - tenancy hardship
+      - tenant saver loan
+      - rent guarantee
+      - rent guarantees
+      - guarantor
+      - Leasing Scheme Wales
+      - bond scheme
+      - rent deposit
+
+  local_government_enforcement:
+    label: "Local authority enforcement"
+    tier: "Housing system"
+    weight: 20
+    terms:
+      - local authority enforcement
+      - enforcement powers
+      - environmental health
+      - civil penalty
+      - civil penalties
+      - financial penalty
+      - financial penalties
+      - enforcement notice
+      - enforcement action
+      - prohibition order
+      - improvement notice
+      - rogue landlord
+      - rogue landlords
+      - criminal landlord
+      - criminal landlords
+      - banning order
+      - interim management order
+      - compulsory purchase
+
+  # ---- TIER 4: context -----------------------------------------------------
+
+  fiscal_and_legislative_context:
+    label: "Budget & legislative programme"
+    tier: "Context"
+    weight: 15
+    terms:
+      - draft budget
+      - supplementary budget
+      - final budget
+      - legislative programme
+      - legislative priorities
+      - programme for government
+      - King's Speech
+      - Kings Speech
+      - co-operation agreement
+      - cooperation agreement
+      - confidence and supply
+      - devolution settlement
+      - Legislative Consent Motion
+      - LCM
+
+  committee_scrutiny:
+    label: "Committee scrutiny"
+    tier: "Housing system"
+    weight: 30
+    # Committee NAMES belong here rather than in `entities`, for two reasons:
+    #
+    # 1. Entity boosts amplify relevance but cannot create it, so a scheduled
+    #    Local Government, Housing and Planning Committee meeting scored ZERO —
+    #    it has no thematic content until an agenda is published. A sitting of
+    #    the committee that scrutinises the housing minister is inherently
+    #    relevant business, and this theme is what makes it so.
+    # 2. Keeping names here and members' names in `entities` preserves the
+    #    themes/entities disjointness rule, so nothing is double-counted.
+    # ONLY committees whose remit actually touches the private rented sector.
+    #
+    # An earlier version listed every committee. The effect was that
+    # "Priorities for Public Administration" and "Priorities for the Economy,
+    # Energy and Connectivity Committee" both scored 224 — Critical — identically
+    # to the Local Government, Housing and Planning Committee's own priorities
+    # consultation. Four irrelevant Critical items for every relevant one is how
+    # a dashboard becomes unusable.
+    terms:
+      - Local Government, Housing and Planning Committee
+      - Local Government and Housing Committee
+      - Equality, Human Rights and Social Justice Committee   # Right to Adequate Housing
+      - Climate Change, Environment, Sustainability and Rural Affairs Committee  # EPC, second homes
+      - Finance Committee                                     # council tax, LTT
+      - Legislation Committee                                 # Bill scrutiny
+    exclude_if:
+      # Administrative and archive pages every committee publishes. They are not
+      # opportunities to influence anything.
+      - Completed work and published reports
+      - Membership of the Committee
+      - Committee remit
+
+  named_welsh_legislation:
+    label: "Named Welsh legislation"
+    tier: "Context"
+    weight: 30
+    # Legislation titles carry almost no text for a scorer to work with, so the
+    # Acts and Bills the NRLA actually cares about are named explicitly. This is
+    # the one place in the taxonomy where being literal beats being clever:
+    # a policy officer can read this list and see exactly what is tracked.
+    #
+    # ADD TO THIS LIST whenever a relevant Bill is introduced. It is the single
+    # highest-value maintenance task in the whole file.
+    terms:
+      - Renting Homes (Wales) Act
+      - Housing (Wales) Act
+      - Building Safety (Wales) Act
+      - Homelessness and Social Housing Allocation (Wales) Act
+      - Visitor Accommodation (Register and Levy)
+      - Development of Tourism and Regulation of Visitor Accommodation (Wales) Act
+      - Planning (Wales) Act
+      - Planning (Consequential Provisions) (Wales) Act
+      - Leasehold and Freehold Reform Act
+      - Commonhold and Leasehold Reform Bill
+      - Renters' Rights Act
+      - Land Transaction Tax
+      - Local Government Finance (Wales) Act
+      - Community Right to Buy Bill
+      - Right to Adequate Housing Bill
+      - Tribunals (Wales) Act
+
+  data_and_evidence:
+    label: "Housing data & statistics"
+    tier: "Context"
+    weight: 15
+    terms:
+      - dwelling stock
+      - housing statistics
+      - StatsWales
+      - Welsh Housing Conditions Survey
+      - National Survey for Wales
+      - house price index
+      - private rental price
+      - private rental prices
+      - index of private housing rental prices
+      - IPHRP
+      - tenure statistics
+
+# -----------------------------------------------------------------------------
+# ENTITIES
+# -----------------------------------------------------------------------------
+# People, organisations and bodies whose involvement changes how much an item
+# matters. An entity boost is added ON TOP of any theme weight.
+#
+# IMPORTANT: entity boosts do NOT by themselves make an item relevant. An item
+# that matches no theme is discarded regardless of who spoke, otherwise every
+# health question asked by the housing minister would be flagged. Entity
+# boosts amplify relevance; they do not create it.
+#
+# VERIFY THIS SECTION after every reshuffle, by-election or committee change.
+# Last verified against press reporting 4 August 2026; the Senedd's own
+# committee pages had not yet been updated for the Seventh Senedd.
+# -----------------------------------------------------------------------------
+
+entities:
+
+  # ---- The organisation itself: always the loudest signal ------------------
+  nrla:
+    label: "NRLA named"
+    boost: 60
+    always_alert: true       # a direct mention always escalates, whatever else matched
+    terms:
+      - NRLA
+      - National Residential Landlords Association
+      - Residential Landlords Association
+      - RLA
+
+  # ---- Competitor / peer bodies: useful for positioning -------------------
+  sector_bodies:
+    label: "Sector bodies"
+    boost: 15
+    terms:
+      - Propertymark
+      - ARLA
+      - Safeagent
+      - British Landlords Association
+      - Generation Rent
+      - Shelter Cymru
+      - Tai Pawb
+      - TPAS Cymru
+      - Community Housing Cymru
+      - CHC
+      - Welsh Local Government Association
+      - WLGA
+      - Citizens Advice Cymru
+      - Bevan Foundation
+      - Crisis
+      - Cymorth Cymru
+      - Renters Reform Coalition
+      - Acorn
+
+  # ---- Welsh Government: the decision makers ------------------------------
+  # Cabinet Minister for Local Government, Housing and Planning is the single
+  # most important individual for NRLA. First Minister next.
+  government_housing:
+    label: "Housing minister"
+    boost: 30
+    terms:
+      - Sian Gwenllian
+      - Siân Gwenllian
+      - Cabinet Minister for Local Government, Housing and Planning
+      - Minister for Local Government, Housing and Planning
+      - Cabinet Secretary for Housing
+      - Minister for Housing
+
+  government_senior:
+    label: "First Minister / Cabinet"
+    boost: 20
+    terms:
+      - Rhun ap Iorwerth
+      - First Minister
+      - Prif Weinidog
+      - Sioned Williams
+      - Deputy First Minister
+      - Elin Jones
+      - Cabinet Minister for Finance
+      - Heledd Fychan
+      - Trefnydd
+      - Counsel General
+      - Elfyn Llwyd
+
+  # ---- Opposition housing leads -------------------------------------------
+  opposition_housing:
+    label: "Opposition housing leads"
+    boost: 25
+    terms:
+      - Francesca O'Brien       # Reform UK, Shadow LG/Housing/Planning
+      - Francesca OBrien
+      - Jayne Bryant            # Welsh Labour housing spokesperson, ex-minister
+      - Peter Fox               # Welsh Conservatives, finance/LG/communities
+      - Jane Dodds              # Welsh Liberal Democrats, sole MS
+      - Anthony Slaughter       # Wales Green Party leader
+      - Dan Thomas              # Reform UK, Leader of the Opposition
+      - Mike Hedges             # Welsh Labour, local government
+      - Ken Skates              # Welsh Labour leader
+
+  # ---- The committee that scrutinises housing -----------------------------
+  lghp_committee:
+    label: "LGHP Committee members"
+    boost: 30
+    # People only. The committee's NAME is a term of the committee_scrutiny
+    # theme — see the note there. Keeping them separate stops the same phrase
+    # being counted twice.
+    terms:
+      - Carmelo Colasanto       # Chair
+      - Marc Jones
+      - Rebecca Phillips
+      - Rebeca Phillips
+      - Elyn Stephens
+      - David Hughes
+      - Paul Rock
+
+  other_committee_chairs:
+    label: "Other committee chairs"
+    boost: 10
+    # People only, for the same reason as above.
+    terms:
+      - Sam Rowlands
+      - Sarah Cooper-Lesadd
+      - James Evans
+      - Zaynub Akbar
+
+  # ---- Delivery bodies ----------------------------------------------------
+  delivery_bodies:
+    label: "Delivery bodies"
+    boost: 15
+    terms:
+      # NOTE: "Rent Smart Wales" is deliberately NOT listed here. It is already
+      # a theme (rent_smart_wales, weight 45), and having it in both places
+      # double-counted the same phrase. The effect was visible and wrong: a
+      # peripheral written question about Rent Smart Wales hate-crime training
+      # scored 85 and outranked "Does the Welsh Government have plans to bring
+      # in rent controls?" at 75. Keep themes and entities disjoint.
+      - Welsh Revenue Authority
+      - WRA
+      - Residential Property Tribunal Wales
+      - Leasehold Valuation Tribunal
+      - Audit Wales
+      - Future Generations Commissioner
+      - Development Bank of Wales
+      # "Unnos" also removed for the same reason as Rent Smart Wales — it is a
+      # term of the housing_supply theme, and listing it here double-counted it.
+      - Data Cymru
+
+# -----------------------------------------------------------------------------
+# SIGNALS
+# -----------------------------------------------------------------------------
+# Signals detect the SHAPE of an item rather than its subject — is something
+# actually about to happen? A vague expression of concern and a firm commitment
+# to legislate score very differently, and they should.
+# -----------------------------------------------------------------------------
+
+signals:
+
+  legislative_commitment:
+    label: "Legislative commitment"
+    boost: 35
+    terms:
+      - we will legislate
+      - will bring forward legislation
+      - intend to legislate
+      - introduce a bill
+      - introduce legislation
+      - bring forward a bill
+      - laid before the Senedd
+      - will consult on
+      - White Paper
+      - Green Paper
+      - draft bill
+      - draft regulations
+      - explanatory memorandum
+      - regulatory impact assessment
+
+  consultation_open:
+    label: "Consultation open"
+    boost: 40
+    terms:
+      - consultation
+      - consultations
+      - call for evidence
+      - call for views
+      - have your say
+      - we want your views
+      - seeking views
+      - closing date
+      - closes on
+      - respond by
+      - inquiry
+      - terms of reference
+
+  bill_progress:
+    label: "Bill progress"
+    boost: 35
+    terms:
+      - Stage 1
+      - Stage 2
+      - Stage 3
+      - Stage 4
+      - general principles
+      - amending stage
+      - Royal Assent
+      - commencement order
+      - coming into force
+      - subordinate legislation
+      - statutory instrument
+      - made affirmative
+      - draft affirmative
+
+  ministerial_decision:
+    label: "Decision or commitment"
+    boost: 25
+    terms:
+      - I can confirm
+      - I am announcing
+      - I have decided
+      - I will publish
+      - we have decided
+      - I have agreed
+      - I am today publishing
+      - taking effect from
+      - with effect from
+      - I will write to
+
+  scrutiny_opportunity:
+    label: "Opportunity to influence"
+    boost: 30
+    terms:
+      - oral evidence
+      - written evidence
+      - evidence session
+      - stakeholder engagement
+      - roundtable
+      - working group
+      - task and finish group
+      - advisory panel
+      - expert panel
+      - technical group
+
+# -----------------------------------------------------------------------------
+# SOURCES — what to collect at all
+# -----------------------------------------------------------------------------
+# Switches, not weights. Set one to `false` and that source is never fetched, so
+# it costs no requests and adds nothing to the archive.
+#
+# This exists so overlap with other NRLA tools can be turned off without editing
+# code. Duplicate coverage is worse than a gap: two systems reporting the same
+# written question means two people think the other one is handling it.
+# -----------------------------------------------------------------------------
+sources:
+  # OFF: the policy directorate has a separate tool that tracks Senedd written
+  # questions, so collecting them here would duplicate it. Turning this off also
+  # removes the largest block of requests in a run — the seed-query sweep across
+  # the Record's search — so runs are faster as well as cleaner.
+  #
+  # Historical written questions already in the archive stay searchable. To
+  # remove them too:  python -m monitor.cli prune --source written_question
+  written_questions: false
+
+  # ON: oral and topical questions are asked in the Chamber and appear in the
+  # transcripts anyway, so excluding them would leave holes in debates. These are
+  # a different thing from written questions.
+  oral_questions: true
+
+  # ON: statements of opinion show which MSs are willing to put their name to a
+  # position, which is exactly what a lobbying team wants to know.
+  statements_of_opinion: true
+
+# -----------------------------------------------------------------------------
+# SOURCE MULTIPLIERS
+# -----------------------------------------------------------------------------
+# Not all sources carry equal weight. A minister's statement in Plenary is
+# worth more than a backbencher's passing reference in an unrelated debate.
+# Multipliers are applied to the summed score.
+# -----------------------------------------------------------------------------
+
+source_multipliers:
+  consultation: 1.4          # time-limited: missing one is unrecoverable
+  legislation: 1.3           # bills and SIs are the hard edge of policy
+  committee_transcript: 1.15
+  plenary_transcript: 1.1
+  written_question: 1.0
+  oral_question: 1.0
+  written_statement: 1.1
+  press_release: 0.9
+  calendar: 0.8
+  other: 1.0
+
+# -----------------------------------------------------------------------------
+# CONTRIBUTION-TYPE HANDLING
+# -----------------------------------------------------------------------------
+# The Senedd Record XML tags each contribution with a type. Some are procedural
+# furniture and should never reach the dashboard.
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# PROCEDURAL AGENDA ITEMS
+# -----------------------------------------------------------------------------
+# Agenda items that are pure committee housekeeping. They appear at every single
+# meeting and contain no policy content, but they scored High and Critical
+# because the surrounding text mentions the committee's own name and its remit.
+#
+# Two real examples from the dashboard that prompted this list:
+#   "1. Introductions, apologies, substitutions and declarations of interest"
+#   "2. Papers to note"
+#
+# Matched as a prefix on the agenda item title, case-insensitively, after any
+# leading item number. Add to this list rather than fighting the scores.
+# -----------------------------------------------------------------------------
+procedural_agenda_items:
+  - Introductions, apologies
+  - Introduction, apologies
+  - Apologies, substitutions
+  - Papers to note
+  - Paper to note
+  - Minutes of the previous meeting
+  - Motion under Standing Order 17.42
+  - Motion under Standing Order 17.22
+  - Private session
+  - Date of the next meeting
+  - Any other business
+  - Declarations of interest
+  - Election of a temporary Chair
+  - Instruments that raise no reporting issues
+  - Instruments that raise issues to be reported
+
+contribution_types:
+  C: { label: "Contribution",       include: true  }
+  I: { label: "Information",        include: false }   # bilingual notices, [R] explainers
+  B: { label: "Business item",      include: true  }
+  O: { label: "Other",              include: true  }
+  V: { label: "Vote",               include: true  }
+  QNR: { label: "Question not reached", include: true }
+
+# -----------------------------------------------------------------------------
+# PRIORITY BANDS
+# -----------------------------------------------------------------------------
+# `min_score` is inclusive. Bands are evaluated highest first.
+#
+# `channel` determines routing:
+#   immediate  -> alert email within the hour + dashboard
+#   digest     -> daily digest email + dashboard
+#   dashboard  -> dashboard and archive only, no email
+#   archive    -> stored and searchable, hidden from default dashboard view
+# -----------------------------------------------------------------------------
+
+bands:
+  # Colours follow the NRLA palette: brand orange #E96C19 for High, brand dark
+  # blue #113B54 for Medium, with a deep red reserved for Critical so it reads
+  # as an exception rather than as part of the normal run of business.
+  - name: "Critical"
+    min_score: 130
+    colour: "#A32115"
+    channel: immediate
+    description: >
+      Direct, material and usually time-limited. A consultation on rent data, a
+      bill stage on eviction reform, the NRLA named in the Chamber. Someone
+      should look at this today.
+
+  - name: "High"
+    min_score: 85
+    colour: "#E96C19"
+    channel: digest
+    description: >
+      Substantive business on a core NRLA issue. Belongs in the next digest and
+      probably needs a position or a line to take.
+
+  - name: "Medium"
+    min_score: 50
+    colour: "#113B54"
+    channel: digest
+    description: >
+      Relevant and worth knowing. Grouped and summarised rather than
+      individually flagged.
+
+  - name: "Low"
+    min_score: 25
+    colour: "#5A7286"
+    channel: dashboard
+    description: >
+      Peripheral or passing references. Available on the dashboard for anyone
+      who wants the full picture.
+
+  - name: "Noise"
+    min_score: 0
+    colour: "#9AA5AF"
+    channel: archive
+    description: >
+      Matched something, but weakly. Kept only so the archive remains
+      searchable and so tuning decisions can be audited.
+
+# -----------------------------------------------------------------------------
+# THRESHOLDS
+# -----------------------------------------------------------------------------
+thresholds:
+  # Items scoring below this are not stored at all. Set to 0 to store everything
+  # (recommended while tuning, so you can see what you are missing).
+  store_minimum: 10
+  # Minimum score to appear in the default dashboard view.
+  dashboard_minimum: 25
+  # Consultations are never dropped regardless of score if they mention any
+  # tier-1 or tier-2 theme, because the cost of missing a deadline is asymmetric.
+  never_drop_consultations: true
