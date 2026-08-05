@@ -67,6 +67,7 @@ concurrency:
 
 permissions:
   contents: write           # needed to commit the updated archive
+  issues: write             # the briefing issue IS the email — see below
 
 jobs:
   monitor:
@@ -142,23 +143,55 @@ jobs:
             --note "Full searchable dashboard: the senedd-dashboard artifact at the foot of this page." \
             >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Say plainly if email is not configured
-        # An unmissable answer to "why have I had no email?".
-        # Without this the two steps below are skipped silently and the run is
-        # still green — indistinguishable from a working system that had nothing
-        # to say. That ambiguity is the whole complaint this step answers.
+      - name: Publish the briefing — bookmarkable page, weekly copy, and email
+        # THE STEP THAT MAKES THIS A USABLE TOOL.
+        #
+        # Three previous attempts at "somewhere to read it" all put the output
+        # somewhere nobody would go: a gitignored file, a zip inside a build
+        # artifact, and then this very run page — which cannot be bookmarked
+        # because its URL changes every run. Meanwhile the email needed five
+        # SMTP secrets that require an IT request, so it never arrived.
+        #
+        # GITHUB_TOKEN is injected into every workflow run automatically, so all
+        # three of these need no configuration whatsoever:
+        #
+        #   BRIEFING.md            one permanent URL, always current, renders on
+        #                          a PRIVATE repo — which GitHub Pages does not
+        #   briefings/2026-Wnn.md  the permanent weekly record
+        #   a dated issue          GitHub emails watchers when an issue opens,
+        #                          so this IS the daily digest. It is also a
+        #                          bookmarkable page, and GitHub issue search
+        #                          gives full-text search over every briefing.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m monitor.cli publish \
+            --days 21 \
+            --file BRIEFING.md \
+            --week-dir briefings
+
+      - name: Note where the briefing went
+        # No longer a warning, because delivery no longer depends on SMTP. The
+        # issue opened above is emailed by GitHub to everyone watching this
+        # repository, so the digest arrives with nothing configured. SMTP is now
+        # an optional upgrade — a nicer-looking email from an NRLA address — not
+        # a prerequisite.
         if: env.SMTP_HOST == ''
         run: |
           {
             echo ""
-            echo "> [!WARNING]"
-            echo "> **No email was sent, because email is not configured yet.**"
-            echo "> The briefing above is complete — this affects delivery only."
-            echo "> Add \`MONITOR_SMTP_HOST\`, \`MONITOR_SMTP_USER\`,"
-            echo "> \`MONITOR_SMTP_PASS\`, \`MONITOR_FROM\` and \`MONITOR_TO\` under"
-            echo "> Settings → Secrets and variables → Actions, then re-run."
+            echo "> [!NOTE]"
+            echo "> **This briefing was emailed via the GitHub issue opened by"
+            echo "> this run**, to everyone watching the repository. It is also"
+            echo "> always at [BRIEFING.md](../../blob/main/BRIEFING.md)."
+            echo ">"
+            echo "> Not receiving it? Check **Watch → All Activity** on the"
+            echo "> repository, and that GitHub emails reach your inbox."
+            echo ">"
+            echo "> Optional: adding \`MONITOR_SMTP_HOST\`, \`MONITOR_SMTP_USER\`,"
+            echo "> \`MONITOR_SMTP_PASS\`, \`MONITOR_FROM\` and \`MONITOR_TO\` sends"
+            echo "> the formatted digest from an NRLA address as well."
           } >> "$GITHUB_STEP_SUMMARY"
-          echo "::warning title=No email configured::Add the MONITOR_SMTP_* repository secrets to receive this by email. The briefing is on the run summary either way."
 
       - name: Send the daily digest
         # Runs only once SMTP is configured, so an unconfigured repo is not a
@@ -202,7 +235,7 @@ jobs:
           python -m monitor.cli export --out data/archive.sql
           git config user.name  "senedd-monitor"
           git config user.email "senedd-monitor@nrla.org.uk"
-          git add data/archive.sql out/weeks
+          git add data/archive.sql out/weeks BRIEFING.md briefings
           if git diff --staged --quiet; then
             # Genuinely nothing new. The export is deterministic, so identical
             # data produces an identical file and therefore no commit — which is
