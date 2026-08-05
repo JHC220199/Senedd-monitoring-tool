@@ -10,11 +10,16 @@ a regression test is largely in explaining what went wrong and why it mattered.
 
 from __future__ import annotations
 
+import contextlib
+import io
+import os
 import sys
 import unittest
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -1169,6 +1174,164 @@ class TestOutputs(unittest.TestCase):
         html_out = render([], TAX, report=report, deadlines=[])
         self.assertIn("This view is incomplete", html_out)
         self.assertIn("quiet week", html_out)
+
+
+class TestBriefMarkdown(unittest.TestCase):
+    """The briefing that appears on the Actions run page.
+
+    Exists because the first live run was green, correct, and useless: it
+    collected 257 items and put every one of them somewhere nobody would look.
+    """
+
+    def test_renders_zones_a_person_can_act_on(self):
+        from monitor.brief import render_markdown
+        items = [make_item("rent controls in the private rented sector"),
+                 make_item("EPC and retrofit standards for landlords")]
+        md = render_markdown(items, TAX)
+        self.assertIn("developments to review", md)
+        self.assertIn("## Review", md)
+        # The licence attribution must survive into every output format.
+        self.assertIn("Open Government Licence", md)
+
+    def test_quiet_period_is_stated_not_left_blank(self):
+        from monitor.brief import render_markdown
+        md = render_markdown([], TAX)
+        # A blank page and a quiet week must never look the same.
+        self.assertIn("genuinely quiet period", md)
+
+    def test_failed_source_warns_at_the_top(self):
+        from monitor.brief import render_markdown
+        from monitor.pipeline import RunReport
+        from datetime import datetime as dt
+        report = RunReport(run_id="x", started_at=dt.now(), finished_at=dt.now(),
+                           errors=["boom"], sources_failed=["Senedd — Record"])
+        md = render_markdown([], TAX, report=report)
+        self.assertIn("[!WARNING]", md)
+        self.assertIn("This view is incomplete", md)
+        # And it must be first, not buried under the content.
+        self.assertLess(md.index("[!WARNING]"), md.index("quiet period"))
+
+    def test_pipes_in_a_title_cannot_break_the_table(self):
+        from monitor.brief import _link
+        self.assertNotIn("|", _link("Rent | controls", "http://x").replace("\\|", ""))
+
+
+class TestEmailFailureIsLoud(unittest.TestCase):
+    """`--send` failing must not look like success.
+
+    The first live GitHub run exited 0 having emailed nothing, printing only
+    "Not sent (dry run, or SMTP not configured)" into a log nobody opens. The
+    operator concluded the tool did not work, which was the correct reading.
+    """
+
+    def _args(self, send: bool):
+        return SimpleNamespace(send=send)
+
+    def test_dry_run_without_send_is_success(self):
+        from monitor.cli import _report_not_sent
+        self.assertEqual(
+            _report_not_sent(self._args(False), [], {"smtp_host": ""}), 0)
+
+    def test_send_without_config_is_an_error(self):
+        from monitor.cli import _report_not_sent
+        self.assertEqual(
+            _report_not_sent(self._args(True), [], {"smtp_host": ""}), 3)
+
+    def test_the_error_names_the_missing_variable(self):
+        from monitor.cli import _report_not_sent
+        buf, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+            _report_not_sent(self._args(True), [], {"smtp_host": ""})
+        combined = buf.getvalue() + err.getvalue()
+        # Naming the variable is the difference between a usable error and a
+        # shrug. Both missing values must be named, not just the first.
+        self.assertIn("MONITOR_SMTP_HOST", combined)
+        self.assertIn("MONITOR_TO", combined)
+
+    def test_github_annotation_only_inside_actions(self):
+        from monitor.cli import _report_not_sent
+        for value, expected in (("true", True), ("", False)):
+            with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": value}):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    _report_not_sent(self._args(True), [], {"smtp_host": ""})
+                self.assertEqual("::error" in buf.getvalue(), expected)
+
+
+class TestWorkflowGuards(unittest.TestCase):
+    """The workflow's own logic, checked without running it.
+
+    `secrets` is not available in a step-level `if:`, so the SMTP host is lifted
+    into `env` at job level. Get that wrong and the send steps either never run
+    or always run — both silent.
+    """
+
+    ROOT = Path(__file__).resolve().parent.parent
+
+    def setUp(self):
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        self.job = yaml.safe_load(
+            (self.ROOT / ".github/workflows/monitor.yml").read_text(
+                encoding="utf-8"))["jobs"]["monitor"]
+        self.steps = {s["name"]: s for s in self.job["steps"]}
+
+    def test_smtp_host_is_lifted_into_env_for_the_if_conditions(self):
+        self.assertIn("SMTP_HOST", self.job.get("env", {}))
+
+    def test_send_steps_are_guarded_and_the_warning_is_the_inverse(self):
+        for name in ("Send the daily digest", "Alert on anything critical"):
+            self.assertEqual(self.steps[name]["if"], "env.SMTP_HOST != ''", name)
+        self.assertEqual(
+            self.steps["Say plainly if email is not configured"]["if"],
+            "env.SMTP_HOST == ''")
+
+    def test_the_briefing_reaches_the_run_summary(self):
+        step = self.steps["Put the briefing on this page"]
+        self.assertIn("monitor.cli brief", step["run"])
+        self.assertIn("GITHUB_STEP_SUMMARY", step["run"])
+
+    def test_tests_run_before_anything_is_published(self):
+        names = [s["name"] for s in self.job["steps"]]
+        self.assertLess(names.index("Run the tests first"),
+                        names.index("Build the dashboard"))
+
+
+class TestBrowserUploadCopies(unittest.TestCase):
+    """The dot-file problem, pinned by a test.
+
+    A browser drag-and-drop upload to GitHub silently skips anything beginning
+    with a dot. Losing `.github/workflows/monitor.yml` means the schedule never
+    runs, with no error shown anywhere — it looks like it worked and it hasn't.
+
+    So `deploy/` carries readable copies of both hidden files, which the setup
+    guide tells the operator to copy and paste into GitHub's web editor. A copy
+    that has drifted from the original is worse than no copy: it would deploy a
+    stale schedule that nobody thinks to doubt. These two tests fail the moment
+    they diverge.
+    """
+
+    ROOT = Path(__file__).resolve().parent.parent
+
+    def test_workflow_readable_copy_is_identical(self):
+        real = (self.ROOT / ".github/workflows/monitor.yml").read_text(encoding="utf-8")
+        copy = (self.ROOT / "deploy/github-actions-workflow.yml").read_text(encoding="utf-8")
+        self.assertEqual(real, copy,
+                         "deploy/github-actions-workflow.yml has drifted from "
+                         ".github/workflows/monitor.yml — re-copy it.")
+
+    def test_gitignore_readable_copy_contains_the_original(self):
+        real = (self.ROOT / ".gitignore").read_text(encoding="utf-8")
+        copy = (self.ROOT / "deploy/gitignore.txt").read_text(encoding="utf-8")
+        # The copy carries an explanatory header, so it is a superset, not equal.
+        self.assertIn(real, copy,
+                      "deploy/gitignore.txt no longer contains .gitignore "
+                      "verbatim — re-copy it.")
+        for essential in ("data/*.sqlite3", "!data/archive.sql", "*.env"):
+            self.assertIn(essential, copy)
 
 
 def main() -> int:
