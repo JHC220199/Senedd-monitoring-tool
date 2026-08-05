@@ -1259,6 +1259,60 @@ class TestEmailFailureIsLoud(unittest.TestCase):
                 self.assertEqual("::error" in buf.getvalue(), expected)
 
 
+class TestPublish(unittest.TestCase):
+    """Publishing to a place a person will actually look.
+
+    Three earlier attempts put the output somewhere technically correct and
+    practically invisible: a gitignored file, a zip inside a build artifact, and
+    a CI log page whose URL changes every run. And the email depended on five
+    SMTP secrets that needed an IT request, so it never arrived at all.
+
+    These tests pin the properties that made the fourth attempt work: no
+    credential beyond the one GitHub injects, and a missing token degrades to a
+    warning rather than losing the briefing.
+    """
+
+    def test_marker_lets_us_find_the_previous_briefing(self):
+        from monitor.publish import MARKER
+        # Title matching would break the moment the date format changed, so the
+        # marker is what identifies our own issues. It must be HTML-commented so
+        # readers never see it.
+        self.assertTrue(MARKER.startswith("<!--"))
+        self.assertTrue(MARKER.endswith("-->"))
+
+    def test_missing_token_names_the_fix(self):
+        from monitor.publish import env_repo_and_token, GitHubError
+        with mock.patch.dict(os.environ,
+                             {"GITHUB_REPOSITORY": "nrla/x", "GITHUB_TOKEN": ""},
+                             clear=False):
+            with self.assertRaises(GitHubError) as caught:
+                env_repo_and_token()
+        message = str(caught.exception)
+        self.assertIn("GITHUB_TOKEN", message)
+        # An error that does not say how to fix it is only half an error.
+        self.assertIn("issues: write", message)
+
+    def test_issue_title_carries_the_date(self):
+        from monitor.publish import issue_title
+        self.assertEqual(issue_title(date(2026, 8, 6)),
+                         "Senedd briefing — 06 August 2026")
+
+    def test_standalone_page_gets_a_heading_and_a_date(self):
+        from monitor.brief import render_markdown
+        md = render_markdown([make_item("rent controls")], TAX,
+                             today=date(2026, 8, 6),
+                             heading="NRLA Senedd policy briefing")
+        self.assertTrue(md.startswith("# NRLA Senedd policy briefing"))
+        self.assertIn("Thursday 06 August 2026", md)
+
+    def test_run_summary_has_no_heading(self):
+        from monitor.brief import render_markdown
+        # The Actions run page supplies its own title; a second H1 there reads
+        # as a duplicated header.
+        md = render_markdown([make_item("rent controls")], TAX)
+        self.assertFalse(md.startswith("#"))
+
+
 class TestWorkflowGuards(unittest.TestCase):
     """The workflow's own logic, checked without running it.
 
@@ -1274,9 +1328,10 @@ class TestWorkflowGuards(unittest.TestCase):
             import yaml
         except ImportError:
             self.skipTest("PyYAML not installed")
-        self.job = yaml.safe_load(
+        self.workflow = yaml.safe_load(
             (self.ROOT / ".github/workflows/monitor.yml").read_text(
-                encoding="utf-8"))["jobs"]["monitor"]
+                encoding="utf-8"))
+        self.job = self.workflow["jobs"]["monitor"]
         self.steps = {s["name"]: s for s in self.job["steps"]}
 
     def test_smtp_host_is_lifted_into_env_for_the_if_conditions(self):
@@ -1286,13 +1341,43 @@ class TestWorkflowGuards(unittest.TestCase):
         for name in ("Send the daily digest", "Alert on anything critical"):
             self.assertEqual(self.steps[name]["if"], "env.SMTP_HOST != ''", name)
         self.assertEqual(
-            self.steps["Say plainly if email is not configured"]["if"],
+            self.steps["Note where the briefing went"]["if"],
             "env.SMTP_HOST == ''")
 
     def test_the_briefing_reaches_the_run_summary(self):
         step = self.steps["Put the briefing on this page"]
         self.assertIn("monitor.cli brief", step["run"])
         self.assertIn("GITHUB_STEP_SUMMARY", step["run"])
+
+    def test_the_briefing_is_published_and_committed(self):
+        """The bookmarkable page must be both written AND committed.
+
+        Writing BRIEFING.md without adding it to the commit would leave it on
+        the runner's disk and nowhere else — which is exactly the mistake that
+        made the first three attempts useless.
+        """
+        step = self.steps[
+            "Publish the briefing — bookmarkable page, weekly copy, and email"]
+        self.assertIn("monitor.cli publish", step["run"])
+        self.assertIn("BRIEFING.md", step["run"])
+        self.assertEqual(step["env"]["GITHUB_TOKEN"],
+                         "${{ secrets.GITHUB_TOKEN }}")
+
+        commit = self.steps["Commit the updated archive and weekly records"]
+        self.assertIn("BRIEFING.md", commit["run"])
+        self.assertIn("briefings", commit["run"])
+
+    def test_the_job_can_open_an_issue(self):
+        # The issue IS the email. Without this permission the token is read-only
+        # for issues and the digest silently never sends.
+        self.assertEqual(self.workflow["permissions"]["issues"], "write")
+
+    def test_publish_runs_before_the_commit_step(self):
+        names = [s["name"] for s in self.job["steps"]]
+        self.assertLess(
+            names.index(
+                "Publish the briefing — bookmarkable page, weekly copy, and email"),
+            names.index("Commit the updated archive and weekly records"))
 
     def test_tests_run_before_anything_is_published(self):
         names = [s["name"] for s in self.job["steps"]]
