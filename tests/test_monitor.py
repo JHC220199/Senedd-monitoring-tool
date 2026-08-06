@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import io
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -1409,6 +1410,72 @@ class TestCommandsActuallyRun(unittest.TestCase):
 
     def test_search_runs(self):
         self.assertEqual(self._run("search", "rent"), 0)
+
+
+class TestHostedSite(unittest.TestCase):
+    """The GitHub Pages database page.
+
+    Built after the operator's verdict on four earlier attempts: *"that is not a
+    database at all. It's not even hosted on an actual page?"* — every previous
+    output was a file rather than a URL.
+    """
+
+    def _page(self, items):
+        from monitor.site import render_site
+        return render_site(items, TAX)
+
+    def test_page_is_self_contained(self):
+        page = self._page([make_item("rent controls")])
+        # No external scripts or stylesheets: it must render from one file on
+        # Pages, offline, forever.
+        self.assertNotIn("<script src=", page)
+        self.assertNotIn("stylesheet", page)
+        # And no browser storage, which Claude artifacts and some corporate
+        # browser policies block outright.
+        for banned in ("localStorage", "sessionStorage"):
+            self.assertNotIn(banned, page)
+
+    def test_house_style_furniture_is_present(self):
+        page = self._page([make_item("rent controls")])
+        for expected in ("Senedd Policy Monitor", "Last updated",
+                         "Download CSV", "TOTAL ITEMS", "OPEN CONSULTATIONS",
+                         "Open Government Licence"):
+            self.assertIn(expected, page)
+
+    def test_tab_label_matches_the_other_monitors(self):
+        from monitor.site import tab_label
+        # "WC 20th July", not "Week 30 · 20 to 26 July 2026".
+        self.assertEqual(tab_label("2026-W30"), "WC 20th July")
+        self.assertEqual(tab_label("2026-W23"), "WC 1st June")
+
+    def test_ordinals_handle_the_teens(self):
+        from monitor.site import _ordinal
+        self.assertEqual([_ordinal(n) for n in (1, 2, 3, 11, 12, 13, 21, 22)],
+                         ["1st", "2nd", "3rd", "11th", "12th", "13th",
+                          "21st", "22nd"])
+
+    def test_future_sittings_do_not_become_week_tabs(self):
+        """Scheduled sittings are dated ahead, so a naive week split opens the
+        page on an empty future week with September tabs to the left of
+        everything that has actually happened."""
+        from monitor.site import render_site
+        soon = make_item("Local Government, Housing and Planning Committee")
+        soon.item_date = date.today() + timedelta(days=40)
+        soon.source_kind = "calendar"
+        past = make_item("rent controls in the private rented sector")
+        past.item_date = date.today() - timedelta(days=3)
+        page = render_site([soon, past], TAX)
+        self.assertIn("__upcoming", page)
+        # The selected tab must be a real week, never the future group.
+        selected = re.search(r'class="tab on" data-week="([^"]+)"', page)
+        self.assertIsNotNone(selected)
+        self.assertNotEqual(selected.group(1), "__upcoming")
+
+    def test_titles_with_quotes_cannot_break_the_page(self):
+        from monitor.site import render_site
+        nasty = make_item('A "first phase" of legislation <script>x</script>')
+        page = render_site([nasty], TAX)
+        self.assertNotIn("<script>x</script>", page)
 
 
 class TestWorkflowGuards(unittest.TestCase):
