@@ -17,7 +17,7 @@
 | Closes 18 September | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 25 September | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 
-<details><summary>Open, but no closing date published yet (14)</summary>
+<details><summary>Open, but no closing date published yet (15)</summary>
 
 - [Follow-up inquiry into Empty Properties](https://business.senedd.wales/mgIssueHistoryHome.aspx?IId=47957) — Senedd — Committee inquiry
 - [Consultation: New tax rules for second homes and self-catering accommodation](https://www.gov.wales/new-tax-rules-second-homes) — Welsh Government — Consultation (notification)
@@ -128,4 +128,4 @@ Touches second homes & short-term lets and named welsh legislation. Check whethe
 
 ---
 
-<sub>87 items scored from 216 collected records, 06 August 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>88 items scored from 217 collected records, 06 August 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
