@@ -282,7 +282,11 @@ def cmd_brief(args) -> int:
         print(f"Briefing written to {args.out} ({len(text)} characters)")
     else:
         print(text)
-    store.close()
+    # No store to close here: _briefing_markdown owns the connection and closes
+    # it in a finally block. A leftover `store.close()` on this line shipped a
+    # NameError that no test caught, because every test asserted what the
+    # workflow *calls* and none of them actually called it. See
+    # TestCommandsActuallyRun.
     return 0
 
 
