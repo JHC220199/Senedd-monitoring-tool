@@ -143,6 +143,17 @@ jobs:
             --note "Full searchable dashboard: the senedd-dashboard artifact at the foot of this page." \
             >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Build the hosted database page
+        # THE PAGE. GitHub Pages serves docs/ on a public repository, giving
+        #   https://jhc220199.github.io/Senedd-monitoring-tool/
+        # in the same house style as PA-Monitoring-Tools and the Research Live
+        # Database. Everything before this was a file — gitignored HTML, a build
+        # artifact, a CI log page, a markdown document — and none of them was a
+        # URL anyone could open or send to a colleague.
+        #
+        # Committed below, so the live page updates itself on every run.
+        run: python -m monitor.cli site --out docs/index.html
+
       - name: Publish the briefing — bookmarkable page, weekly copy, and email
         # THE STEP THAT MAKES THIS A USABLE TOOL.
         #
@@ -235,7 +246,7 @@ jobs:
           python -m monitor.cli export --out data/archive.sql
           git config user.name  "senedd-monitor"
           git config user.email "senedd-monitor@nrla.org.uk"
-          git add data/archive.sql out/weeks BRIEFING.md briefings
+          git add data/archive.sql out/weeks BRIEFING.md briefings docs
           if git diff --staged --quiet; then
             # Genuinely nothing new. The export is deterministic, so identical
             # data produces an identical file and therefore no commit — which is
