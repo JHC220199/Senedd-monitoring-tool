@@ -172,6 +172,43 @@ def _briefing_markdown(args) -> str:
         store.close()
 
 
+def cmd_site(args) -> int:
+    """Build the hosted database page that GitHub Pages serves.
+
+    The answer to "that is not a database at all — it's not even hosted on an
+    actual page?". Everything before this was a file: gitignored HTML, a build
+    artifact, a CI log page, a markdown document. This writes `docs/index.html`,
+    which GitHub Pages publishes at a real URL, in the same house style as the
+    other NRLA monitors.
+    """
+    from pathlib import Path
+    from .site import render_site
+
+    tax = Taxonomy.load(args.taxonomy)
+    store = Store(args.db)
+    try:
+        items = store.query(
+            min_score=float(tax.thresholds.get("dashboard_minimum", 25)),
+            limit=5000)
+        page = render_site(items, tax,
+                           repo=os.environ.get("GITHUB_REPOSITORY", ""))
+    finally:
+        store.close()
+
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(page, encoding="utf-8")
+
+    # GitHub Pages runs Jekyll by default, which silently ignores files and
+    # folders beginning with an underscore. Nothing here starts with one today,
+    # but a future asset might, and the failure is invisible.
+    (out.parent / ".nojekyll").write_text("", encoding="utf-8")
+
+    print(f"Site written to {out} ({len(items)} items, "
+          f"{out.stat().st_size / 1024:.0f} KB)")
+    return 0
+
+
 def cmd_publish(args) -> int:
     """Publish the briefing somewhere a person will actually read it.
 
@@ -654,6 +691,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="one line appended at the foot, e.g. where to find "
                         "the full dashboard")
     p.set_defaults(func=cmd_brief)
+
+    p = sub.add_parser("site",
+                       help="build docs/index.html, the page GitHub Pages hosts")
+    p.add_argument("--out", default="docs/index.html")
+    p.set_defaults(func=cmd_site)
 
     p = sub.add_parser(
         "publish",
