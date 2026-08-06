@@ -13,7 +13,9 @@ from __future__ import annotations
 import contextlib
 import io
 import os
+import shutil
 import sys
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta
@@ -1320,6 +1322,93 @@ class TestPublish(unittest.TestCase):
         # as a duplicated header.
         md = render_markdown([make_item("rent controls")], TAX)
         self.assertFalse(md.startswith("#"))
+
+
+class TestCommandsActuallyRun(unittest.TestCase):
+    """Execute every read-only command, rather than asserting about them.
+
+    WHY THIS CLASS EXISTS
+    ---------------------
+    A refactor moved the database handling out of `cmd_brief` and left a
+    `store.close()` behind, referencing a name that no longer existed in that
+    scope. `python -m monitor.cli brief` raised NameError and the scheduled run
+    went red.
+
+    118 tests passed. Every one of them asserted something *about* the commands
+    — that the workflow called them, that the YAML was shaped correctly — and not
+    one of them actually ran one. A test suite that checks the wiring diagram but
+    never turns on the power will miss a NameError every time.
+
+    So: run each command against a real temporary database and assert only that
+    it exits cleanly. Cheap, and it closes the exact hole that shipped a broken
+    run to the operator.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls.db = str(Path(cls.tmp) / "test.sqlite3")
+        store = Store(cls.db)
+        store.upsert_many([make_item("rent controls in the private rented sector"),
+                           make_item("EPC and retrofit standards for landlords")])
+        store.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def _run(self, *argv) -> int:
+        from monitor.cli import main
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            code = main(["--db", self.db, *argv])
+        self.output = buf.getvalue()
+        return code
+
+    def test_brief_runs(self):
+        self.assertEqual(self._run("brief"), 0)
+
+    def test_brief_to_a_file_runs(self):
+        out = str(Path(self.tmp) / "brief.md")
+        self.assertEqual(self._run("brief", "--out", out), 0)
+        self.assertTrue(Path(out).exists())
+
+    def test_dashboard_runs(self):
+        out = str(Path(self.tmp) / "index.html")
+        self.assertEqual(self._run("dashboard", "--out", out), 0)
+        self.assertTrue(Path(out).stat().st_size > 1000)
+
+    def test_publish_files_run_without_a_token(self):
+        # The files must still be written when no GitHub token is present,
+        # because that is how it behaves on a developer's machine.
+        with mock.patch.dict(os.environ, {"GITHUB_REPOSITORY": "",
+                                          "GITHUB_TOKEN": ""}):
+            code = self._run("publish",
+                             "--file", str(Path(self.tmp) / "BRIEFING.md"),
+                             "--week-dir", str(Path(self.tmp) / "briefings"))
+        self.assertEqual(code, 0)
+        self.assertTrue((Path(self.tmp) / "BRIEFING.md").exists())
+
+    def test_publish_dry_run_does_not_call_the_api(self):
+        with mock.patch.dict(os.environ,
+                             {"GITHUB_REPOSITORY": "nrla/senedd-monitor",
+                              "GITHUB_TOKEN": "not-a-real-token"}):
+            code = self._run("publish", "--dry-run",
+                             "--file", str(Path(self.tmp) / "B2.md"),
+                             "--week-dir", str(Path(self.tmp) / "b2"))
+        self.assertEqual(code, 0)
+        self.assertIn("DRY RUN", self.output)
+        self.assertIn("nrla", self.output)
+
+    def test_stats_and_weeks_run(self):
+        self.assertEqual(self._run("stats"), 0)
+        self.assertEqual(self._run("weeks"), 0)
+
+    def test_digest_dry_run_runs(self):
+        self.assertEqual(self._run("digest", "--days", "7"), 0)
+
+    def test_search_runs(self):
+        self.assertEqual(self._run("search", "rent"), 0)
 
 
 class TestWorkflowGuards(unittest.TestCase):
