@@ -1026,6 +1026,37 @@ bands:
       searchable and so tuning decisions can be audited.
 
 # -----------------------------------------------------------------------------
+# THE PUBLIC PAGE (docs/index.html — the hosted database)
+# -----------------------------------------------------------------------------
+# The archive stores everything so trend questions can be answered later; the
+# PAGE shows only what is relevant to the NRLA. The directorate's verdict on
+# the first version was that it listed "every single consultation" and was
+# unusable for exactly that reason. This section is the fix, and it is meant
+# to be edited by policy staff.
+#
+# An item earns a place on the page if EITHER:
+#   1. it matches at least one theme NOT listed in `non_qualifying_themes`
+#      (i.e. a substantive housing/PRS theme, not just generic Senedd
+#      machinery), OR
+#   2. its TITLE contains one of `always_relevant_in_title` — the housing
+#      committee's own business (its priorities consultation, forward work
+#      programme, scheduled meetings) is inherently relevant even before an
+#      agenda gives it any thematic text. Title only, deliberately: the same
+#      committee also scrutinises non-housing local-government business such
+#      as electoral regulations, and those items name the committee in their
+#      BODY while their titles stay on-topic. Matching the body would readmit
+#      exactly the noise this section exists to remove.
+#
+# Items in the "Noise" band never appear on the page regardless.
+site:
+  non_qualifying_themes:
+    - committee_scrutiny              # other committees' names create context, not relevance
+    - fiscal_and_legislative_context  # budgets and LCMs matter only when a housing theme also fires
+  always_relevant_in_title:
+    - Local Government, Housing and Planning Committee
+    - Local Government and Housing Committee
+
+# -----------------------------------------------------------------------------
 # THRESHOLDS
 # -----------------------------------------------------------------------------
 thresholds:
