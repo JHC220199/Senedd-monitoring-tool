@@ -85,7 +85,13 @@ KIND_LABELS = {
 
 # Which section each source kind belongs to. Consultations, legislation and
 # calendar items are handled specially before this map is consulted.
-QUESTION_KINDS = {"oral_question", "written_question"}
+#
+# written_question is DELIBERATELY in no section: the policy team already has
+# a dedicated tool monitoring written questions, so showing them here would
+# duplicate that tool's job (operator request, 12 Aug 2026). The kind stays
+# collectable and searchable in the archive; it just never reaches this page —
+# even if someone re-enables the written_questions source in taxonomy.yaml.
+QUESTION_KINDS = {"oral_question"}
 STATEMENT_KINDS = {"written_statement", "press_release", "research", "other"}
 
 
@@ -481,7 +487,8 @@ def render_site(items: list[Item], tax: Taxonomy,
         ("committees", "Committee work", n_com, com_html,
          "Committee sessions touching the private rented sector."),
         ("questions", "Questions", n_q, q_html,
-         "Oral and written questions to Ministers on NRLA issues."),
+         "Oral questions to Ministers on NRLA issues. Written questions are "
+         "deliberately not shown — the team's dedicated tool tracks those."),
         ("statements", "Statements & research", n_st, st_html,
          "Government statements, announcements and Senedd research on "
          "NRLA issues."),
