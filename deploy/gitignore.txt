@@ -25,6 +25,8 @@ monitor.env
 # Generated outputs. The dashboard is rebuilt every run; the weekly snapshots
 # are permanent records and ARE committed.
 out/index.html
+# docs/ is the published GitHub Pages site — it MUST be committed.
+!docs/
 out/digest.html
 out/alert.html
 !out/weeks/
