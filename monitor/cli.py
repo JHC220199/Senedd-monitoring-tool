@@ -187,9 +187,10 @@ def cmd_site(args) -> int:
     tax = Taxonomy.load(args.taxonomy)
     store = Store(args.db)
     try:
-        items = store.query(
-            min_score=float(tax.thresholds.get("dashboard_minimum", 25)),
-            limit=5000)
+        # No score floor here: the page applies the strict relevance rule
+        # itself (`Taxonomy.qualifies_for_site`), and that rule protects
+        # low-scoring consultations that a raw score cut-off would drop.
+        items = store.query(min_score=0, limit=5000)
         page = render_site(items, tax,
                            repo=os.environ.get("GITHUB_REPOSITORY", ""))
     finally:

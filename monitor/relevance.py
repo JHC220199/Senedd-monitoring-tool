@@ -176,6 +176,32 @@ class Taxonomy:
     def theme_label(self, theme_key: str) -> str:
         return self.themes.get(theme_key, {}).get("label", theme_key)
 
+    # -- the public page's strict filter -----------------------------------
+    @property
+    def site_config(self) -> dict[str, Any]:
+        return self.raw.get("site", {}) or {}
+
+    def qualifies_for_site(self, item: Item) -> bool:
+        """Does this item belong on the public page?
+
+        The archive keeps everything; the page is strict. See the `site`
+        section of taxonomy.yaml for the rationale and the two rules this
+        implements. The Noise band is excluded here too, so every caller
+        gets the same definition of "shown" and the page, its stat cards
+        and its CSV can never disagree with each other.
+        """
+        # The title exception is checked FIRST, before the Noise cut: a
+        # scheduled housing-committee sitting has no agenda text yet, so it
+        # scores weakly BY CONSTRUCTION — that is the very case the
+        # exception exists to rescue.
+        if find_terms(item.title or "",
+                      self.site_config.get("always_relevant_in_title", []) or []):
+            return True
+        if (item.band or "") == "Noise":
+            return False
+        generic = set(self.site_config.get("non_qualifying_themes", []) or [])
+        return any(t not in generic for t in (item.themes or []))
+
 
 # ---------------------------------------------------------------------------
 # Scoring
