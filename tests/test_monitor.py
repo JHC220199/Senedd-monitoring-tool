@@ -1548,6 +1548,22 @@ class TestHostedSite(unittest.TestCase):
         self.assertIn("Senedd bill history", body)
         self.assertIn("legislation.gov.uk", body)
 
+    def test_written_questions_never_reach_the_page(self):
+        """The policy team already runs a dedicated written-questions tool
+        (operator request, 12 Aug 2026). Even if the written_questions source
+        is re-enabled in taxonomy.yaml, the page must not duplicate it."""
+        wq = make_item("What is the Minister doing about rent controls in "
+                       "the private rented sector?",
+                       title="Written Question - WQ99999",
+                       source_kind="written_question")
+        oq = make_item("What is the Minister doing about rent controls in "
+                       "the private rented sector?",
+                       title="Oral Question - OQ88888",
+                       source_kind="oral_question")
+        page = self._page([wq, oq])
+        self.assertNotIn("WQ99999", page)
+        self.assertIn("OQ88888", page)
+
     def test_titles_with_quotes_cannot_break_the_page(self):
         from monitor.site import render_site
         nasty = make_item('A "first phase" of legislation <script>x</script>')
