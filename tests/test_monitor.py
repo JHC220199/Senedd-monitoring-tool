@@ -1417,7 +1417,11 @@ class TestHostedSite(unittest.TestCase):
 
     Built after the operator's verdict on four earlier attempts: *"that is not a
     database at all. It's not even hosted on an actual page?"* — every previous
-    output was a file rather than a URL.
+    output was a file rather than a URL. Then REBUILT after the verdict on the
+    week-tab version: *"far too focussed on the week tracking … doesn't give
+    clear lists on for example relevant consultations, debates, etc."* and
+    *"it seems to have every single consultation … you're just overloaded"*.
+    The page is now lists by type, strictly filtered to NRLA relevance.
     """
 
     def _page(self, items):
@@ -1438,15 +1442,19 @@ class TestHostedSite(unittest.TestCase):
     def test_house_style_furniture_is_present(self):
         page = self._page([make_item("rent controls")])
         for expected in ("Senedd Policy Monitor", "Last updated",
-                         "Download CSV", "TOTAL ITEMS", "OPEN CONSULTATIONS",
+                         "Download CSV", "OPEN CONSULTATIONS",
                          "Open Government Licence"):
             self.assertIn(expected, page)
 
-    def test_tab_label_matches_the_other_monitors(self):
-        from monitor.site import tab_label
-        # "WC 20th July", not "Week 30 · 20 to 26 July 2026".
-        self.assertEqual(tab_label("2026-W30"), "WC 20th July")
-        self.assertEqual(tab_label("2026-W23"), "WC 1st June")
+    def test_page_is_lists_by_type_not_weeks(self):
+        page = self._page([make_item("rent controls")])
+        for section in ('id="consultations"', 'id="legislation"',
+                        'id="debates"', 'id="committees"', 'id="questions"',
+                        'id="upcoming"'):
+            self.assertIn(section, page)
+        # The week furniture is gone on purpose.
+        self.assertNotIn("data-week", page)
+        self.assertNotIn("WC ", page)
 
     def test_ordinals_handle_the_teens(self):
         from monitor.site import _ordinal
@@ -1454,22 +1462,91 @@ class TestHostedSite(unittest.TestCase):
                          ["1st", "2nd", "3rd", "11th", "12th", "13th",
                           "21st", "22nd"])
 
-    def test_future_sittings_do_not_become_week_tabs(self):
-        """Scheduled sittings are dated ahead, so a naive week split opens the
-        page on an empty future week with September tabs to the left of
-        everything that has actually happened."""
+    def test_generic_senedd_business_is_filtered_out(self):
+        """The overload complaint, pinned down: an item whose only match is
+        another committee's name (or the budget) is context for scoring, but
+        it must NEVER reach the page."""
+        noise = make_item("The Finance Committee will consider the draft "
+                          "budget on Tuesday.",
+                          title="Priorities for the Finance Committee")
+        signal = make_item("rent controls in the private rented sector")
+        page = self._page([noise, signal])
+        self.assertNotIn("Priorities for the Finance Committee", page)
+        self.assertIn("private rented sector", page)
+
+    def test_housing_committee_own_business_is_always_shown(self):
+        """The one exception to the strict filter: the housing committee's own
+        business qualifies by TITLE, even with no thematic text."""
+        meeting = make_item(
+            "Local Government, Housing and Planning Committee",
+            title="Local Government, Housing and Planning Committee — "
+                  "17 September 2026, 09.30",
+            source_kind="calendar")
+        meeting.item_date = date.today() + timedelta(days=30)
+        # …but the same committee scrutinising NON-housing business, where the
+        # committee name sits in the body and the title stays on-topic, is
+        # exactly the noise the filter exists to remove.
+        electoral = make_item(
+            "Considered by the Local Government, Housing and Planning "
+            "Committee.",
+            title="The Representation of the People (Electoral Reform) "
+                  "(Wales) Regulations 2026",
+            source_kind="consultation")
+        page = self._page([meeting, electoral])
+        self.assertIn("17 September 2026", page)
+        self.assertNotIn("Representation of the People", page)
+
+    def test_noise_band_never_reaches_the_page(self):
+        weak = make_item("a passing mention of housing statistics",
+                         source_kind="research")
+        if weak.band == "Noise":                # scored weakly, as expected
+            page = self._page([weak])
+            self.assertNotIn("passing mention", page)
+
+    def test_open_consultations_show_their_clock(self):
+        """A consultation with a deadline must show the days remaining —
+        the deadline column is the whole point of monitoring consultations."""
+        c = make_item("consultation on the private rented sector",
+                      source_kind="consultation",
+                      title="Consultation: PRS licensing")
+        c.deadline = date.today() + timedelta(days=10)
+        page = self._page([c])
+        self.assertIn("10 days left", page)
+
+    def test_future_sittings_appear_under_coming_up(self):
         from monitor.site import render_site
-        soon = make_item("Local Government, Housing and Planning Committee")
+        soon = make_item(
+            "Local Government, Housing and Planning Committee",
+            title="Local Government, Housing and Planning Committee — sitting",
+            source_kind="calendar")
         soon.item_date = date.today() + timedelta(days=40)
-        soon.source_kind = "calendar"
         past = make_item("rent controls in the private rented sector")
         past.item_date = date.today() - timedelta(days=3)
         page = render_site([soon, past], TAX)
-        self.assertIn("__upcoming", page)
-        # The selected tab must be a real week, never the future group.
-        selected = re.search(r'class="tab on" data-week="([^"]+)"', page)
-        self.assertIsNotNone(selected)
-        self.assertNotEqual(selected.group(1), "__upcoming")
+        # The sitting is listed after the "Coming up" heading, not among
+        # the debates.
+        self.assertIn("Coming up", page)
+        self.assertLess(page.index('id="upcoming"'),
+                        page.index("— sitting"))
+
+    def test_duplicate_legislation_sources_collapse_to_one_row(self):
+        """The same Act arrives from the Senedd bill-history page AND
+        legislation.gov.uk; two rows for one Act reads as clutter."""
+        a = make_item("Renting Homes (Wales) Act",
+                      title="Building Safety (Wales) Act 2026",
+                      source_kind="legislation",
+                      url="https://business.senedd.wales/x")
+        b = make_item("Renting Homes (Wales) Act",
+                      title="Building Safety (Wales) Act 2026",
+                      source_kind="legislation",
+                      url="https://www.legislation.gov.uk/x")
+        page = self._page([a, b])
+        # Count in the rendered body only — the CSV payload in the <script>
+        # block legitimately repeats the title.
+        body = page.split("<script>")[0]
+        self.assertEqual(body.count("Building Safety (Wales) Act 2026"), 1)
+        self.assertIn("Senedd bill history", body)
+        self.assertIn("legislation.gov.uk", body)
 
     def test_titles_with_quotes_cannot_break_the_page(self):
         from monitor.site import render_site
