@@ -42,37 +42,44 @@ it, and nobody opens an Actions tab to read a policy briefing. Three attempts in
 a row, I had chosen places that were technically outputs rather than places a
 person would actually go.
 
-**Second fix — the one that works. Three destinations, no credentials:**
+**Second fix — a real page, plus two written records:**
 
 | Where | What it is |
 |---|---|
-| **`BRIEFING.md`** | One permanent URL, always current, rendered by GitHub. **Bookmark it.** Works on a private repository, unlike GitHub Pages. |
-| **A dated issue each weekday** | This *is* the email. GitHub emails watchers when an issue opens. Bookmarkable, and issue search covers every briefing ever sent. |
+| **[The live page](https://jhc220199.github.io/Senedd-monitoring-tool/)** | The tool. Open consultations with deadlines, bills, debates, questions. **Bookmark it.** |
+| **`BRIEFING.md`** | The same run as a short written briefing, always current. Works on a private repository, unlike GitHub Pages. |
 | **`briefings/2026-Wnn.md`** | The permanent weekly record. |
 
-All three use `GITHUB_TOKEN`, which GitHub injects into every workflow run. There
-is nothing to configure, because a system that depends on a credential nobody has
-yet is not a system.
+All of these use `GITHUB_TOKEN`, which GitHub injects into every workflow run.
+There is nothing to configure, because a system that depends on a credential
+nobody has yet is not a system.
 
-**Silence is now labelled.** If SMTP credentials *are* set but sending fails, the
-run goes **red** and names the missing or wrong variable, instead of shrugging.
-Without them, nothing is broken — the issue email covers it, and the run summary
-says where the briefing went.
+## "Why have the emails stopped?"
 
-## "I still haven't received an email"
+Because they were asked to stop, on 13 August 2026: *"whenever the monitor
+successfully runs I get this email. Please get rid of this. It is not user
+friendly or useful to read this."*
 
-Two things to check, in order:
+The email was a GitHub notification, not something this project sent. Each run
+opened a dated issue and assigned it to the repository owner — GitHub always
+notifies an issue's assignee, which was the only way to deliver a digest with no
+SMTP server and no IT request. Solving "nothing arrives" that way created
+"something arrives every single morning whether or not it is worth reading".
 
-1. **Watch → All Activity** on the repository page. GitHub only emails you about
-   issues if you are watching the repository at that level. As the owner you are
-   watching by default, but "Participating and @mentions" is not enough for an
-   issue you did not open.
-2. Your GitHub account's notification email, at
-   github.com/settings/notifications — confirm it is the address you actually
-   read, and that `notifications@github.com` is not being filtered by Exchange.
+`publish` now runs with `--no-issue`, and the workflow no longer asks for
+`issues: write`, so re-adding the step by accident fails rather than quietly
+resuming the emails. A test asserts both.
 
-If both are right, the briefing will arrive each weekday morning with the subject
-**"Senedd briefing — 6 August 2026"**.
+**If you want a daily email back**, set the five `MONITOR_SMTP_*` secrets and the
+formatted digest sends from an NRLA address — a real email, not a notification
+about an issue. If those credentials are set but sending fails, the run goes
+**red** and names the missing variable rather than shrugging.
+
+### Stray issues from before the change
+
+Any briefing issues opened by earlier runs are still in the repository's Issues
+tab, and any still assigned to you may keep appearing in your GitHub
+notifications. Closing them stops that; nothing in the tool reads them.
 
 ---
 
