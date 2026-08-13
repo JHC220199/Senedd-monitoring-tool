@@ -1772,26 +1772,32 @@ class TestWorkflowGuards(unittest.TestCase):
         made the first three attempts useless.
         """
         step = self.steps[
-            "Publish the briefing — bookmarkable page, weekly copy, and email"]
+            "Publish the briefing — bookmarkable page and weekly record"]
         self.assertIn("monitor.cli publish", step["run"])
         self.assertIn("BRIEFING.md", step["run"])
-        self.assertEqual(step["env"]["GITHUB_TOKEN"],
-                         "${{ secrets.GITHUB_TOKEN }}")
 
         commit = self.steps["Commit the updated archive and weekly records"]
         self.assertIn("BRIEFING.md", commit["run"])
         self.assertIn("briefings", commit["run"])
 
-    def test_the_job_can_open_an_issue(self):
-        # The issue IS the email. Without this permission the token is read-only
-        # for issues and the digest silently never sends.
-        self.assertEqual(self.workflow["permissions"]["issues"], "write")
+    def test_the_run_opens_no_issue_and_cannot_email_by_notification(self):
+        """The directorate asked for the per-run email to stop (13 Aug 2026):
+        "It is not user friendly or useful to read this."
+
+        Two independent guards, because one alone fails quietly. `--no-issue`
+        stops it; withholding `issues: write` means a future edit that drops
+        the flag errors instead of silently resuming the emails.
+        """
+        step = self.steps[
+            "Publish the briefing — bookmarkable page and weekly record"]
+        self.assertIn("--no-issue", step["run"])
+        self.assertNotIn("issues", self.workflow["permissions"])
 
     def test_publish_runs_before_the_commit_step(self):
         names = [s["name"] for s in self.job["steps"]]
         self.assertLess(
             names.index(
-                "Publish the briefing — bookmarkable page, weekly copy, and email"),
+                "Publish the briefing — bookmarkable page and weekly record"),
             names.index("Commit the updated archive and weekly records"))
 
     def test_tests_run_before_anything_is_published(self):
