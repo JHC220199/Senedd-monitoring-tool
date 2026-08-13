@@ -13,17 +13,27 @@ Three places, none of which need any credential, any server or any IT request:
 
 | Where | What it is |
 |---|---|
-| **`BRIEFING.md`** in this repository | One permanent URL, always current, rendered by GitHub. **Bookmark this.** Works on a private repository — which GitHub Pages does not. |
-| **A dated issue, every weekday** | This is the email. GitHub notifies watchers when an issue opens, so the briefing arrives in Outlook with nothing configured. Also a bookmarkable page, and issue search gives full-text search across every briefing ever sent. |
+| **[The live page](https://jhc220199.github.io/Senedd-monitoring-tool/)** | The tool itself: open consultations with their deadlines, bills, debates, questions. **Bookmark this.** Rebuilt every weekday morning. |
+| **`BRIEFING.md`** in this repository | The same run written up as a short briefing. One permanent URL, always current. Works on a private repository — which GitHub Pages does not. |
 | **`briefings/2026-W32.md`** | The permanent weekly record, committed on every run. |
 
-Not receiving the email? Check **Watch → All Activity** on the repository page.
+### Nothing emails you, and that is deliberate
 
-SMTP (`MONITOR_SMTP_*`) is now an *optional upgrade* — a formatted digest from an
-NRLA address — rather than a prerequisite. Earlier versions made delivery depend
-on five secrets that needed an IT request, which meant nothing arrived at all.
+Earlier versions opened a dated GitHub issue on every run and assigned it to the
+repository owner, because an assigned issue is the one way to make GitHub deliver
+a digest with no SMTP server and no IT request. It worked — and it produced an
+email after every successful run, which the directorate asked to stop on
+13 August 2026: *"It is not user friendly or useful to read this."*
 
-**If a run went green but you received nothing, read `TROUBLESHOOTING.md`.**
+So `publish` now runs with `--no-issue`, and the workflow no longer requests the
+`issues: write` permission. Two guards rather than one: if a later edit drops the
+flag, the run fails instead of quietly resuming the emails.
+
+If a daily email is ever wanted, the SMTP route still exists — set
+`MONITOR_SMTP_HOST`, `MONITOR_SMTP_USER`, `MONITOR_SMTP_PASS`, `MONITOR_FROM`
+and `MONITOR_TO`, and the formatted digest sends from an NRLA address.
+
+**If a run went green and something looks wrong, read `TROUBLESHOOTING.md`.**
 
 ---
 
@@ -54,7 +64,7 @@ python -m monitor.cli dashboard --out out/index.html
 | `collect --days N` | Fetch, score and store. `--dashboard PATH` also rebuilds the page. Exits non-zero if any source returned nothing, so a scheduler can raise an alert. |
 | `dashboard --out PATH` | Rebuild the dashboard from the archive without fetching. |
 | `brief` | The same briefing as markdown. Piped into `$GITHUB_STEP_SUMMARY` by the workflow, so it appears on the Actions run page — no download and no email needed. |
-| `publish` | Writes `BRIEFING.md` and `briefings/YYYY-Wnn.md`, then opens the dated issue that GitHub emails to watchers. Uses the automatic `GITHUB_TOKEN` — nothing to configure. `--dry-run` to see what it would do. |
+| `publish` | Writes `BRIEFING.md` and `briefings/YYYY-Wnn.md`. The workflow passes `--no-issue`, so no GitHub issue is opened and nothing is emailed. `--dry-run` to see what it would do. |
 | `digest --days N [--send]` | Build the periodic digest. **Dry run by default.** |
 | `alert [--send]` | Email unnotified Critical items only. **Dry run by default.** |
 | `search "rent control"` | Full-text search the whole archive. |
