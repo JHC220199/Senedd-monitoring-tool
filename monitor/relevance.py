@@ -190,6 +190,13 @@ class Taxonomy:
         gets the same definition of "shown" and the page, its stat cards
         and its CSV can never disagree with each other.
         """
+        # Suppression wins over everything, including the title exception
+        # below — an administrative index page is not made actionable by
+        # naming the housing committee.
+        if find_terms(item.title or "",
+                      self.site_config.get("suppress_titles", []) or []):
+            return False
+
         # The title exception is checked FIRST, before the Noise cut: a
         # scheduled housing-committee sitting has no agenda text yet, so it
         # scores weakly BY CONSTRUCTION — that is the very case the

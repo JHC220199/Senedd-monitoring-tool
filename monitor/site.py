@@ -114,27 +114,78 @@ def _strip_agenda_number(title: str) -> str:
     return re.sub(r"^\s*\d+[.)]\s*", "", title or "").strip()
 
 
+# Phrases the collectors add for the briefing's benefit, plus scraped page
+# furniture. On a briefing they explain what to do; on this page, where every
+# row carries the same sentence, they are filler that pushes the actual content
+# below the fold — and they read as the tool justifying a rating nobody asked
+# for. Stripped from the excerpt only; the stored body keeps them.
+BOILERPLATE = [
+    "This is an open Senedd consultation. Responding puts NRLA's position "
+    "formally on the record.",
+    "This is a committee inquiry. Inquiries take written evidence, and a call "
+    "for evidence is an opportunity to influence.",
+    "View the background to this consultation",
+    "View all current consultations",
+    "Related Meetings",
+    "Issue Details",
+    "Issue History",
+    "Purpose of the consultation",
+]
+
+
 def _excerpt(item: Item, limit: int = 300) -> str:
-    text = (item.excerpt or item.body or "").strip().replace("\n", " ")
+    # The FULL body, not `item.excerpt`: that property is already truncated to
+    # 320 characters, so stripping the boilerplate below out of it left stubs
+    # like "14 Sep 2026 23:59:00…". Truncation happens once, at the end, after
+    # everything worth removing has gone.
+    text = (item.body or item.title or "").strip().replace("\n", " ")
     text = re.sub(r"<[^>]+>", "", text)          # written answers carry <p> tags
     text = re.sub(r"\s+", " ", text)
 
-    # Collector output often prepends the title to the body — sometimes more
-    # than once — so excerpts used to read "Forward work programme – LGHP
-    # Committee Forward work programme – LGHP Committee Forward…". Strip
-    # leading repeats always; strip interior repeats only for long titles,
-    # where a false positive (the phrase used mid-sentence) is implausible.
+    for phrase in BOILERPLATE:
+        text = re.sub(re.escape(phrase), " ", text, flags=re.IGNORECASE)
+
+    # "…, start date: Fri, 17 Jul 2026 00:00:00 GMT, end date: Mon, 14 Sep
+    # 2026 23:59:00 GMT" — the RSS feed's raw date pair. The row already shows
+    # the closing date in its own column, in plain English. Anchored on GMT
+    # rather than a comma, because the dates themselves contain commas.
+    text = re.sub(r",?\s*start date:.*?end date:.*?(GMT|BST|$)", " ", text,
+                  flags=re.IGNORECASE)
+    # Tab labels the Senedd's committee pages leave in the scraped text:
+    # "Inquiry2", "Consultation3".
+    text = re.sub(r"\b(Inquiry|Consultation|Report)\d\b", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # Collector output prepends the title to the body — sometimes three times,
+    # so excerpts read "Forward work programme – LGHP Committee Forward work
+    # programme – LGHP Committee Forward…". Strip repeats from the FRONT only,
+    # and only after the boilerplate above has gone, since a stock sentence
+    # can sit between two copies of the title.
+    #
+    # Interior occurrences are left alone on purpose: an earlier version
+    # removed them everywhere, which turned "the Committee has agreed to
+    # conduct a follow-up inquiry into Empty Properties in Wales" into "has
+    # agreed to conduct a in Wales". A title used mid-sentence is prose.
     title = re.sub(r"\s+", " ", (item.title or "").strip())
     if title:
-        pattern = re.compile(re.escape(title), re.IGNORECASE)
-        while text.lower().startswith(title.lower()):
-            text = text[len(title):].lstrip(" -–—:·.")
-        if len(title) >= 20:
-            text = re.sub(r"\s+", " ", pattern.sub(" ", text)).strip()
+        while text[:len(title)].lower() == title.lower():
+            text = text[len(title):].lstrip(" -–—:·.,")
+
+    text = text.lstrip(" ,-–—:·.").strip()
 
     if len(text) > limit:
         text = text[:limit].rsplit(" ", 1)[0] + "…"
     return text
+
+
+def _ex_div(item: Item, limit: int = 300) -> str:
+    """The excerpt as a div, or nothing at all.
+
+    Legislation rows have no prose to show — an Act's body is its title — and
+    an empty <div class="ex"> renders as a stray gap in the row.
+    """
+    text = _excerpt(item, limit)
+    return f'<div class="ex">{_e(text)}</div>' if text else ""
 
 
 def _norm_act(title: str) -> str:
@@ -171,12 +222,81 @@ def _deadline_text(days_left: int | None) -> str:
     return f"{days_left} days left"
 
 
-def _band_badge(band: str) -> str:
-    if band == "Critical":
-        return f'<span class="badge crit">Critical</span>'
-    if band == "High":
-        return f'<span class="badge high">High</span>'
-    return ""
+# Kinds where one URL means one item, so a second row with the same URL is a
+# duplicate and not a second contribution. Transcripts and oral questions are
+# excluded on purpose: a whole debate shares one Record URL, and collapsing
+# those would throw away every contribution but one.
+ONE_ROW_PER_URL = {"consultation", "legislation", "calendar", "research",
+                   "press_release", "written_statement", "other"}
+
+
+def _dedupe_by_url(items: list[Item]) -> list[Item]:
+    """One row per source page.
+
+    The collectors de-duplicate within a run, but a page whose wording changes
+    between runs is stored again under a new uid — by design, so the archive
+    keeps the history. On the page that showed as the Local Government,
+    Housing and Planning Committee's forward work programme listed twice,
+    identical, one above the other.
+
+    Where several rows share a URL, keep the most useful one: a row with a
+    closing date beats one without, then the fuller body, then the newer date.
+    """
+    best: dict[str, Item] = {}
+    order: list[Item] = []
+    for item in items:
+        if item.source_kind not in ONE_ROW_PER_URL or not item.url:
+            order.append(item)
+            continue
+        key = item.url.strip()
+        incumbent = best.get(key)
+        if incumbent is None:
+            best[key] = item
+            order.append(item)
+            continue
+        if _richer(item, incumbent):
+            order[order.index(incumbent)] = item
+            best[key] = item
+    return order
+
+
+def _richer(candidate: Item, incumbent: Item) -> bool:
+    def rank(i: Item) -> tuple:
+        return (i.deadline is not None,
+                len(i.body or ""),
+                i.item_date or date.min)
+    return rank(candidate) > rank(incumbent)
+
+
+def _dedupe_questions(items: list[Item]) -> list[Item]:
+    """One row per question, not one per time it was recorded.
+
+    A member's question is published when it is tabled ("Oral Question -
+    OQ64370") and again if the sitting runs out of time before reaching it
+    ("Question not reached in Plenary"). Same member, same words, two rows —
+    so the reader is told about one question twice. URL de-duplication cannot
+    catch this: the two records live on different pages.
+    """
+    best: dict[tuple, Item] = {}
+    order: list[Item] = []
+    for item in items:
+        if item.source_kind not in QUESTION_KINDS:
+            order.append(item)
+            continue
+        text = re.sub(r"[^a-z0-9]", "",
+                      re.sub(r"<[^>]+>", " ", item.body or "").lower())[:70]
+        key = ((item.speaker or "").strip().lower(), text)
+        if not text:                      # nothing to compare on; keep it
+            order.append(item)
+            continue
+        incumbent = best.get(key)
+        if incumbent is None:
+            best[key] = item
+            order.append(item)
+        elif _richer(item, incumbent):
+            order[order.index(incumbent)] = item
+            best[key] = item
+    return order
 
 
 def _haystack(*parts) -> str:
@@ -253,8 +373,7 @@ def _consultations(items: list[Item], tax: Taxonomy, today: date,
         return (f'<li data-s="{_haystack(i.title, i.forum, _excerpt(i), _labels(i, tax))}">'
                 f'<div class="when">{when}</div>'
                 f'<div class="what">{_link(i.title or "(untitled)", i.url)}'
-                f'{_band_badge(i.band or "")}'
-                f'<div class="ex">{_e(_excerpt(i))}</div>'
+                f'{_ex_div(i)}'
                 f'<div class="meta">{_e(i.forum or i.source_name or "")}</div>'
                 f'{_theme_pills(i, tax)}</div></li>')
 
@@ -310,8 +429,7 @@ def _legislation(items: list[Item], tax: Taxonomy,
             f'{_e(_display_date(lead.item_date))}</span>'
             f'<div class="meta">last activity</div></div>'
             f'<div class="what">{_link(title, lead.url)}'
-            f'{_band_badge(lead.band or "")}'
-            f'<div class="ex">{_e(_excerpt(lead, 220))}</div>'
+            f'{_ex_div(lead, 220)}'
             f'<div class="meta">{" · ".join(links)}</div>'
             f'{_theme_pills(lead, tax)}</div></li>')
     if not rows:
@@ -362,19 +480,18 @@ def _grouped_transcripts(items: list[Item], tax: Taxonomy, kind: str,
             inner = "".join(
                 f'<div class="contrib"><b>{_e(i.speaker or "—")}</b>'
                 + (f' <span class="meta">({_e(i.party)})</span>' if i.party else "")
-                + f'<div class="ex">{_e(_excerpt(i, 260))}</div></div>'
+                + f'{_ex_div(i, 260)}</div>'
                 for i in g)
             detail = (f'<details class="inline"><summary>'
                       f'{n} relevant contributions</summary>{inner}</details>')
         else:
-            detail = f'<div class="ex">{_e(_excerpt(lead))}</div>'
+            detail = _ex_div(lead)
 
         rows.append(
             f'<li data-s="{_haystack(title, who, lead.forum, " ".join(_labels(i, tax) for i in g), *[_excerpt(i, 400) for i in g[:12]])}">'
             f'<div class="when"><span class="d">{_e(_display_date(d))}</span>'
             f'<div class="meta">{_e(lead.forum or "")}</div></div>'
             f'<div class="what"><span class="ttl">{_e(title)}</span>'
-            f'{_band_badge(max((i.band or "" for i in g), key=_band_rank))}'
             f'{detail}'
             f'<div class="meta">{_e(who)}'
             + (f' · <a href="{_e(lead.url)}" target="_blank" rel="noopener">'
@@ -385,13 +502,31 @@ def _grouped_transcripts(items: list[Item], tax: Taxonomy, kind: str,
     return len(rows), '<ul class="rows">' + "".join(rows) + "</ul>"
 
 
-def _band_rank(band: str) -> int:
-    return {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}.get(band, 0)
+def _question_heading(item: Item, limit: int = 150) -> str:
+    """The question itself, for use as the row heading.
+
+    An oral question's stored title is either the sitting it belongs to
+    ("Questions to the Cabinet Minister for Local Government, Housing and
+    Planning") or its reference ("Oral Question - OQ64370"). Neither
+    identifies anything: seven questions from one sitting rendered as seven
+    rows under the same heading, which reads as the same item listed seven
+    times. The question text is what tells them apart.
+    """
+    text = _excerpt(item, 400)
+    if not text:
+        return item.title or "(untitled)"
+    if len(text) <= limit:
+        return text          # short enough to show whole; no stray ellipsis
+    # First sentence, if it ends inside the budget. Question marks matter here.
+    m = re.search(r"^(.{20,%d}?[?.])(\s|$)" % limit, text)
+    head = m.group(1) if m else text[:limit].rsplit(" ", 1)[0] + "…"
+    return head.strip()
 
 
 def _flat_items(items: list[Item], tax: Taxonomy, kinds: set[str],
                 section: str,
-                csv_rows: list[list[str]]) -> tuple[int, str]:
+                csv_rows: list[list[str]],
+                heading_from_body: bool = False) -> tuple[int, str]:
     """Questions, statements, research: one item per row, newest first."""
     picked = [i for i in items if i.source_kind in kinds]
     picked.sort(key=lambda i: (i.item_date or date.min, i.score or 0),
@@ -400,8 +535,27 @@ def _flat_items(items: list[Item], tax: Taxonomy, kinds: set[str],
     for i in picked:
         who = " · ".join(p for p in (i.speaker, i.party) if p)
         kind = KIND_LABELS.get(i.source_kind, i.source_kind)
+        if heading_from_body:
+            heading = _question_heading(i)
+            # The sitting name / reference moves to the meta line, so the
+            # provenance survives without pretending to be the headline.
+            context = " · ".join(p for p in (i.title, i.source_name) if p)
+            # Don't print the heading twice: the excerpt continues after it.
+            # Compare without any trailing ellipsis — a heading cut mid-clause
+            # ends in "…", which never matches the full text it came from, so
+            # the row showed its own opening words twice over.
+            rest = _excerpt(i, 400)
+            stem = heading.rstrip("… ").rstrip()
+            if stem and rest.startswith(stem):
+                rest = rest[len(stem):].strip(" -–—:·.")
+            detail = f'<div class="ex">{_e(rest[:260])}</div>' if rest else ""
+        else:
+            heading = i.title or "(untitled)"
+            context = i.forum or i.source_name or ""
+            detail = _ex_div(i)
         csv_rows.append([section, _display_date(i.item_date), kind,
-                         i.title or "", i.forum or "", i.speaker or "",
+                         heading if heading_from_body else (i.title or ""),
+                         i.forum or "", i.speaker or "",
                          i.party or "", "",
                          "; ".join(i.themes or []), i.url or ""])
         rows.append(
@@ -409,10 +563,9 @@ def _flat_items(items: list[Item], tax: Taxonomy, kinds: set[str],
             f'<div class="when"><span class="d">'
             f'{_e(_display_date(i.item_date))}</span>'
             f'<div class="meta">{_e(kind)}</div></div>'
-            f'<div class="what">{_link(i.title or "(untitled)", i.url)}'
-            f'{_band_badge(i.band or "")}'
-            f'<div class="ex">{_e(_excerpt(i))}</div>'
-            f'<div class="meta">{_e(i.forum or i.source_name or "")}'
+            f'<div class="what">{_link(heading, i.url)}'
+            f'{detail}'
+            f'<div class="meta">{_e(context)}'
             + (f" · {_e(who)}" if who else "") + "</div>"
             f'{_theme_pills(i, tax)}</div></li>')
     if not rows:
@@ -460,7 +613,8 @@ def render_site(items: list[Item], tax: Taxonomy,
     generated = generated or datetime.now()
     today = date.today()
 
-    shown = [i for i in items if tax.qualifies_for_site(i)]
+    shown = _dedupe_questions(
+        _dedupe_by_url([i for i in items if tax.qualifies_for_site(i)]))
     csv_rows: list[list[str]] = []
 
     n_open, n_closing, cons_html = _consultations(shown, tax, today, csv_rows)
@@ -469,7 +623,8 @@ def render_site(items: list[Item], tax: Taxonomy,
         shown, tax, "plenary_transcript", "Debates", csv_rows)
     n_com, com_html = _grouped_transcripts(
         shown, tax, "committee_transcript", "Committee work", csv_rows)
-    n_q, q_html = _flat_items(shown, tax, QUESTION_KINDS, "Questions", csv_rows)
+    n_q, q_html = _flat_items(shown, tax, QUESTION_KINDS, "Questions",
+                              csv_rows, heading_from_body=True)
     n_st, st_html = _flat_items(shown, tax, STATEMENT_KINDS,
                                 "Statements & research", csv_rows)
     n_up, up_html = _upcoming(shown, tax, today, csv_rows)
@@ -585,10 +740,6 @@ def render_site(items: list[Item], tax: Taxonomy,
   .pill{{display:inline-block;background:{WASH};border:1px solid {LINE};
     border-radius:20px;padding:2px 9px;font-size:11.5px;color:{MUTED};
     margin:3px 4px 0 0}}
-  .badge{{display:inline-block;border-radius:5px;padding:1px 8px;font-size:11px;
-    font-weight:700;margin-left:8px;vertical-align:2px;color:#fff}}
-  .badge.crit{{background:{RED}}}
-  .badge.high{{background:{ORANGE}}}
   .dl{{white-space:nowrap;font-size:13.5px;font-weight:700}}
   .now{{color:{RED}}} .soon{{color:{ORANGE}}} .later{{color:{MUTED}}}
   .empty{{padding:30px;text-align:center;color:{MUTED};background:#fff;
