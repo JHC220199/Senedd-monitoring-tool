@@ -67,7 +67,13 @@ concurrency:
 
 permissions:
   contents: write           # needed to commit the updated archive
-  issues: write             # the briefing issue IS the email — see below
+  # No `issues: write`. The run used to open a dated issue and assign it to the
+  # repository owner, purely so that GitHub would send a notification email —
+  # the only way to deliver a digest without SMTP secrets. The directorate's
+  # verdict on receiving one after every successful run, 13 August 2026: "It is
+  # not user friendly or useful to read this." Withholding the permission means
+  # a future edit that re-adds the step fails loudly instead of quietly
+  # resuming the emails.
 
 jobs:
   monitor:
@@ -154,54 +160,45 @@ jobs:
         # Committed below, so the live page updates itself on every run.
         run: python -m monitor.cli site --out docs/index.html
 
-      - name: Publish the briefing — bookmarkable page, weekly copy, and email
-        # THE STEP THAT MAKES THIS A USABLE TOOL.
-        #
-        # Three previous attempts at "somewhere to read it" all put the output
-        # somewhere nobody would go: a gitignored file, a zip inside a build
-        # artifact, and then this very run page — which cannot be bookmarked
-        # because its URL changes every run. Meanwhile the email needed five
-        # SMTP secrets that require an IT request, so it never arrived.
-        #
-        # GITHUB_TOKEN is injected into every workflow run automatically, so all
-        # three of these need no configuration whatsoever:
+      - name: Publish the briefing — bookmarkable page and weekly record
+        # Two written destinations, no credentials and no notifications:
         #
         #   BRIEFING.md            one permanent URL, always current, renders on
         #                          a PRIVATE repo — which GitHub Pages does not
         #   briefings/2026-Wnn.md  the permanent weekly record
-        #   a dated issue          GitHub emails watchers when an issue opens,
-        #                          so this IS the daily digest. It is also a
-        #                          bookmarkable page, and GitHub issue search
-        #                          gives full-text search over every briefing.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        #
+        # `--no-issue` is the point of this step's current shape. The run used
+        # to open a dated issue as well, because an assigned issue is the one
+        # way to make GitHub email a digest without SMTP secrets. It worked —
+        # too well: an email after every successful run, which the directorate
+        # asked to stop on 13 August 2026. The hosted page is now the place
+        # people actually look, so the notification bought nothing.
         run: |
           python -m monitor.cli publish \
             --days 21 \
+            --no-issue \
             --file BRIEFING.md \
             --week-dir briefings
 
       - name: Note where the briefing went
-        # No longer a warning, because delivery no longer depends on SMTP. The
-        # issue opened above is emailed by GitHub to everyone watching this
-        # repository, so the digest arrives with nothing configured. SMTP is now
-        # an optional upgrade — a nicer-looking email from an NRLA address — not
-        # a prerequisite.
+        # Nothing is emailed unless SMTP is deliberately configured. This note
+        # exists so a reader of the run page knows that is a choice, not a
+        # failure — the previous version of this step told them the opposite.
         if: env.SMTP_HOST == ''
         run: |
           {
             echo ""
             echo "> [!NOTE]"
-            echo "> **This briefing was emailed via the GitHub issue opened by"
-            echo "> this run**, to everyone watching the repository. It is also"
-            echo "> always at [BRIEFING.md](../../blob/main/BRIEFING.md)."
+            echo "> **Nothing was emailed, by design.** The monitor publishes to"
+            echo "> the [live page](https://jhc220199.github.io/Senedd-monitoring-tool/),"
+            echo "> and the briefing above is always at"
+            echo "> [BRIEFING.md](../../blob/main/BRIEFING.md), with every past"
+            echo "> one under [briefings/](../../tree/main/briefings)."
             echo ">"
-            echo "> Not receiving it? Check **Watch → All Activity** on the"
-            echo "> repository, and that GitHub emails reach your inbox."
-            echo ">"
-            echo "> Optional: adding \`MONITOR_SMTP_HOST\`, \`MONITOR_SMTP_USER\`,"
-            echo "> \`MONITOR_SMTP_PASS\`, \`MONITOR_FROM\` and \`MONITOR_TO\` sends"
-            echo "> the formatted digest from an NRLA address as well."
+            echo "> If a daily email is ever wanted, adding"
+            echo "> \`MONITOR_SMTP_HOST\`, \`MONITOR_SMTP_USER\`,"
+            echo "> \`MONITOR_SMTP_PASS\`, \`MONITOR_FROM\` and \`MONITOR_TO\`"
+            echo "> sends the formatted digest from an NRLA address."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Send the daily digest
