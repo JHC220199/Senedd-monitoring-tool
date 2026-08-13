@@ -1056,6 +1056,22 @@ site:
     - Local Government, Housing and Planning Committee
     - Local Government and Housing Committee
 
+  # Titles that NEVER appear on the page, checked before everything above.
+  #
+  # A committee's "Forward work programme" page is an index, not an
+  # opportunity: it has no closing date, and its content is a pointer to the
+  # committee's priorities consultation — which the page already lists on its
+  # own, with a proper deadline. Showing both meant the directorate was told
+  # about the Local Government, Housing and Planning Committee's priorities
+  # consultation three times in one section (operator, 12 Aug 2026).
+  #
+  # Matched anywhere in the title, case-insensitively. Add a phrase here when
+  # a class of page is administrative rather than actionable.
+  suppress_titles:
+    - Forward work programme
+    - Completed work and published reports
+    - Membership of the Committee
+
 # -----------------------------------------------------------------------------
 # THRESHOLDS
 # -----------------------------------------------------------------------------
