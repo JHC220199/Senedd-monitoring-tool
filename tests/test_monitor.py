@@ -1548,6 +1548,163 @@ class TestHostedSite(unittest.TestCase):
         self.assertIn("Senedd bill history", body)
         self.assertIn("legislation.gov.uk", body)
 
+    def test_no_priority_ratings_are_shown(self):
+        """The operator does not want the tool ranking importance: "we don't
+        need a rating from the tool on how important each identified part is"
+        (12 Aug 2026). Deadlines convey urgency; a Critical badge does not."""
+        hot = make_item("rent controls in the private rented sector "
+                        "eviction Renting Homes (Wales) Act Rent Smart Wales",
+                        title="Consultation: rent controls",
+                        source_kind="consultation")
+        self.assertEqual(hot.band, "Critical")      # still scored internally…
+        page = self._page([hot])
+        for banned in ("Critical", "badge", "High</span>"):
+            self.assertNotIn(banned, page)          # …but never displayed
+
+    def test_boilerplate_rationale_is_not_repeated_on_every_row(self):
+        """The collectors prepend a stock sentence for the briefing's benefit.
+        On the page it appeared on every row and read as the tool justifying
+        its own rating."""
+        c = make_item(
+            "This is an open Senedd consultation. Responding puts NRLA's "
+            "position formally on the record. Issue Details Issue History "
+            "The Committee is seeking views on rent controls in the private "
+            "rented sector.",
+            title="Priorities for the Housing Committee",
+            source_kind="consultation")
+        page = self._page([c])
+        self.assertNotIn("Responding puts NRLA", page)
+        self.assertNotIn("Issue Details", page)
+        self.assertIn("seeking views on rent controls", page)
+
+    def test_same_source_page_is_listed_once(self):
+        """A page whose wording changes between runs is stored again under a
+        new uid, by design, so the archive keeps the history. The page must
+        still list it once — the forward work programme appeared twice,
+        identical, one above the other."""
+        url = "https://business.senedd.wales/mgIssueHistoryHome.aspx?IId=47562"
+        first = make_item("rent controls in the private rented sector",
+                          title="Follow-up inquiry into Empty Properties",
+                          source_kind="consultation", url=url)
+        second = make_item("rent controls in the private rented sector, with "
+                           "some extra wording added by a later scrape",
+                           title="Follow-up inquiry into Empty Properties",
+                           source_kind="consultation", url=url)
+        page = self._page([first, second])
+        body = page.split("<script>")[0]
+        self.assertEqual(body.count("Follow-up inquiry into Empty Properties"), 1)
+
+    def test_a_debate_keeps_every_contribution_despite_a_shared_url(self):
+        """The dedupe must not touch transcripts: a whole debate shares one
+        Record URL, so keying on URL there would discard every contribution
+        but one."""
+        url = "https://record.senedd.wales/Plenary/2026-07-15"
+        a = make_item("rent controls in the private rented sector",
+                      title="2. Questions to the Cabinet Minister",
+                      url=url, speaker="Alice Jones")
+        b = make_item("eviction and possession in the private rented sector",
+                      title="2. Questions to the Cabinet Minister",
+                      url=url, speaker="Bob Evans")
+        page = self._page([a, b])
+        self.assertIn("2 relevant contributions", page)
+        self.assertIn("Alice Jones", page)
+        self.assertIn("Bob Evans", page)
+
+    def test_forward_work_programme_pages_are_suppressed(self):
+        """An index page is not an opportunity: it has no closing date and
+        its content points at the priorities consultation, which the page
+        lists separately with a deadline."""
+        fwp = make_item(
+            "The forward work programme sets out the work the Committee "
+            "intends to carry out. Consultation: Priorities for the Local "
+            "Government, Housing and Planning Committee",
+            title="Forward work programme – Local Government, Housing and "
+                  "Planning Committee",
+            source_kind="consultation")
+        real = make_item(
+            "The Committee is seeking views on its priorities, including "
+            "the private rented sector.",
+            title="Priorities for the Local Government, Housing and "
+                  "Planning Committee",
+            source_kind="consultation")
+        page = self._page([fwp, real])
+        self.assertNotIn("Forward work programme", page)
+        self.assertIn("Priorities for the Local Government", page)
+
+    def test_oral_questions_are_headed_by_the_question_not_the_sitting(self):
+        """An oral question's stored title is the sitting it belongs to, so
+        seven questions from one sitting rendered as seven rows under one
+        heading — indistinguishable, and reading as the same item repeated."""
+        q = make_item("What assessment has the Cabinet Minister made of the "
+                      "impact of rent controls on the private rented sector? "
+                      "A second sentence that should not be in the heading.",
+                      title="Questions to the Cabinet Minister for Local "
+                            "Government, Housing and Planning",
+                      source_kind="oral_question", speaker="Nigel Williams")
+        page = self._page([q])
+        self.assertIn("What assessment has the Cabinet Minister made of the "
+                      "impact of rent controls on the private rented sector?",
+                      page)
+        # The sitting name survives as context, not as the headline.
+        self.assertIn("Questions to the Cabinet Minister", page)
+        self.assertNotIn("A second sentence that should not be in the heading",
+                         page.split('class="meta"')[0])
+
+    def test_a_long_question_is_not_echoed_under_its_own_heading(self):
+        """A heading cut mid-clause ends in "…", which never matches the text
+        it came from — so the row printed its own opening words twice."""
+        long_q = ("The town-centre taskforce will address the structural "
+                  "challenges facing town centres, including business rates "
+                  "and planning reform, by working collaboratively with "
+                  "partners across the private rented sector and maintaining "
+                  "a strong focus on delivery.")
+        q = make_item(long_q, title="Questions to the Cabinet Minister",
+                      source_kind="oral_question")
+        page = self._page([q])
+        opening = "The town-centre taskforce will address the structural"
+        self.assertEqual(page.split("<script>")[0].count(opening), 1)
+
+    def test_a_short_question_is_not_given_a_stray_ellipsis(self):
+        q = make_item("When will the Welsh Government update its rent "
+                      "controls policy?",
+                      title="Oral Question - OQ64366",
+                      source_kind="oral_question", speaker="James Evans")
+        page = self._page([q])
+        self.assertIn("update its rent controls policy?", page)
+        self.assertNotIn("policy?…", page)
+
+    def test_a_question_tabled_and_then_not_reached_is_listed_once(self):
+        """The same question is published when tabled and again when the
+        sitting runs out of time before reaching it. Different pages, so URL
+        de-duplication cannot catch it."""
+        text = ("What assessment has the Cabinet Minister made of the impact "
+                "of housing policy on the private rented sector?")
+        tabled = make_item(text, title="Oral Question - OQ64370",
+                           source_kind="oral_question",
+                           speaker="Nigel Williams",
+                           url="https://record.senedd.wales/OQ64370")
+        not_reached = make_item(text,
+                                title="Questions to the Cabinet Minister for "
+                                      "Local Government, Housing and Planning",
+                                source_kind="oral_question",
+                                speaker="Nigel Williams",
+                                url="https://record.senedd.wales/Plenary/x")
+        page = self._page([tabled, not_reached])
+        body = page.split("<script>")[0]
+        self.assertEqual(body.count("What assessment has the Cabinet Minister"), 1)
+
+    def test_two_members_asking_the_same_thing_both_appear(self):
+        """De-duplication keys on the member as well as the words: two members
+        pressing the same point is a fact about the Chamber, not a repeat."""
+        text = "When will the Welsh Government update Planning Policy Wales?"
+        a = make_item(text, title="Oral Question - OQ1",
+                      source_kind="oral_question", speaker="James Evans")
+        b = make_item(text, title="Oral Question - OQ2",
+                      source_kind="oral_question", speaker="Helen Jenner")
+        page = self._page([a, b])
+        self.assertIn("James Evans", page)
+        self.assertIn("Helen Jenner", page)
+
     def test_written_questions_never_reach_the_page(self):
         """The policy team already runs a dedicated written-questions tool
         (operator request, 12 Aug 2026). Even if the written_questions source
