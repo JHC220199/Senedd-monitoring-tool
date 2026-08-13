@@ -1,6 +1,6 @@
 # NRLA Senedd policy briefing
 
-*As at Wednesday 12 August 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Thursday 13 August 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
 > [!WARNING]
 > **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`
@@ -131,4 +131,4 @@ Touches second homes & short-term lets and named welsh legislation. Check whethe
 
 ---
 
-<sub>91 items scored from 220 collected records, 12 August 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>93 items scored from 222 collected records, 13 August 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
