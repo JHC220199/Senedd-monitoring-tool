@@ -191,8 +191,24 @@ def cmd_site(args) -> int:
         # itself (`Taxonomy.qualifies_for_site`), and that rule protects
         # low-scoring consultations that a raw score cut-off would drop.
         items = store.query(min_score=0, limit=5000)
+
+        # A source that returns nothing is only good news if it is genuinely
+        # quiet. gov.wales returns nothing because it blocks this host, and the
+        # pipeline records that as "substituted" so the run is not permanently
+        # red — which is right for the run, and wrong for the reader, who
+        # cannot tell an empty section from an unmonitored one. Both failed and
+        # substituted sources are named on the page.
+        runs = store.last_runs(limit=1)
+        not_live: list[str] = []
+        if runs:
+            not_live = sorted(set(runs[0].get("sources_failed") or [])
+                              | set(runs[0].get("sources_substituted") or []))
+            # Recess is a real, expected silence and says so on its own.
+            not_live = [s for s in not_live if "transcript" not in s.lower()]
+
         page = render_site(items, tax,
-                           repo=os.environ.get("GITHUB_REPOSITORY", ""))
+                           repo=os.environ.get("GITHUB_REPOSITORY", ""),
+                           not_live=not_live)
     finally:
         store.close()
 
@@ -577,13 +593,49 @@ def cmd_snapshots(args) -> int:
     return 0
 
 
+FIXTURE_MARKER = "FIXTURE"
+
+
 def cmd_prune(args) -> int:
-    """Remove every item of a given source kind from the archive.
+    """Remove items from the archive: a whole source kind, or demo fixtures.
 
     For overlap with other NRLA tools. Switching a source off in taxonomy.yaml
     stops new items arriving; this clears out what is already there.
+
+    `--fixtures` exists because demonstration data reached the live page and
+    was presented as real. `tools/load_govwales_fixture.py` writes Welsh
+    Government sample notifications into the archive so the mailbox parser can
+    be exercised without a Microsoft Graph tenant. Those rows were committed
+    into data/archive.sql and then displayed for weeks as open consultations,
+    complete with a deadline countdown — indistinguishable from live data. A
+    wrong deadline is worse than a missing one, so they come out.
     """
     store = Store(args.db)
+
+    if getattr(args, "fixtures", False):
+        before = store.conn.execute(
+            "SELECT COUNT(*) FROM items WHERE raw_ref LIKE ?",
+            (f"%{FIXTURE_MARKER}%",)).fetchone()[0]
+        if before == 0:
+            print("No fixture-sourced items in the archive.")
+            store.close()
+            return 0
+        if not args.yes:
+            print(f"{before} fixture-sourced item(s) would be permanently "
+                  f"removed.\nRe-run with --yes to go ahead.")
+            store.close()
+            return 0
+        for row in store.conn.execute(
+                "SELECT title, raw_ref FROM items WHERE raw_ref LIKE ?",
+                (f"%{FIXTURE_MARKER}%",)):
+            print(f"  removing {row[0][:64]}  ({row[1]})")
+        store.conn.execute("DELETE FROM items WHERE raw_ref LIKE ?",
+                           (f"%{FIXTURE_MARKER}%",))
+        store.conn.commit()
+        print(f"Removed {before} fixture-sourced item(s).")
+        return_code = 0
+        store.close()
+        return return_code
     before = store.conn.execute(
         "SELECT COUNT(*) FROM items WHERE source_kind = ?",
         (args.source,)).fetchone()[0]
@@ -784,9 +836,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="keep existing rows instead of replacing them")
     p.set_defaults(func=cmd_restore)
 
-    p = sub.add_parser("prune", help="remove a source kind from the archive")
-    p.add_argument("--source", required=True,
+    p = sub.add_parser("prune", help="remove a source kind, or demo fixtures")
+    p.add_argument("--source",
                    help="source_kind to remove, e.g. written_question")
+    p.add_argument("--fixtures", action="store_true",
+                   help="remove demonstration fixture items (raw_ref FIXTURE)")
     p.add_argument("--yes", action="store_true", help="confirm deletion")
     p.set_defaults(func=cmd_prune)
 

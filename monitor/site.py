@@ -606,9 +606,38 @@ def _upcoming(items: list[Item], tax: Taxonomy, today: date,
 # The page
 # ---------------------------------------------------------------------------
 
+def _coverage_banner(not_live: list[str]) -> str:
+    """Name any source that is not running, at the top of the page.
+
+    A monitoring tool's worst failure is a silent gap: an empty section reads
+    as "nothing to report" when it may mean "not looking". gov.wales blocks
+    datacentre IPs, so from GitHub Actions the Welsh Government feed returns
+    nothing — and the run classifies that as *substituted* rather than failed,
+    deliberately, so the page is not permanently red. The side effect was that
+    the gap became invisible: three demonstration consultations sat on this
+    page for weeks and nothing said the live feed behind them was dead.
+
+    So the gap gets said out loud, in the reader's own terms, above the lists.
+    """
+    if not not_live:
+        return ""
+    names = ", ".join(sorted(not_live))
+    return (
+        '<div class="warn" role="status">'
+        '<b>Not everything is being monitored.</b> '
+        f'This source is not reporting: <b>{_e(names)}</b>. '
+        'Welsh Government material — consultations, written statements and '
+        'announcements — is published on gov.wales, which blocks the server '
+        'this tool runs on. Until the shared mailbox is connected, treat the '
+        'lists below as Senedd business only, and check gov.wales directly '
+        'for Welsh Government consultations.'
+        '</div>')
+
+
 def render_site(items: list[Item], tax: Taxonomy,
                 generated: datetime | None = None,
-                repo: str = "") -> str:
+                repo: str = "",
+                not_live: list[str] | None = None) -> str:
     """The whole database as one self-contained HTML page."""
     generated = generated or datetime.now()
     today = date.today()
@@ -677,6 +706,7 @@ def render_site(items: list[Item], tax: Taxonomy,
             ("NEXT COMMITTEE MEETING", next_meeting or "—"),
         ])
 
+    banner = _coverage_banner(not_live or [])
     payload = json.dumps(csv_rows, ensure_ascii=False)
     stamp = generated.strftime("%-d %b %Y at %H:%M") \
         if hasattr(generated, "strftime") else ""
@@ -695,7 +725,7 @@ def render_site(items: list[Item], tax: Taxonomy,
   header{{background:{BLUE};color:#fff;padding:18px 28px;display:flex;
     justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}}
   .brand{{display:flex;gap:14px;align-items:center}}
-  .mark{{width:44px;height:44px;border-radius:9px;background:{ORANGE};color:#fff;
+  .mark{{width:44px;height:44px;flex:none;border-radius:9px;background:{ORANGE};color:#fff;
     font-weight:700;font-size:22px;display:flex;align-items:center;justify-content:center}}
   h1{{margin:0;font-size:21px;letter-spacing:-.2px}}
   .sub{{opacity:.82;font-size:13.5px;margin-top:2px}}
@@ -742,6 +772,10 @@ def render_site(items: list[Item], tax: Taxonomy,
     margin:3px 4px 0 0}}
   .dl{{white-space:nowrap;font-size:13.5px;font-weight:700}}
   .now{{color:{RED}}} .soon{{color:{ORANGE}}} .later{{color:{MUTED}}}
+  .warn{{background:#FFF6EC;border:1px solid {ORANGE};border-left:5px solid {ORANGE};
+    border-radius:8px;padding:13px 16px;margin-bottom:18px;font-size:14px;
+    line-height:1.55;color:{INK}}}
+  .warn b{{color:#8A3B06}}
   .empty{{padding:30px;text-align:center;color:{MUTED};background:#fff;
     border:1px solid {LINE};border-radius:10px;font-size:14px}}
   details.more{{margin-top:10px}}
@@ -758,6 +792,14 @@ def render_site(items: list[Item], tax: Taxonomy,
   @media(max-width:700px){{
     .rows li{{flex-direction:column;gap:6px}}
     .when{{flex:none;display:flex;gap:10px;align-items:baseline}}
+    /* Wrapped, the seven section chips stacked seven deep and — being sticky —
+       covered most of a phone screen. One horizontally scrollable row. */
+    .chips{{position:static;flex-wrap:nowrap;overflow-x:auto;
+      padding:8px 0;-webkit-overflow-scrolling:touch}}
+    .when-stamp{{text-align:left}}
+    header{{padding:14px 18px}}
+    main{{padding:16px 18px 60px}}
+    footer{{padding:0 18px 40px}}
   }}
 </style>
 
@@ -776,6 +818,7 @@ def render_site(items: list[Item], tax: Taxonomy,
 </header>
 
 <main>
+  {banner}
   <div class="cards">{cards}</div>
 
   <div class="bar">

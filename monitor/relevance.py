@@ -190,6 +190,18 @@ class Taxonomy:
         gets the same definition of "shown" and the page, its stat cards
         and its CSV can never disagree with each other.
         """
+        # Demonstration data NEVER reaches the page, whatever it scores.
+        #
+        # tools/load_govwales_fixture.py writes sample Welsh Government
+        # notifications into the archive so the mailbox parser can be exercised
+        # without a Microsoft Graph tenant. Those rows were committed into
+        # data/archive.sql and then shown on the live page for weeks as open
+        # consultations with a deadline countdown, indistinguishable from real
+        # ones. Pruning them fixes today; this line means a future demo run
+        # cannot put them back in front of a policy officer.
+        if "FIXTURE" in (item.raw_ref or ""):
+            return False
+
         # Suppression wins over everything, including the title exception
         # below — an administrative index page is not made actionable by
         # naming the housing committee.
