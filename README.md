@@ -17,6 +17,36 @@ Three places, none of which need any credential, any server or any IT request:
 | **`BRIEFING.md`** in this repository | The same run written up as a short briefing. One permanent URL, always current. Works on a private repository — which GitHub Pages does not. |
 | **`briefings/2026-W32.md`** | The permanent weekly record, committed on every run. |
 
+### What is NOT being monitored
+
+**The Welsh Government feed is not running.** gov.wales blocks datacentre IP
+ranges, so from GitHub Actions the feed returns nothing — consultations, written
+statements and announcements published there are invisible to this tool. Every
+run records it and the live page now carries a banner naming it, because an empty
+section must not be mistaken for a quiet week.
+
+To fix it, one of:
+
+- connect the shared mailbox `joshua.helm-cowley@nrla.org.uk` to Microsoft Graph and
+  set `MONITOR_MAILBOX` and `MONITOR_GRAPH_TOKEN` as repository secrets, so the
+  gov.wales notification emails become the feed (`--govwales-route mailbox`); or
+- run `collect` from inside the NRLA network, where gov.wales is reachable.
+
+**Laid documents have no source.** Papers laid before the Senedd are not
+collected, which `VALIDATION.md` identifies as a systematic blind spot.
+
+Demonstration fixtures used to stand in for the Welsh Government feed and were
+displayed as real open consultations. They have been removed
+(`prune --fixtures`), and fixture-sourced rows can no longer reach the page even
+if a future demo run re-adds them.
+
+### How well does it work?
+
+`VALIDATION.md` records a recall test against the Camlas W29 supplier briefing:
+**6 of 6 Senedd items captured, 0 of 4 Welsh Government items**, plus three
+influence opportunities the supplier's briefing missed. Re-run it against a
+sitting week after 14 September 2026.
+
 ### Nothing emails you, and that is deliberate
 
 Earlier versions opened a dated GitHub issue on every run and assigned it to the
@@ -51,9 +81,18 @@ python -m monitor.cli collect --days 14 --dashboard out/index.html
 To see the Welsh Government half working without a live mailbox:
 
 ```bash
-python3 tools/load_govwales_fixture.py
+python3 tools/load_govwales_fixture.py --i-will-prune-this-afterwards
 python -m monitor.cli dashboard --out out/index.html
+
+# ALWAYS clean up before committing, or demo consultations reach the live page:
+python -m monitor.cli prune --fixtures --yes
+python -m monitor.cli export --out data/archive.sql
 ```
+
+> **This writes into the archive.** Five fixture items once sat on the live page
+> for weeks as open consultations, complete with a deadline countdown, because
+> nobody pruned them. The page now refuses to display fixture-sourced rows, but
+> clean up anyway — the briefing and the CSV do not have that guard.
 
 ---
 
@@ -74,6 +113,7 @@ python -m monitor.cli dashboard --out out/index.html
 | `week [2026-W29]` | One week's business. Accepts `current`, `last`, or an ISO week. `--snapshot` also freezes the HTML. |
 | `snapshots` | Backfill a permanent HTML page for every complete week. |
 | `prune --source X --yes` | Remove a source kind from the archive, for overlap with other tools. |
+| `prune --fixtures --yes` | Remove demonstration fixture items. Run this after any `load_govwales_fixture.py` demo. |
 
 Add `--govwales-route mailbox` to `collect` when running anywhere gov.wales
 blocks (any cloud host). Without it, the unreachable RSS feed is reported as a
@@ -208,18 +248,18 @@ Recess: drop to one `collect` and one digest a day. The Senedd rose on 17th July
 Set these in the environment, not in a file:
 
 ```bash
-export MONITOR_FROM="senedd-monitor@nrla.org.uk"
+export MONITOR_FROM="joshua.helm-cowley@nrla.org.uk"
 export MONITOR_TO="first.last@nrla.org.uk,policy@nrla.org.uk"
 export MONITOR_SMTP_HOST="smtp.office365.com"
 export MONITOR_SMTP_PORT="587"
-export MONITOR_SMTP_USER="senedd-monitor@nrla.org.uk"
+export MONITOR_SMTP_USER="joshua.helm-cowley@nrla.org.uk"
 export MONITOR_SMTP_PASS="..."          # use a secret store, not a shell profile
 ```
 
 For the gov.wales mailbox route:
 
 ```bash
-export MONITOR_MAILBOX="senedd-monitor@nrla.org.uk"
+export MONITOR_MAILBOX="joshua.helm-cowley@nrla.org.uk"
 export MONITOR_GRAPH_TOKEN="..."        # app-only token, Mail.Read
 ```
 

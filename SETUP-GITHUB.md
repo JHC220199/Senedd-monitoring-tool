@@ -54,10 +54,10 @@ Settings → Secrets and variables → Actions → New repository secret:
 
 | Secret | Value |
 |---|---|
-| `MONITOR_FROM` | `senedd-monitor@nrla.org.uk` |
+| `MONITOR_FROM` | `joshua.helm-cowley@nrla.org.uk` |
 | `MONITOR_TO` | `first.last@nrla.org.uk` — comma-separate several |
 | `MONITOR_SMTP_HOST` | `smtp.office365.com` |
-| `MONITOR_SMTP_USER` | `senedd-monitor@nrla.org.uk` |
+| `MONITOR_SMTP_USER` | `joshua.helm-cowley@nrla.org.uk` |
 | `MONITOR_SMTP_PASS` | app password for a dedicated service account |
 
 If you skip these, nothing is emailed — `send()` stays in dry-run mode unless an
@@ -83,7 +83,7 @@ Subscribe a shared mailbox to `gov.wales/subscribe/announcements`, then add:
 
 | Secret | Value |
 |---|---|
-| `MONITOR_MAILBOX` | `senedd-monitor@nrla.org.uk` |
+| `MONITOR_MAILBOX` | `joshua.helm-cowley@nrla.org.uk` |
 | `MONITOR_GRAPH_TOKEN` | app-only token, `Mail.Read` |
 
 **Scope the Graph permission** with an Exchange application access policy
