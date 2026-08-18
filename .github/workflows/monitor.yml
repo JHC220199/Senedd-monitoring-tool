@@ -18,12 +18,12 @@
 #      right place at .github/workflows/monitor.yml, so it goes live on push.
 #   3. Add repository secrets (Settings -> Secrets and variables -> Actions):
 #        MONITOR_TO          first.last@nrla.org.uk (comma-separate several)
-#        MONITOR_FROM        senedd-monitor@nrla.org.uk
+#        MONITOR_FROM        joshua.helm-cowley@nrla.org.uk
 #        MONITOR_SMTP_HOST   smtp.office365.com
-#        MONITOR_SMTP_USER   senedd-monitor@nrla.org.uk
+#        MONITOR_SMTP_USER   joshua.helm-cowley@nrla.org.uk
 #        MONITOR_SMTP_PASS   (app password or a dedicated service account)
 #      Optional, for the Welsh Government mailbox route:
-#        MONITOR_MAILBOX     senedd-monitor@nrla.org.uk
+#        MONITOR_MAILBOX     joshua.helm-cowley@nrla.org.uk
 #        MONITOR_GRAPH_TOKEN (app-only token, Mail.Read, scoped to that mailbox)
 #   4. Actions -> "Senedd policy monitor" -> Run workflow, to prove it works.
 #
@@ -242,7 +242,7 @@ jobs:
         run: |
           python -m monitor.cli export --out data/archive.sql
           git config user.name  "senedd-monitor"
-          git config user.email "senedd-monitor@nrla.org.uk"
+          git config user.email "joshua.helm-cowley@nrla.org.uk"
           git add data/archive.sql out/weeks BRIEFING.md briefings docs
           if git diff --staged --quiet; then
             # Genuinely nothing new. The export is deterministic, so identical
