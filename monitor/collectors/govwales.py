@@ -207,7 +207,7 @@ class GovWalesMailboxCollector(Collector):
 
     Design
     ------
-    1. Subscribe a dedicated shared mailbox (e.g. senedd-monitor@nrla.org.uk)
+    1. Subscribe a dedicated shared mailbox (e.g. joshua.helm-cowley@nrla.org.uk)
        to gov.wales announcements and consultations, and forward Camlas-style
        alerts there during the transition so nothing is lost in the handover.
     2. Register an Entra ID application with the *application* permission
