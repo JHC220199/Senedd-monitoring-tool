@@ -346,7 +346,7 @@ def cmd_brief(args) -> int:
 
 def _email_config() -> dict:
     return {
-        "sender": os.environ.get("MONITOR_FROM", "senedd-monitor@nrla.org.uk"),
+        "sender": os.environ.get("MONITOR_FROM", "joshua.helm-cowley@nrla.org.uk"),
         "smtp_host": os.environ.get("MONITOR_SMTP_HOST", ""),
         "smtp_port": int(os.environ.get("MONITOR_SMTP_PORT", "587")),
         "username": os.environ.get("MONITOR_SMTP_USER", ""),
