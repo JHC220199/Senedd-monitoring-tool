@@ -36,7 +36,28 @@ from monitor.store import Store                                    # noqa: E402
 FIXTURE = Path(__file__).resolve().parent.parent / "samples" / "govwales_notifications.json"
 
 
+GUARD_FLAG = "--i-will-prune-this-afterwards"
+
+
 def main() -> int:
+    # This script writes demonstration data into the real archive. Five of these
+    # items were committed into data/archive.sql and then shown on the live page
+    # for weeks as open Welsh Government consultations, with a deadline
+    # countdown, indistinguishable from collected data. The page now refuses to
+    # render fixture-sourced rows, but the briefing and the CSV export do not
+    # have that guard — so running this should be a deliberate act, not a
+    # convenient one.
+    if GUARD_FLAG not in sys.argv:
+        print("REFUSING TO RUN.\n")
+        print("This writes 6 demonstration items into data/monitor.sqlite3.")
+        print("In the briefing and the CSV they are indistinguishable from")
+        print("live data, and they have been mistaken for it before.\n")
+        print(f"  python3 tools/{Path(__file__).name} {GUARD_FLAG}\n")
+        print("Then, before committing anything:\n")
+        print("  python -m monitor.cli prune --fixtures --yes")
+        print("  python -m monitor.cli export --out data/archive.sql")
+        return 2
+
     messages = json.loads(FIXTURE.read_text(encoding="utf-8"))
 
     tax = Taxonomy.load()
@@ -45,7 +66,7 @@ def main() -> int:
 
     collector = GovWalesMailboxCollector.__new__(GovWalesMailboxCollector)
     collector.errors = []
-    collector.mailbox = "senedd-monitor@nrla.org.uk"
+    collector.mailbox = "joshua.helm-cowley@nrla.org.uk"
 
     stored = skipped = 0
     print(f"Loading {len(messages)} fixture notification(s) through the "
