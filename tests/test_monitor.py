@@ -814,7 +814,7 @@ class TestGovWales(unittest.TestCase):
         """A human emailing the shared mailbox must never enter the archive."""
         collector = GovWalesMailboxCollector.__new__(GovWalesMailboxCollector)
         collector.errors = []
-        collector.mailbox = "senedd-monitor@nrla.org.uk"
+        collector.mailbox = "joshua.helm-cowley@nrla.org.uk"
         message = {"subject": "Re: lunch", "bodyPreview": "consultation on rent",
                    "from": {"emailAddress": {"address": "colleague@example.com"}}}
         self.assertIsNone(collector.message_to_item(message))
@@ -822,7 +822,7 @@ class TestGovWales(unittest.TestCase):
     def test_mailbox_accepts_gov_wales_and_extracts_source_link(self):
         collector = GovWalesMailboxCollector.__new__(GovWalesMailboxCollector)
         collector.errors = []
-        collector.mailbox = "senedd-monitor@nrla.org.uk"
+        collector.mailbox = "joshua.helm-cowley@nrla.org.uk"
         message = {
             "subject": "Consultation: rent data sharing",
             "body": {"content": "<p>We want your views. Closes on 7 September 2026. "
@@ -1366,6 +1366,39 @@ class TestCommandsActuallyRun(unittest.TestCase):
         self.output = buf.getvalue()
         return code
 
+    def test_prune_fixtures_removes_only_fixtures(self):
+        """`prune --fixtures` is how demonstration data gets out of the live
+        archive. It must take the fixtures and nothing else."""
+        db = str(Path(self.tmp) / "fixtures.sqlite3")
+        store = Store(db)
+        fake = make_item("sample consultation text",
+                         title="FIXTURE consultation",
+                         source_kind="consultation",
+                         raw_ref="mailbox:x@nrla.org.uk:FIXTURE-001")
+        real = make_item("rent controls in the private rented sector",
+                         title="Real consultation",
+                         source_kind="consultation",
+                         raw_ref="https://www.gov.wales/real")
+        store.upsert_many([fake, real])
+        store.close()
+
+        from monitor.cli import main
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            # Without --yes it must only report, never delete.
+            self.assertEqual(main(["--db", db, "prune", "--fixtures"]), 0)
+        survivors = Store(db)
+        self.assertEqual(len(survivors.query(min_score=0)), 2)
+        survivors.close()
+
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            self.assertEqual(
+                main(["--db", db, "prune", "--fixtures", "--yes"]), 0)
+        left = Store(db)
+        titles = [i.title for i in left.query(min_score=0)]
+        left.close()
+        self.assertEqual(titles, ["Real consultation"])
+
     def test_brief_runs(self):
         self.assertEqual(self._run("brief"), 0)
 
@@ -1547,6 +1580,44 @@ class TestHostedSite(unittest.TestCase):
         self.assertEqual(body.count("Building Safety (Wales) Act 2026"), 1)
         self.assertIn("Senedd bill history", body)
         self.assertIn("legislation.gov.uk", body)
+
+    def test_demonstration_fixtures_never_reach_the_page(self):
+        """Sample Welsh Government notifications exist so the mailbox parser
+        can be exercised without a Graph tenant. They were committed into the
+        archive and then displayed for weeks as open consultations with a
+        deadline countdown, indistinguishable from real ones. Pruning fixed
+        that day; this stops a future demo run putting them back."""
+        fake = make_item(
+            "We want your views on the private rented sector.",
+            title="Consultation: something that looks entirely real",
+            source_kind="consultation",
+            raw_ref="mailbox:joshua.helm-cowley@nrla.org.uk:FIXTURE-001")
+        fake.deadline = date.today() + timedelta(days=25)
+        real = make_item("rent controls in the private rented sector",
+                         title="Consultation: a genuinely collected one",
+                         source_kind="consultation",
+                         raw_ref="https://www.gov.wales/real-page")
+        page = self._page([fake, real])
+        self.assertNotIn("looks entirely real", page)
+        self.assertIn("genuinely collected one", page)
+
+    def test_a_source_that_is_not_running_is_named_on_the_page(self):
+        """The worst failure a monitor can have is a silent gap: an empty
+        section reads as "nothing to report" when it may mean "not looking".
+        gov.wales blocks this host, and the run calls that "substituted" so the
+        page is not permanently red — which made the gap invisible."""
+        from monitor.site import render_site
+        item = make_item("rent controls in the private rented sector")
+        page = render_site([item], TAX,
+                           not_live=["Welsh Government — RSS"])
+        self.assertIn("Not everything is being monitored", page)
+        self.assertIn("Welsh Government — RSS", page)
+        self.assertIn("gov.wales", page)
+
+    def test_no_banner_when_every_source_reported(self):
+        from monitor.site import render_site
+        page = render_site([make_item("rent controls")], TAX, not_live=[])
+        self.assertNotIn("Not everything is being monitored", page)
 
     def test_no_priority_ratings_are_shown(self):
         """The operator does not want the tool ranking importance: "we don't
