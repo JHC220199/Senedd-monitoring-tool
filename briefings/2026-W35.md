@@ -1,6 +1,6 @@
 # NRLA Senedd policy briefing
 
-*As at Friday 28 August 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Saturday 29 August 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
 > [!WARNING]
 > **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`, `Senedd forward look`
@@ -14,12 +14,12 @@
 
 | Closes | What | Suggested next step |
 |---|---|---|
-| 14 days left | [Priorities for the Climate Change, Environment, Sustainability and Rural Affairs Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=623)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 14 days left | [Priorities for the Climate Change, Environment, Sustainability and Rural Affairs Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=623)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 17 days left | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 17 days left | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 21 days left | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 21 days left | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 13 days left | [Priorities for the Climate Change, Environment, Sustainability and Rural Affairs Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=623)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 13 days left | [Priorities for the Climate Change, Environment, Sustainability and Rural Affairs Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=623)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 16 days left | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 16 days left | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 20 days left | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 20 days left | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 25 September | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 25 September | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 
@@ -129,4 +129,4 @@ Touches second homes & short-term lets and named welsh legislation. Check whethe
 
 ---
 
-<sub>95 items scored from 224 collected records, 28 August 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>95 items scored from 224 collected records, 29 August 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
