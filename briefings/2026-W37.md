@@ -3,9 +3,9 @@
 *As at Friday 11 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
 > [!WARNING]
-> **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`, `Senedd forthcoming business`, `Senedd forward look`
+> **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`, `Senedd forward look`
 
-**9** open consultations · **8** closing within three weeks · **15** developments to review
+**9** open consultations · **8** closing within three weeks · **16** developments to review
 
 ## Respond — things with a deadline
 
@@ -35,6 +35,11 @@
 </details>
 
 ## Review — what has happened
+
+**[OQ64467](https://record.senedd.wales/OrderPaper/OralQuestions/15-09-2026/)**  
+<sub>10 September 2026 · Plenary · David Hughes</sub>  
+Touches private rented sector. Watch for the answer — it will set out the Government's position.  
+> Will the First Minister set out a timeline for the introduction of new measures to better protect renters?
 
 **[2. Questions to the Cabinet Minister for Local Government, Housing and Planning](https://record.senedd.wales/Plenary/16086)**  
 <sub>15 July 2026 · Plenary · Francesca O'Brien, Sian Gwenllian, Safa Elhassan and 8 others</sub>  
@@ -112,10 +117,7 @@ Touches homelessness, social housing and named welsh legislation. Check whether 
 Touches second homes & short-term lets and named welsh legislation. Check whether the stage affects members, and brief if so.  
 > Visitor Accommodation (Register and Levy) Etc. (Wales) Act 2025 Current stage: Royal Assent (18 September 2025) Stage history: Stage 1 01 Apr 2025; Stage 1 25 Nov 2024; Stage 2 15 May 2025; Stage 3 01 Jul 2025; Royal Assent 18 Sep 2025; Royal Assent 08 Jul 2025
 
-**[Has Wales been given a route to devolved policing?](https://research.senedd.wales/research-articles/has-wales-been-given-a-route-to-devolved-policing/)**  
-<sub>Undated · Senedd Research</sub>  
-Touches property taxation and budget & legislative programme. Read for context before briefing or responding.  
-> Has Wales been given a route to devolved policing?  Published 08/09/2026 | Reading Time minutes  The Welsh Government wants policing to be devolved , transferring legislative and executive responsibility to the Senedd and Welsh Ministers. The UK Government’s policing reforms published in January 2026, do not propose…
+_1 further items in the full dashboard._
 
 ## Coming up
 
@@ -132,4 +134,4 @@ Touches property taxation and budget & legislative programme. Read for context b
 
 ---
 
-<sub>103 items scored from 232 collected records, 11 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>107 items scored from 236 collected records, 11 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
