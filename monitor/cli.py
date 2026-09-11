@@ -560,18 +560,30 @@ def cmd_forward(args) -> int:
         out.write_text(html_body, encoding="utf-8")
         print(f"Written to {out}")
 
+    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
     sent, message = alerts_mod.post_to_flow(
-        os.environ.get("MONITOR_FLOW_URL", ""), subject, html_body, count,
-        dry_run=not args.send)
+        flow_url, subject, html_body, count, dry_run=not args.send)
     print(message)
 
-    if sent or count == 0:
+    if sent or count == 0 or not args.send:
         return 0
-    if not args.send:
+
+    # Not configured yet is not a failure. The same reasoning as the SMTP guard
+    # in the daily workflow: a repository where the feature has not been turned
+    # on must not go red every week, because a warning that is always on is a
+    # warning nobody reads — and the one week it means something is the week it
+    # gets ignored.
+    if not flow_url:
+        if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(summary, "a", encoding="utf-8") as fh:
+                fh.write("\n> [!NOTE]\n> **The Friday future-business email is "
+                         "not switched on yet.** Five minutes of setup, no "
+                         "Azure and no IT: see `FORWARD-EMAIL-SETUP.md`.\n")
         return 0
-    # Configured and asked to send, and it did not go. That is a real failure
-    # and the run should say so — silence here is how a weekly email stops
-    # arriving without anyone noticing for a month.
+
+    # Configured, asked to send, and it did not go. That IS a real failure and
+    # the run must say so — silence here is how a weekly email stops arriving
+    # without anyone noticing for a month.
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(summary, "a", encoding="utf-8") as fh:
             fh.write(f"\n> [!WARNING]\n> **The Friday future-business email "
