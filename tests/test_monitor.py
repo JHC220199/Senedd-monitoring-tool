@@ -26,6 +26,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from monitor import alerts as alerts_mod                                  # noqa: E402
 from monitor.collectors.base import USER_AGENT                            # noqa: E402
 from monitor.collectors.forward_look import (ALL_COMMITTEES,              # noqa: E402
                                             SeneddCalendarCollector,
@@ -2386,6 +2387,335 @@ class TestWelshGovernmentSetupGuide(unittest.TestCase):
         text = self.GUIDE.read_text(encoding="utf-8")
         self.assertIn("MONITOR_GRAPH_TOKEN", text)
         self.assertIn("hour", text)
+
+
+# ---------------------------------------------------------------------------
+# The Friday future-business email.
+# ---------------------------------------------------------------------------
+
+class TestFridayForwardBusiness(unittest.TestCase):
+    """Camlas's weekly forward look, rebuilt.
+
+    The thing to hold on to while reading these: this email answers "what is
+    still open?", not "what changed?". Those are different questions and only
+    one of them has a deadline attached.
+    """
+
+    TODAY = date(2026, 9, 11)          # a Friday
+
+    def _item(self, **kw):
+        defaults = dict(source_kind="consultation",
+                        source_name="Welsh Government — Consultation",
+                        title="Rent Guarantor Guidance for Local Housing "
+                              "Authorities",
+                        body="Consultation on rent guarantor guidance for "
+                             "private rented sector tenants in Wales.",
+                        url="https://media.service.gov.wales/news/rent-guarantor",
+                        item_date=self.TODAY, forum="Welsh Government",
+                        deadline=date(2026, 10, 19))
+        defaults.update(kw)
+        return SCORER.score_item(Item(**defaults))
+
+    def test_last_friday_on_a_friday_is_a_week_ago_not_today(self):
+        """The email covers the week since the last edition, so something
+        collected this morning is new. Returning today would tag nothing."""
+        from monitor.forward import last_friday
+        self.assertEqual(last_friday(date(2026, 9, 11)), date(2026, 9, 4))
+        self.assertEqual(last_friday(date(2026, 9, 14)), date(2026, 9, 11))
+        self.assertEqual(last_friday(date(2026, 9, 10)), date(2026, 9, 4))
+
+    def test_consultations_come_first_and_soonest_first(self):
+        """A missed deadline cannot be recovered; a missed debate can at least
+        be read afterwards."""
+        from monitor.forward import select_business
+        late = self._item(deadline=date(2026, 11, 30), url="u1")
+        soon = self._item(deadline=date(2026, 9, 25), url="u2")
+        sections = select_business([late, soon], TAX, today=self.TODAY)
+        self.assertEqual([i.deadline for i in sections["consultations"]],
+                         [date(2026, 9, 25), date(2026, 11, 30)])
+
+    def test_closed_consultations_drop_off(self):
+        from monitor.forward import select_business
+        closed = self._item(deadline=date(2026, 9, 1))
+        sections = select_business([closed], TAX, today=self.TODAY)
+        self.assertEqual(sections["consultations"], [])
+
+    def test_repeats_are_not_suppressed(self):
+        """Deliberate, and the thing most likely to be "fixed" by mistake.
+
+        The supplier lists the same open consultation every week until it
+        closes, and that is right: this is a standing list of what is live, not
+        a change log. What makes it scannable is the NEW tag, not omission.
+        """
+        from monitor.forward import render_forward, select_business
+        old = self._item()
+        old.collected_at = datetime(2026, 7, 1, 9, 0)
+        sections = select_business([old], TAX, today=self.TODAY)
+        self.assertEqual(len(sections["consultations"]), 1)
+        subject, body, count = render_forward(
+            sections, TAX, today=self.TODAY, new_since=date(2026, 9, 4))
+        self.assertEqual(count, 1)
+        self.assertNotIn(">NEW<", body)
+
+    def test_items_first_seen_since_last_friday_are_tagged_new(self):
+        from monitor.forward import render_forward, select_business
+        fresh = self._item()
+        fresh.collected_at = datetime(2026, 9, 9, 9, 0)
+        sections = select_business([fresh], TAX, today=self.TODAY)
+        subject, body, count = render_forward(
+            sections, TAX, today=self.TODAY, new_since=date(2026, 9, 4))
+        self.assertIn(">NEW<", body)
+        self.assertIn("1 new", subject)
+
+    def test_the_same_page_collected_twice_appears_once(self):
+        """Regression: a consultation whose wording changes between runs is
+        stored again under a new uid, and the committee priorities consultation
+        appeared in the email twice, identically, one above the other."""
+        from monitor.forward import select_business
+        first = self._item(body="Consultation on rent guarantor guidance.")
+        second = self._item(body="Consultation on rent guarantor guidance for "
+                                 "local housing authorities in Wales.")
+        sections = select_business([first, second], TAX, today=self.TODAY)
+        self.assertEqual(len(sections["consultations"]), 1)
+
+    def test_irrelevant_business_never_reaches_the_email(self):
+        """Same strict rule as the page, and for the same reason: *"it needs to
+        show stuff that is relevant to the NRLA otherwise you're just
+        overloaded with information."* Two definitions of relevant in one
+        system would also let the email and the page disagree."""
+        from monitor.forward import select_business
+        noise = self._item(title="Consultation on sea bass fishing quotas",
+                           body="Views sought on bass fishing quotas.",
+                           url="u-bass")
+        sections = select_business([noise], TAX, today=self.TODAY)
+        self.assertEqual(sections["consultations"], [])
+
+    def test_committee_meetings_are_limited_to_the_diary_window(self):
+        from monitor.forward import select_business
+        soon = self._item(source_kind="calendar", deadline=None,
+                          title="Local Government, Housing and Planning "
+                                "Committee — 17 September 2026",
+                          body="The committee is scheduled to meet.",
+                          forum="Local Government, Housing and Planning "
+                                "Committee",
+                          item_date=date(2026, 9, 17), url="c1")
+        distant = self._item(source_kind="calendar", deadline=None,
+                             title="Local Government, Housing and Planning "
+                                   "Committee — 20 December 2026",
+                             body="The committee is scheduled to meet.",
+                             forum="Local Government, Housing and Planning "
+                                   "Committee",
+                             item_date=date(2026, 12, 20), url="c2")
+        sections = select_business([soon, distant], TAX, today=self.TODAY)
+        self.assertEqual([i.url for i in sections["committees"]], ["c1"])
+
+    def test_oral_questions_tabled_for_a_future_sitting_are_included(self):
+        """The Record's search results carry a tabled date and an answer-due
+        date; for an oral question that second date is the sitting it is down
+        for, and the collector clears it once the question has been answered.
+        So a future deadline means exactly "tabled, not yet asked" — which is
+        what the supplier lists, and no new collector was needed."""
+        from monitor.forward import select_business
+        tabled = self._item(
+            source_kind="oral_question",
+            title="OQ12345",
+            body="Will the First Minister set out a timeline for new measures "
+                 "to protect tenants in the private rented sector?",
+            speaker="David Hughes MS", constituency="Pontypridd Cynon Merthyr",
+            item_date=date(2026, 9, 10), deadline=date(2026, 9, 16), url="q1")
+        answered = self._item(
+            source_kind="oral_question", title="OQ11111",
+            body="A question about rent arrears in the private rented sector.",
+            item_date=date(2026, 7, 1), deadline=None, url="q2")
+        sections = select_business([tabled, answered], TAX, today=self.TODAY)
+        self.assertEqual([i.url for i in sections["oral"]], ["q1"])
+
+    def test_an_empty_week_sends_nothing_at_all(self):
+        """Six "nothing this week" emails in a row teach the reader to delete
+        the seventh unread, and the seventh is the one with a consultation in
+        it."""
+        from monitor.forward import render_forward, select_business
+        sections = select_business([], TAX, today=self.TODAY)
+        subject, body, count = render_forward(sections, TAX, today=self.TODAY)
+        self.assertEqual(count, 0)
+        sent, message = alerts_mod.post_to_flow(
+            "https://example.invalid/flow", subject, body, count, dry_run=False)
+        self.assertFalse(sent)
+        self.assertIn("no email sent", message)
+
+    def test_written_questions_are_excluded_from_the_email_too(self):
+        from monitor.forward import render_forward, select_business
+        sections = select_business([self._item()], TAX, today=self.TODAY)
+        _, body, _ = render_forward(sections, TAX, today=self.TODAY)
+        self.assertIn("Written questions are deliberately excluded", body)
+
+
+# ---------------------------------------------------------------------------
+class TestFlowDelivery(unittest.TestCase):
+    """Delivery without credentials.
+
+    SMTP needs an app password, which needs IT, which is weeks. A Power
+    Automate flow needs nothing from anyone: the webhook URL is the only
+    secret, it is write-only, and the worst it can do is send its owner an
+    email.
+    """
+
+    class _Session:
+        def __init__(self, status=202, text=""):
+            self.status, self.text, self.calls = status, text, []
+
+        def post(self, url, json=None, timeout=None):
+            self.calls.append({"url": url, "json": json})
+            outer = self
+
+            class _Resp:
+                status_code = outer.status
+                text = outer.text
+            return _Resp()
+
+    def test_the_payload_is_what_the_flow_schema_expects(self):
+        """subject / body / count, exactly — the flow's trigger schema is
+        generated from those three keys and silently ignores anything else."""
+        session = self._Session()
+        sent, message = alerts_mod.post_to_flow(
+            "https://example.invalid/flow", "Subject", "<p>Body</p>", 3,
+            session=session, dry_run=False)
+        self.assertTrue(sent)
+        self.assertEqual(sorted(session.calls[0]["json"]),
+                         ["body", "count", "subject"])
+
+    def test_nothing_is_sent_without_an_explicit_send(self):
+        """Nothing should ever reach a person because a script was run with the
+        wrong argument."""
+        session = self._Session()
+        sent, message = alerts_mod.post_to_flow(
+            "https://example.invalid/flow", "Subject", "Body", 3,
+            session=session, dry_run=True)
+        self.assertFalse(sent)
+        self.assertEqual(session.calls, [])
+        self.assertIn("--send", message)
+
+    def test_a_missing_url_says_what_to_do_about_it(self):
+        sent, message = alerts_mod.post_to_flow("", "S", "B", 2, dry_run=False)
+        self.assertFalse(sent)
+        self.assertIn("MONITOR_FLOW_URL", message)
+        self.assertIn("FORWARD-EMAIL-SETUP.md", message)
+
+    def test_a_regenerated_url_is_diagnosed_rather_than_reported_raw(self):
+        """403 from a flow almost always means the URL was regenerated. Saying
+        so is the difference between a two-minute fix and an afternoon."""
+        session = self._Session(status=403)
+        sent, message = alerts_mod.post_to_flow(
+            "https://example.invalid/flow", "S", "B", 2,
+            session=session, dry_run=False)
+        self.assertFalse(sent)
+        self.assertIn("regenerated", message)
+
+    def test_a_network_failure_never_raises(self):
+        """A failed weekly email must annotate the run, not end it."""
+        class _Broken:
+            def post(self, *a, **kw):
+                raise OSError("connection reset")
+        sent, message = alerts_mod.post_to_flow(
+            "https://example.invalid/flow", "S", "B", 2,
+            session=_Broken(), dry_run=False)
+        self.assertFalse(sent)
+        self.assertIn("Could not reach", message)
+
+
+# ---------------------------------------------------------------------------
+class TestCollectedAtSurvivesTheArchive(unittest.TestCase):
+    """When an item was FIRST seen, not when the row was read.
+
+    `Item.__post_init__` defaults `collected_at` to "now" when it is missing,
+    and the store's row-to-item conversion did not pass it through. Every item
+    read back from the archive therefore claimed to have been collected the
+    instant it was loaded — which made "new since last Friday" mean
+    "everything", and the NEW tag on the weekly email worthless.
+    """
+
+    def test_the_first_seen_time_is_read_back_from_the_archive(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            store = Store(str(Path(tmp) / "t.sqlite3"))
+            item = make_item("Rent Smart Wales registration and licensing.",
+                             title="An item collected in July")
+            item.collected_at = datetime(2026, 7, 1, 9, 30)
+            store.upsert(item)
+            (back,) = [i for i in store.query(min_score=0)
+                       if i.title == "An item collected in July"]
+            self.assertEqual(back.collected_at, datetime(2026, 7, 1, 9, 30))
+            store.close()
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+class TestForwardWorkflowGuards(unittest.TestCase):
+    """GitHub cron is UTC and does not follow British Summer Time.
+
+    One cron line means the email silently moves by an hour twice a year. Two
+    lines plus a London-clock check means it does not — but only while all
+    three parts agree, which is what these pin.
+    """
+
+    ROOT = Path(__file__).resolve().parent.parent
+    WORKFLOW = ROOT / ".github/workflows/forward.yml"
+
+    def test_both_utc_hours_are_scheduled(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn('cron: "0 14 * * 5"', text)
+        self.assertIn('cron: "0 15 * * 5"', text)
+
+    def test_the_run_stops_itself_at_the_wrong_london_hour(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("TZ=Europe/London date +%H", text)
+        self.assertIn("TARGET_LONDON_HOUR", text)
+
+    def test_two_runs_can_never_overlap(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("group: senedd-forward", text)
+
+    def test_it_cannot_start_emailing_by_opening_issues(self):
+        """The daily run used to open a dated issue purely to make GitHub send
+        a notification. The verdict was *"It is not user friendly or useful to
+        read this."* Withholding the permission means a future edit that
+        re-adds it fails loudly instead of quietly resuming."""
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertNotIn("issues: write", text)
+
+    def test_it_does_not_commit_the_archive(self):
+        """The daily run owns the archive. Two workflows committing it would
+        collide, and the loser would be a lost day of collection."""
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("contents: read", text)
+        self.assertNotIn("cli export", text)
+
+    def test_the_readable_copy_has_not_drifted(self):
+        """A browser drag-and-drop upload to GitHub silently skips anything
+        beginning with a dot, so `deploy/` carries a copy that can be pasted
+        into the web editor. A stale copy would deploy a schedule nobody thinks
+        to doubt."""
+        real = self.WORKFLOW.read_text(encoding="utf-8")
+        copy = (self.ROOT / "deploy/forward-workflow.yml").read_text(encoding="utf-8")
+        self.assertEqual(real, copy,
+                         "deploy/forward-workflow.yml has drifted from "
+                         ".github/workflows/forward.yml — re-copy it.")
+
+
+# ---------------------------------------------------------------------------
+class TestForwardEmailSetupGuide(unittest.TestCase):
+
+    GUIDE = Path(__file__).resolve().parent.parent / "FORWARD-EMAIL-SETUP.md"
+
+    def test_the_guide_exists_and_names_the_secret(self):
+        self.assertTrue(self.GUIDE.exists())
+        self.assertIn("MONITOR_FLOW_URL", self.GUIDE.read_text(encoding="utf-8"))
+
+    def test_it_mentions_the_html_button_people_miss(self):
+        """Without switching the flow's body field to HTML mode, the email
+        arrives as a page of visible tags."""
+        self.assertIn("</>", self.GUIDE.read_text(encoding="utf-8"))
 
 
 def main() -> int:
