@@ -2189,6 +2189,99 @@ class TestWelshGovernmentNewsroom(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+CONSULTATION_LISTING_HTML = """<html><body><ul>
+<li class="index-list__item"><div class="index-list__title">
+  <a href="/rent-guarantor-guidance-local-housing-authorities">Rent Guarantor
+  Guidance for Local Housing Authorities</a></div>
+  <div class="index-list__meta"><span class="index-list__date">27 July 2026
+  </span><span class="index-list__type">Open consultation</span>Housing</div>
+</li>
+<li class="index-list__item"><div class="index-list__title">
+  <a href="/implementing-building-safety-wales-act-2026">Implementing the
+  Building Safety (Wales) Act 2026</a></div>
+  <div class="index-list__meta"><span class="index-list__date">7 September 2026
+  </span><span class="index-list__type">Closed consultation</span>Housing</div>
+</li></ul></body></html>"""
+
+CONSULTATION_DETAIL_HTML = """<html><body>
+<nav>Housing and regeneration menu</nav>
+<main><h1>Rent Guarantor Guidance for Local Housing Authorities</h1>
+<p>We are seeking views on guidance for local housing authorities operating
+rent guarantor schemes for tenants in the private rented sector.</p>
+<p>Consultation ends: 19 October 2026</p></main>
+<footer>Contact us</footer></body></html>"""
+
+
+class TestGovWalesConsultationRegister(unittest.TestCase):
+    """The four consultations the first Friday email did not have.
+
+    All four were core NRLA business — rent guarantors, student accommodation
+    codes, council tax reduction, self-catering classification — and none had a
+    newsroom announcement, so no other route could see them. The register holds
+    the authoritative closing dates, and on 11 September 2026 gov.wales began
+    answering GitHub's runners again after weeks of blocking them.
+    """
+
+    def _collector(self, pages):
+        from monitor.collectors.govwales import GovWalesConsultationsCollector
+        return GovWalesConsultationsCollector(_StubFetcher(pages))
+
+    def _pages(self, listing=CONSULTATION_LISTING_HTML):
+        return {
+            "https://www.gov.wales/consultations": listing,
+            "https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities":
+                CONSULTATION_DETAIL_HTML,
+        }
+
+    def test_an_open_consultation_keeps_its_authoritative_closing_date(self):
+        collector = self._collector(self._pages())
+        items = list(collector.collect())
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertIn("Rent Guarantor Guidance", item.title)
+        self.assertEqual(item.deadline, date(2026, 10, 19))
+        self.assertEqual(item.source_kind, "consultation")
+        self.assertEqual(item.forum, "Welsh Government")
+        self.assertEqual(collector.errors, [])
+
+    def test_consultation_ends_is_a_closing_date(self):
+        """None of the existing patterns matched the register's own wording,
+        which is the phrasing on every consultation page it publishes."""
+        self.assertEqual(parse_deadline("Consultation ends: 19 October 2026"),
+                         date(2026, 10, 19))
+
+    def test_closed_consultations_never_reach_the_page(self):
+        """A closed consultation with a countdown beside it is worse than no
+        consultation: it invites a response that cannot be made."""
+        collector = self._collector(self._pages())
+        titles = [i.title for i in collector.collect()]
+        self.assertFalse(any("Building Safety" in t for t in titles))
+
+    def test_navigation_is_not_treated_as_consultation_text(self):
+        """A stray "housing" in a site-wide menu would score every page on
+        gov.wales identically, which is how a strict filter stops being one."""
+        collector = self._collector(self._pages())
+        item = next(iter(collector.collect()))
+        self.assertNotIn("Housing and regeneration menu", item.body)
+        self.assertIn("rent guarantor schemes", item.body)
+
+    def test_the_block_returning_is_a_loud_error(self):
+        """This host rejected datacentre IPs for weeks. If it starts again,
+        the run must say so — otherwise the consultations simply stop
+        appearing, which reads as a quiet month in Cardiff."""
+        collector = self._collector({})
+        self.assertEqual(list(collector.collect()), [])
+        self.assertEqual(len(collector.errors), 1)
+        self.assertIn("could not be fetched", collector.errors[0])
+
+    def test_a_register_that_parses_to_nothing_is_a_different_loud_error(self):
+        collector = self._collector(
+            {"https://www.gov.wales/consultations": "<html><body>hi</body></html>"})
+        self.assertEqual(list(collector.collect()), [])
+        self.assertEqual(len(collector.errors), 1)
+        self.assertIn("markup has probably changed", collector.errors[0])
+
+
 class TestGraphTokenCanRenewItself(unittest.TestCase):
     """The bug that shipped as documentation.
 
@@ -2399,6 +2492,15 @@ class TestCoveredSourcesAreNotNamedAsGaps(unittest.TestCase):
             [{"sources": ["Welsh Government — newsroom",
                           "Welsh Government — mailbox"]}])
         self.assertFalse(any("consultation register" in g for g in with_mailbox))
+
+    def test_the_register_gap_also_closes_when_the_register_itself_is_read(self):
+        """gov.wales answered GitHub's runners again on 11 September 2026, so
+        the register can be read directly. The panel must not keep telling a
+        reader to go and check a source the tool is already reading."""
+        from monitor.cli import _standing_gaps
+        gaps = _standing_gaps(
+            [{"sources": ["Welsh Government — consultations"]}])
+        self.assertFalse(any("consultation register" in g for g in gaps))
 
     def test_written_questions_are_named_as_a_deliberate_exclusion(self):
         """Not an oversight. The team has a separate tool, and a reader must be
