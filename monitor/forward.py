@@ -181,45 +181,69 @@ def _countdown(deadline: date | None, today: date) -> tuple[str, str]:
 
 
 def _new_tag() -> str:
-    return (f'<span style="display:inline-block;background:{ORANGE};color:#fff;'
-            f'font-size:10.5px;font-weight:700;letter-spacing:.5px;'
-            f'border-radius:3px;padding:1px 6px;margin-right:7px;'
-            f'vertical-align:middle">NEW</span>')
+    return ('<span style="display:inline-block;background:#FDEDE0;'
+            f'color:#A8501A;font-size:10px;font-weight:700;letter-spacing:.6px;'
+            'border-radius:3px;padding:2px 6px;margin-right:8px;'
+            'vertical-align:2px">NEW</span>')
 
 
-def _row(item: Item, right: str, right_colour: str, is_new: bool,
-         sub: str = "") -> str:
-    title = _e(item.title or "(untitled)")
-    link = (f'<a href="{_e(item.url)}" style="color:{DARK_BLUE};'
-            f'text-decoration:none">{title}</a>') if item.url else title
-    meta = " · ".join(filter(None, [_e(item.forum or item.source_name or ""),
-                                    _e(sub)]))
+def _row(primary: str, meta: str, right: str, right_note: str,
+         right_colour: str, is_new: bool, url: str = "",
+         last: bool = False) -> str:
+    """One line of business.
+
+    `primary` is what the reader is actually being asked to look at, and the
+    caller decides what that is — which sounds obvious and was not. Every row
+    used to print `item.title`, and for an oral question the title is its
+    reference number, so the first email said:
+
+        NEW  OQ64467
+             Plenary · David Hughes (Pontypridd Cynon Merthyr)
+
+    A reference number is not business. The question was about protecting
+    renters and the email never said so.
+    """
+    body = (f'<a href="{_e(url)}" style="color:{DARK_BLUE};'
+            f'text-decoration:none">{_e(primary)}</a>') if url else _e(primary)
+    border = "" if last else "border-bottom:1px solid #EAF0F4;"
     return (
-        f'<tr><td style="padding:11px 14px;border-bottom:1px solid #E7EDF2;'
-        f'vertical-align:top">'
-        f'<div style="font-size:14.5px;line-height:1.45;color:{OFF_BLACK}">'
-        f'{_new_tag() if is_new else ""}{link}</div>'
-        f'<div style="font-size:12px;color:{MUTED};margin-top:3px">{meta}</div>'
-        f'</td>'
-        f'<td style="padding:11px 14px;border-bottom:1px solid #E7EDF2;'
-        f'text-align:right;white-space:nowrap;vertical-align:top;'
-        f'font-size:12.5px;font-weight:700;color:{right_colour}">{_e(right)}</td>'
-        f'</tr>')
+        f'<tr><td style="padding:13px 16px;{border}vertical-align:top">'
+        f'<div style="font-size:15px;line-height:1.45;color:{OFF_BLACK}">'
+        f'{_new_tag() if is_new else ""}{body}</div>'
+        + (f'<div style="font-size:12px;line-height:1.5;color:{MUTED};'
+           f'margin-top:4px">{_e(meta)}</div>' if meta else "")
+        + f'</td>'
+        f'<td style="padding:13px 16px;{border}text-align:right;'
+        f'white-space:nowrap;vertical-align:top">'
+        f'<div style="font-size:13px;font-weight:700;color:{OFF_BLACK}">'
+        f'{_e(right)}</div>'
+        + (f'<div style="font-size:11.5px;font-weight:600;color:{right_colour};'
+           f'margin-top:3px">{_e(right_note)}</div>' if right_note else "")
+        + '</td></tr>')
 
 
 def _section(title: str, lede: str, rows: list[str]) -> str:
     if not rows:
         return ""
+    body = "".join(rows[:-1]) + rows[-1].replace(
+        "border-bottom:1px solid #EAF0F4;", "")
     return (
-        f'<h2 style="font-size:15px;color:{OFF_BLACK};margin:26px 0 2px">'
-        f'{_e(title)} <span style="color:{MUTED};font-weight:400">'
-        f'({len(rows)})</span></h2>'
-        f'<div style="font-size:12.5px;color:{MUTED};margin-bottom:9px">'
-        f'{_e(lede)}</div>'
-        f'<table role="presentation" cellpadding="0" cellspacing="0" '
-        f'width="100%" style="border-collapse:collapse;background:#fff;'
-        f'border:1px solid #E7EDF2;border-radius:8px">'
-        + "".join(rows) + '</table>')
+        f'<div style="margin:30px 0 0">'
+        f'<div style="font-size:11px;font-weight:700;letter-spacing:1.1px;'
+        f'text-transform:uppercase;color:{ORANGE}">{_e(title)}'
+        f'<span style="color:{MUTED};font-weight:600"> &nbsp;{len(rows)}</span>'
+        f'</div>'
+        f'<div style="font-size:12.5px;color:{MUTED};margin:5px 0 10px;'
+        f'line-height:1.5">{_e(lede)}</div>'
+        f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
+        f'width="100%" style="border-collapse:separate;border-spacing:0;'
+        f'background:#fff;border:1px solid #E3EAEF;border-radius:10px">'
+        f'{body}</table></div>')
+
+
+def _sitting(value: date | None) -> str:
+    """"Tue 15 Sep" — the day matters as much as the date for a sitting."""
+    return value.strftime("%a %-d %b") if value else "—"
 
 
 def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
@@ -236,77 +260,112 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
     count = sum(len(v) for v in sections.values())
     n_new = sum(1 for v in sections.values() for i in v if _is_new(i, new_since))
 
-    cons_rows = [
-        _row(i, *_countdown(i.deadline, today), _is_new(i, new_since),
-             sub=(f"closes {_display_date(i.deadline)}" if i.deadline
-                  else "check the source for the closing date"))
-        for i in sections["consultations"]]
+    cons_rows = []
+    for i in sections["consultations"]:
+        note, colour = _countdown(i.deadline, today)
+        cons_rows.append(_row(
+            primary=i.title or "(untitled)",
+            meta=i.forum or i.source_name or "",
+            right=_display_date(i.deadline) if i.deadline else "date not given",
+            right_note=note if i.deadline else "check the source",
+            right_colour=colour,
+            is_new=_is_new(i, new_since), url=i.url))
 
+    # The committee title already carries the committee's name and the date, so
+    # repeating the forum underneath it said the same thing twice.
     com_rows = [
-        _row(i, _display_date(i.item_date), MUTED, _is_new(i, new_since))
+        _row(primary=i.title or "(untitled)",
+             meta=i.agenda_item or "",
+             right=_sitting(i.item_date), right_note="",
+             right_colour=MUTED, is_new=_is_new(i, new_since), url=i.url)
         for i in sections["committees"]]
 
     plen_rows = [
-        _row(i, _display_date(i.item_date), MUTED, _is_new(i, new_since))
+        _row(primary=i.title or "(untitled)",
+             meta=i.forum or "",
+             right=_sitting(i.item_date), right_note="",
+             right_colour=MUTED, is_new=_is_new(i, new_since), url=i.url)
         for i in sections["plenary"]]
 
-    oral_rows = [
-        _row(i, _display_date(i.deadline), MUTED, _is_new(i, new_since),
-             sub=" ".join(filter(None, [i.speaker, f"({i.constituency})"
-                                        if i.constituency else ""])))
-        for i in sections["oral"]]
+    # The question itself is the point. The reference, the Member and the
+    # minister answering are how a reader knows whose question it is and which
+    # session to watch — all three were missing from the first edition.
+    oral_rows = []
+    for i in sections["oral"]:
+        who = i.speaker + (f" ({i.constituency})" if i.constituency else "")
+        oral_rows.append(_row(
+            primary=i.body or i.title,
+            meta=" · ".join(filter(None, [who, i.title, i.agenda_item])),
+            right=_sitting(i.deadline), right_note="for answer",
+            right_colour=MUTED,
+            is_new=_is_new(i, new_since), url=i.url))
 
     body = "".join([
         _section("Consultations closing soonest",
                  "Senedd and Welsh Government. Soonest first — a missed "
                  "deadline cannot be recovered.", cons_rows),
+        _section("Oral questions tabled for forthcoming sittings",
+                 "Tabled, not yet asked. The minister answering is named "
+                 "against each one.", oral_rows),
         _section(f"Committee meetings in the next {DIARY_WEEKS} weeks",
                  "Papers and any call for written evidence are normally "
                  "published in the two weeks beforehand.", com_rows),
         _section("Plenary business",
-                 "Chamber business scheduled on NRLA issues.", plen_rows),
-        _section("Oral questions tabled for forthcoming sittings",
-                 "Tabled but not yet asked.", oral_rows),
+                 "Debates and statements scheduled on NRLA issues.", plen_rows),
     ])
 
     subject = (f"Senedd future business — {today.strftime('%-d %B %Y')} "
                f"({count} item{'s' if count != 1 else ''}"
                + (f", {n_new} new)" if n_new else ")"))
 
+    tally = " · ".join(
+        f"{len(rows)} {label}{'' if len(rows) == 1 else 's'}"
+        for label, rows in (
+            ("consultation", sections["consultations"]),
+            ("oral question", sections["oral"]),
+            ("committee meeting", sections["committees"]),
+            ("Plenary item", sections["plenary"]),
+        ) if rows)
+
     footer_link = (
-        f'<p style="font-size:12.5px;color:{MUTED};margin:22px 0 0">'
+        f'<p style="font-size:12.5px;color:{MUTED};margin:26px 0 0">'
         f'Everything here is also on the '
-        f'<a href="{_e(page_url)}" style="color:{DARK_BLUE}">live page</a>, '
-        f'with the full archive behind it.</p>') if page_url else ""
+        f'<a href="{_e(page_url)}" style="color:{DARK_BLUE};font-weight:600">'
+        f'live page</a>, with the full archive behind it.</p>') if page_url else ""
 
     html_body = f"""<div style="margin:0;padding:0;background:{OFF_WHITE}">
-<div style="max-width:720px;margin:0 auto;padding:0 0 34px;
+<div style="max-width:720px;margin:0 auto;padding:0 0 40px;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
 
-  <div style="background:{DARK_BLUE};color:#fff;padding:18px 22px">
-    <div style="font-size:18px;font-weight:700;letter-spacing:-.2px">
+  <div style="background:{DARK_BLUE};color:#fff;padding:22px 26px 20px">
+    <div style="font-size:19px;font-weight:700;letter-spacing:-.2px">
       Senedd future business</div>
-    <div style="font-size:13px;opacity:.85;margin-top:3px">
-      National Residential Landlords Association · week of
+    <div style="font-size:13px;opacity:.8;margin-top:4px">
+      National Residential Landlords Association &nbsp;·&nbsp; week of
       {_e(today.strftime('%-d %B %Y'))}</div>
   </div>
   <div style="height:4px;background:{ORANGE}"></div>
 
-  <div style="padding:4px 22px 0">
-    <p style="font-size:13.5px;color:{OFF_BLACK};line-height:1.55;margin:18px 0 0">
-      What is scheduled or still open, filtered to NRLA relevance.
-      {'<b>' + str(n_new) + ' item' + ('s' if n_new != 1 else '') + ' new since '
-       + _e(_display_date(new_since)) + '.</b>' if n_new else
-       'Nothing new since ' + _e(_display_date(new_since)) + '.'}
-      Items stay listed until they close or happen, so this is the standing
-      list rather than a change log.
-    </p>
+  <div style="padding:0 26px">
+    <div style="background:#fff;border:1px solid #E3EAEF;border-radius:10px;
+      padding:14px 16px;margin-top:18px">
+      <div style="font-size:13.5px;color:{OFF_BLACK};line-height:1.5">
+        <b>{_e(tally) if tally else "Nothing scheduled"}</b>
+      </div>
+      <div style="font-size:12.5px;color:{MUTED};line-height:1.55;margin-top:6px">
+        {'<b style="color:' + ORANGE + '">' + str(n_new) + ' new since '
+         + _e(_display_date(new_since)) + '.</b> ' if n_new else
+         'Nothing new since ' + _e(_display_date(new_since)) + '. '}
+        Open items stay listed until they close or happen, so this is the
+        standing list rather than a change log.
+      </div>
+    </div>
     {body}
     {footer_link}
-    <p style="font-size:11.5px;color:{MUTED};margin:20px 0 0;line-height:1.5">
+    <p style="font-size:11.5px;color:{MUTED};margin:18px 0 0;line-height:1.55">
       Senedd Cymru and Welsh Government material is reproduced under the Open
       Government Licence v3.0. Nothing in this email is summarised by a
-      language model — every title and date is the published record.
+      language model — every question, title and date is the published record.
       Written questions are deliberately excluded; the team's dedicated tool
       tracks those.
     </p>
