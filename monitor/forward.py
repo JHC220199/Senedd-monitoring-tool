@@ -12,9 +12,13 @@ it is the structure the directorate already reads:
     Senedd Consultations     with closing dates
     Welsh Government         consultations, grouped by topic
 
-Reordered here so that the part with a clock on it comes first. A missed
-consultation deadline cannot be recovered; a missed debate can at least be read
-afterwards.
+Ordered here so that the week's *new* business comes first and the standing
+list comes last: oral questions, committee meetings, Plenary, then open
+consultations. Consultations led the first edition, on the reasoning that a
+missed deadline cannot be recovered — but they are also the section that
+changes least from one Friday to the next, so leading with them buried the
+new business under eight unchanged entries and made the email read as a list
+rather than a briefing.
 
 THE DESIGN DECISION THAT LOOKS LIKE A BUG
 -----------------------------------------
@@ -180,16 +184,33 @@ def _countdown(deadline: date | None, today: date) -> tuple[str, str]:
     return f"{days} days left", MUTED
 
 
+# Every layout decision below is made for Outlook on Windows, because that is
+# where this is read. Outlook renders HTML with Word's engine, which ignores
+# `max-width` on a <div>, ignores flexbox, and treats margins unpredictably.
+# The first version centred a 720px-wide <div>; in Outlook that width was
+# discarded, the email stretched to the full window, and every row became a
+# line of text with a date stranded on the far right. It looked fine on a
+# phone — where Outlook uses a real browser engine — and clunky on a laptop,
+# which is the wrong way round for who reads it.
+#
+# So: tables for structure, fixed pixel widths, padding on <td> rather than
+# margins on <div>, and explicit font-family on every cell that carries text.
+FONT = ("-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,"
+        "sans-serif")
+WIDTH = 680
+RIGHT_COL = 132
+LINE = "#EAF0F4"
+EDGE = "#E3EAEF"
+
+
 def _new_tag() -> str:
-    return ('<span style="display:inline-block;background:#FDEDE0;'
-            f'color:#A8501A;font-size:10px;font-weight:700;letter-spacing:.6px;'
-            'border-radius:3px;padding:2px 6px;margin-right:8px;'
-            'vertical-align:2px">NEW</span>')
+    return ('<span style="background:#FDEDE0;color:#A8501A;font-size:10px;'
+            'font-weight:700;letter-spacing:.6px;padding:2px 6px;'
+            'margin-right:8px">NEW</span>')
 
 
 def _row(primary: str, meta: str, right: str, right_note: str,
-         right_colour: str, is_new: bool, url: str = "",
-         last: bool = False) -> str:
+         right_colour: str, is_new: bool, url: str = "") -> str:
     """One line of business.
 
     `primary` is what the reader is actually being asked to look at, and the
@@ -205,40 +226,43 @@ def _row(primary: str, meta: str, right: str, right_note: str,
     """
     body = (f'<a href="{_e(url)}" style="color:{DARK_BLUE};'
             f'text-decoration:none">{_e(primary)}</a>') if url else _e(primary)
-    border = "" if last else "border-bottom:1px solid #EAF0F4;"
+    cell = (f'padding:14px 18px;border-bottom:1px solid {LINE};'
+            f'font-family:{FONT};vertical-align:top;')
     return (
-        f'<tr><td style="padding:13px 16px;{border}vertical-align:top">'
-        f'<div style="font-size:15px;line-height:1.45;color:{OFF_BLACK}">'
+        f'<tr><td style="{cell}">'
+        f'<div style="font-size:15px;line-height:1.5;color:{OFF_BLACK}">'
         f'{_new_tag() if is_new else ""}{body}</div>'
         + (f'<div style="font-size:12px;line-height:1.5;color:{MUTED};'
-           f'margin-top:4px">{_e(meta)}</div>' if meta else "")
+           f'padding-top:5px">{_e(meta)}</div>' if meta else "")
         + f'</td>'
-        f'<td style="padding:13px 16px;{border}text-align:right;'
-        f'white-space:nowrap;vertical-align:top">'
-        f'<div style="font-size:13px;font-weight:700;color:{OFF_BLACK}">'
-        f'{_e(right)}</div>'
-        + (f'<div style="font-size:11.5px;font-weight:600;color:{right_colour};'
-           f'margin-top:3px">{_e(right_note)}</div>' if right_note else "")
+        f'<td width="{RIGHT_COL}" style="{cell}width:{RIGHT_COL}px;'
+        f'text-align:right">'
+        f'<div style="font-size:13px;font-weight:700;color:{OFF_BLACK};'
+        f'white-space:nowrap">{_e(right)}</div>'
+        + (f'<div style="font-size:11.5px;font-weight:600;'
+           f'color:{right_colour};padding-top:3px;white-space:nowrap">'
+           f'{_e(right_note)}</div>' if right_note else "")
         + '</td></tr>')
 
 
 def _section(title: str, lede: str, rows: list[str]) -> str:
     if not rows:
         return ""
+    # The last row keeps no rule, so the card closes on its own border.
     body = "".join(rows[:-1]) + rows[-1].replace(
-        "border-bottom:1px solid #EAF0F4;", "")
+        f"border-bottom:1px solid {LINE};", "")
     return (
-        f'<div style="margin:30px 0 0">'
-        f'<div style="font-size:11px;font-weight:700;letter-spacing:1.1px;'
+        f'<tr><td style="padding:28px 28px 0;font-family:{FONT}">'
+        f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
         f'text-transform:uppercase;color:{ORANGE}">{_e(title)}'
-        f'<span style="color:{MUTED};font-weight:600"> &nbsp;{len(rows)}</span>'
-        f'</div>'
-        f'<div style="font-size:12.5px;color:{MUTED};margin:5px 0 10px;'
-        f'line-height:1.5">{_e(lede)}</div>'
-        f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
-        f'width="100%" style="border-collapse:separate;border-spacing:0;'
-        f'background:#fff;border:1px solid #E3EAEF;border-radius:10px">'
-        f'{body}</table></div>')
+        f'<span style="color:{MUTED};font-weight:600">&nbsp;&nbsp;{len(rows)}'
+        f'</span></div>'
+        f'<div style="font-size:12.5px;color:{MUTED};line-height:1.5;'
+        f'padding:6px 0 11px">{_e(lede)}</div>'
+        f'<table role="presentation" width="100%" cellpadding="0" '
+        f'cellspacing="0" border="0" style="border-collapse:collapse;'
+        f'width:100%;background:#ffffff;border:1px solid {EDGE}">'
+        f'{body}</table></td></tr>')
 
 
 def _sitting(value: date | None) -> str:
@@ -260,15 +284,17 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
     count = sum(len(v) for v in sections.values())
     n_new = sum(1 for v in sections.values() for i in v if _is_new(i, new_since))
 
-    cons_rows = []
-    for i in sections["consultations"]:
-        note, colour = _countdown(i.deadline, today)
-        cons_rows.append(_row(
-            primary=i.title or "(untitled)",
-            meta=i.forum or i.source_name or "",
-            right=_display_date(i.deadline) if i.deadline else "date not given",
-            right_note=note if i.deadline else "check the source",
-            right_colour=colour,
+    # The question itself is the point. The reference, the Member and the
+    # minister answering are how a reader knows whose question it is and which
+    # session to watch — all three were missing from the first edition.
+    oral_rows = []
+    for i in sections["oral"]:
+        who = i.speaker + (f" ({i.constituency})" if i.constituency else "")
+        oral_rows.append(_row(
+            primary=i.body or i.title,
+            meta=" · ".join(filter(None, [who, i.title, i.agenda_item])),
+            right=_sitting(i.deadline), right_note="for answer",
+            right_colour=MUTED,
             is_new=_is_new(i, new_since), url=i.url))
 
     # The committee title already carries the committee's name and the date, so
@@ -287,23 +313,24 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
              right_colour=MUTED, is_new=_is_new(i, new_since), url=i.url)
         for i in sections["plenary"]]
 
-    # The question itself is the point. The reference, the Member and the
-    # minister answering are how a reader knows whose question it is and which
-    # session to watch — all three were missing from the first edition.
-    oral_rows = []
-    for i in sections["oral"]:
-        who = i.speaker + (f" ({i.constituency})" if i.constituency else "")
-        oral_rows.append(_row(
-            primary=i.body or i.title,
-            meta=" · ".join(filter(None, [who, i.title, i.agenda_item])),
-            right=_sitting(i.deadline), right_note="for answer",
-            right_colour=MUTED,
+    cons_rows = []
+    for i in sections["consultations"]:
+        note, colour = _countdown(i.deadline, today)
+        cons_rows.append(_row(
+            primary=i.title or "(untitled)",
+            meta=i.forum or i.source_name or "",
+            right=_display_date(i.deadline) if i.deadline else "date not given",
+            right_note=note if i.deadline else "check the source",
+            right_colour=colour,
             is_new=_is_new(i, new_since), url=i.url))
 
+    # Order set by the operator, 11 September 2026: what is about to be said
+    # first, what is open to respond to last. The consultations were first on
+    # the reasoning that a missed deadline cannot be recovered — but they are
+    # also the section that changes least from week to week, and burying the
+    # week's new business under eight standing entries is what made the email
+    # feel like a list rather than a briefing.
     body = "".join([
-        _section("Consultations closing soonest",
-                 "Senedd and Welsh Government. Soonest first — a missed "
-                 "deadline cannot be recovered.", cons_rows),
         _section("Oral questions tabled for forthcoming sittings",
                  "Tabled, not yet asked. The minister answering is named "
                  "against each one.", oral_rows),
@@ -312,6 +339,9 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
                  "published in the two weeks beforehand.", com_rows),
         _section("Plenary business",
                  "Debates and statements scheduled on NRLA issues.", plen_rows),
+        _section("Consultations closing soonest",
+                 "Senedd and Welsh Government. Soonest first — a missed "
+                 "deadline cannot be recovered.", cons_rows),
     ])
 
     subject = (f"Senedd future business — {today.strftime('%-d %B %Y')} "
@@ -321,56 +351,68 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
     tally = " · ".join(
         f"{len(rows)} {label}{'' if len(rows) == 1 else 's'}"
         for label, rows in (
-            ("consultation", sections["consultations"]),
             ("oral question", sections["oral"]),
             ("committee meeting", sections["committees"]),
             ("Plenary item", sections["plenary"]),
+            ("consultation", sections["consultations"]),
         ) if rows)
 
+    newness = (f'<b style="color:{ORANGE}">{n_new} new since '
+               f'{_e(_display_date(new_since))}.</b> ' if n_new
+               else f'Nothing new since {_e(_display_date(new_since))}. ')
+
     footer_link = (
-        f'<p style="font-size:12.5px;color:{MUTED};margin:26px 0 0">'
-        f'Everything here is also on the '
+        f'<p style="font-size:12.5px;color:{MUTED};margin:0;padding-top:22px;'
+        f'font-family:{FONT}">Everything here is also on the '
         f'<a href="{_e(page_url)}" style="color:{DARK_BLUE};font-weight:600">'
-        f'live page</a>, with the full archive behind it.</p>') if page_url else ""
+        f'live page</a>, with the full archive behind it.</p>'
+    ) if page_url else ""
 
-    html_body = f"""<div style="margin:0;padding:0;background:{OFF_WHITE}">
-<div style="max-width:720px;margin:0 auto;padding:0 0 40px;
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+    html_body = f"""<table role="presentation" width="100%" cellpadding="0" \
+cellspacing="0" border="0" style="border-collapse:collapse;background:{OFF_WHITE}">
+<tr><td align="center" style="padding:0">
+<table role="presentation" width="{WIDTH}" cellpadding="0" cellspacing="0" \
+border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
 
-  <div style="background:{DARK_BLUE};color:#fff;padding:22px 26px 20px">
-    <div style="font-size:19px;font-weight:700;letter-spacing:-.2px">
+  <tr><td bgcolor="{DARK_BLUE}" style="padding:24px 28px 20px;font-family:{FONT};color:#ffffff">
+    <div style="font-size:20px;font-weight:700;letter-spacing:-.2px;color:#ffffff">
       Senedd future business</div>
-    <div style="font-size:13px;opacity:.8;margin-top:4px">
+    <div style="font-size:13px;color:#C3D2DC;padding-top:5px">
       National Residential Landlords Association &nbsp;·&nbsp; week of
       {_e(today.strftime('%-d %B %Y'))}</div>
-  </div>
-  <div style="height:4px;background:{ORANGE}"></div>
+  </td></tr>
+  <tr><td bgcolor="{ORANGE}" height="4" style="height:4px;line-height:4px;
+    font-size:0">&nbsp;</td></tr>
 
-  <div style="padding:0 26px">
-    <div style="background:#fff;border:1px solid #E3EAEF;border-radius:10px;
-      padding:14px 16px;margin-top:18px">
-      <div style="font-size:13.5px;color:{OFF_BLACK};line-height:1.5">
-        <b>{_e(tally) if tally else "Nothing scheduled"}</b>
-      </div>
-      <div style="font-size:12.5px;color:{MUTED};line-height:1.55;margin-top:6px">
-        {'<b style="color:' + ORANGE + '">' + str(n_new) + ' new since '
-         + _e(_display_date(new_since)) + '.</b> ' if n_new else
-         'Nothing new since ' + _e(_display_date(new_since)) + '. '}
-        Open items stay listed until they close or happen, so this is the
-        standing list rather than a change log.
-      </div>
-    </div>
-    {body}
+  <tr><td style="padding:22px 28px 0;font-family:{FONT}">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+      border="0" style="border-collapse:collapse;background:#ffffff;
+      border:1px solid {EDGE}">
+      <tr><td style="padding:15px 18px;font-family:{FONT}">
+        <div style="font-size:14px;font-weight:700;color:{OFF_BLACK};
+          line-height:1.5">{_e(tally) if tally else "Nothing scheduled"}</div>
+        <div style="font-size:12.5px;color:{MUTED};line-height:1.55;
+          padding-top:7px">{newness}Open items stay listed until they close or
+          happen, so this is the standing list rather than a change log.</div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  {body}
+
+  <tr><td style="padding:0 28px 34px;font-family:{FONT}">
     {footer_link}
-    <p style="font-size:11.5px;color:{MUTED};margin:18px 0 0;line-height:1.55">
+    <p style="font-size:11.5px;color:{MUTED};line-height:1.55;margin:0;
+      padding-top:16px;font-family:{FONT}">
       Senedd Cymru and Welsh Government material is reproduced under the Open
       Government Licence v3.0. Nothing in this email is summarised by a
       language model — every question, title and date is the published record.
       Written questions are deliberately excluded; the team's dedicated tool
       tracks those.
     </p>
-  </div>
-</div>
-</div>"""
+  </td></tr>
+
+</table>
+</td></tr></table>"""
 
     return subject, html_body, count
