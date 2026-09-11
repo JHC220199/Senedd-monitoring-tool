@@ -20,7 +20,8 @@ from .collectors.base import Fetcher
 from .collectors.committee_work import SeneddCommitteeWorkCollector
 from .collectors.forthcoming import SeneddForthcomingBusinessCollector
 from .collectors.forward_look import SeneddCalendarCollector
-from .collectors.govwales import (GovWalesMailboxCollector,
+from .collectors.govwales import (GovWalesConsultationsCollector,
+                                  GovWalesMailboxCollector,
                                   GovWalesNewsroomCollector,
                                   GovWalesRSSCollector)
 from .collectors.legislation import LegislationCollector, SeneddBillCollector
@@ -48,6 +49,7 @@ SUBSTITUTED_BY = {
     "Welsh Government — RSS": (
         "Welsh Government — newsroom",
         "Welsh Government — mailbox",
+        "Welsh Government — consultations",
     ),
 }
 
@@ -136,6 +138,7 @@ class Pipeline:
         forthcoming = SeneddForthcomingBusinessCollector(self.fetcher)
         gov_rss = GovWalesRSSCollector(self.fetcher)
         gov_news = GovWalesNewsroomCollector(self.fetcher)
+        gov_cons = GovWalesConsultationsCollector(self.fetcher)
         gov_mail = GovWalesMailboxCollector(
             self.fetcher, mailbox=self.mailbox, access_token=self.graph_token)
         research = SeneddResearchCollector(self.fetcher)
@@ -176,6 +179,11 @@ class Pipeline:
         # BEFORE the RSS source, and not optional. This is the route that works
         # from a cloud host, so if it returns nothing that is a real fault and
         # should be reported as one.
+        # The register holds the authoritative closing dates, and a missed
+        # consultation deadline cannot be recovered — so it goes before the
+        # announcements, which are the same material without the dates.
+        yield ("Welsh Government — consultations", gov_cons,
+               lambda: gov_cons.collect(), False)
         yield ("Welsh Government — newsroom", gov_news,
                lambda: gov_news.collect(since=start), False)
         if have_mailbox:

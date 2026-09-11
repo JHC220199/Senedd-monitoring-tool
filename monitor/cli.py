@@ -211,7 +211,9 @@ def _standing_gaps(runs: list[dict]) -> list[str]:
     ]
 
     attempted = set(runs[0].get("sources") or []) if runs else set()
-    if not any("mailbox" in s.lower() for s in attempted):
+    covered = any("mailbox" in s.lower() or "consultations" in s.lower()
+                  for s in attempted)
+    if not covered:
         gaps.insert(0,
                     "The Welsh Government consultation register at "
                     "gov.wales/consultations, which holds the authoritative "
