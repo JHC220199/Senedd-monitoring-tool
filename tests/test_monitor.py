@@ -1231,20 +1231,46 @@ class TestEmailFailureIsLoud(unittest.TestCase):
     def _args(self, send: bool):
         return SimpleNamespace(send=send)
 
+    @contextlib.contextmanager
+    def _quiet(self):
+        """Run the function under test without its output escaping.
+
+        THIS IS NOT TIDINESS. `_report_not_sent` prints a GitHub workflow
+        command — `::error title=No email sent::…` — whenever GITHUB_ACTIONS is
+        set. On a runner that is always set, including while the test suite is
+        running, so an unredirected call in a test printed a real red
+        annotation onto the run page of every single workflow that runs these
+        tests. Both the daily monitor and the Friday email showed "No email
+        sent" at the top of a green run, for weeks, and the annotation was read
+        — entirely reasonably — as the email having failed.
+
+        A test must never be able to annotate the run that is testing it. So
+        the environment variable is cleared as well as the streams redirected:
+        belt and braces, because the streams alone would not stop a future
+        refactor that writes the annotation through a different path.
+        """
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""}, clear=False):
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                yield
+
     def test_dry_run_without_send_is_success(self):
         from monitor.cli import _report_not_sent
-        self.assertEqual(
-            _report_not_sent(self._args(False), [], {"smtp_host": ""}), 0)
+        with self._quiet():
+            result = _report_not_sent(self._args(False), [], {"smtp_host": ""})
+        self.assertEqual(result, 0)
 
     def test_send_without_config_is_an_error(self):
         from monitor.cli import _report_not_sent
-        self.assertEqual(
-            _report_not_sent(self._args(True), [], {"smtp_host": ""}), 3)
+        with self._quiet():
+            result = _report_not_sent(self._args(True), [], {"smtp_host": ""})
+        self.assertEqual(result, 3)
 
     def test_the_error_names_the_missing_variable(self):
         from monitor.cli import _report_not_sent
         buf, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""}, clear=False), \
+                contextlib.redirect_stdout(buf), contextlib.redirect_stderr(err):
             _report_not_sent(self._args(True), [], {"smtp_host": ""})
         combined = buf.getvalue() + err.getvalue()
         # Naming the variable is the difference between a usable error and a
@@ -1263,6 +1289,38 @@ class TestEmailFailureIsLoud(unittest.TestCase):
                 self.assertEqual("::error" in buf.getvalue(), expected)
 
 
+class TestTestsDoNotAnnotateTheRun(unittest.TestCase):
+    """A test must not be able to annotate the run that is testing it.
+
+    `_report_not_sent` writes `::error title=No email sent::…` when
+    GITHUB_ACTIONS is set, which is exactly right in production and exactly
+    wrong from inside a test — on a runner the variable is set while the suite
+    is running, so the annotation landed on the run page of every workflow that
+    runs these tests. A green run with a red "No email sent" at the top of it
+    is worse than a silent one: it says the thing that did work, didn't.
+
+    This re-runs the tests most likely to leak and fails if any workflow
+    command escapes.
+    """
+
+    def test_the_email_failure_tests_emit_no_workflow_commands(self):
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(
+            TestEmailFailureIsLoud)
+        captured = io.StringIO()
+        with mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"},
+                             clear=False):
+            with contextlib.redirect_stdout(captured):
+                result = unittest.TextTestRunner(
+                    stream=io.StringIO(), verbosity=0).run(suite)
+        self.assertTrue(result.wasSuccessful())
+        self.assertNotIn("::error", captured.getvalue(),
+                         "a test printed a GitHub error annotation onto the "
+                         "run page — redirect its output, and clear "
+                         "GITHUB_ACTIONS while calling it")
+        self.assertNotIn("::warning", captured.getvalue())
+
+
+# ---------------------------------------------------------------------------
 class TestPublish(unittest.TestCase):
     """Publishing to a place a person will actually look.
 
