@@ -1911,6 +1911,483 @@ class TestBrowserUploadCopies(unittest.TestCase):
             self.assertIn(essential, copy)
 
 
+# ---------------------------------------------------------------------------
+# The Welsh Government half. Everything below this line exists because the
+# Welsh Government section of the live page was empty for weeks while the
+# page implied it was being watched.
+# ---------------------------------------------------------------------------
+
+class _StubFetcher:
+    """Serves canned pages and records what was asked for.
+
+    Deliberately not a mock of `Fetcher`: the collector is only allowed to use
+    `get_text`, and a stub that offers nothing else makes that a property the
+    tests enforce rather than a convention someone remembers.
+    """
+
+    def __init__(self, pages: dict, session=None):
+        self.pages = pages
+        self.requested: list[str] = []
+        self.session = session
+
+    def get_text(self, url, params=None):
+        self.requested.append(url)
+        return self.pages.get(url)
+
+
+def _card(href: str, when: str, title: str, summary: str = "") -> str:
+    return (f'<div class="card"><div class="card__body">'
+            f'<time class="card__date">{when}</time>'
+            f'<h2 class="card__title"><a class="card__link" href="{href}">{title}</a></h2>'
+            f'<div class="card__summary"><p>{summary}</p></div>'
+            f'</div></div>')
+
+
+def _story(when_attr: str, when_text: str, title: str, summary: str,
+           body: str, tag: str = "housing") -> str:
+    return (f'<time class="story__date" datetime="{when_attr}">{when_text}</time>'
+            f'<div class="story__tags tags"><div class="tag">'
+            f'<a class="tag__link" href="/news/t/{tag}">{tag.title()}</a>'
+            f'</div></div>'
+            f'<h1 class="story__title">{title}</h1>'
+            f'<div class="story__summary">{summary}</div>'
+            f'<div class="story__body"><p>{body}</p></div>')
+
+
+class TestWelshGovernmentNewsroom(unittest.TestCase):
+    """media.service.gov.wales — the route that is reachable from GitHub.
+
+    www.gov.wales rejects datacentre IPs and always will. The newsroom is a
+    different Welsh Government host carrying the same press notices, and it
+    answers 200 from a cloud runner (measured 19 August and 11 September 2026).
+    Its markup — `.card`, `.card__date`, `a.card__link`, `.story__date` with a
+    machine-readable `datetime` — was verified against the live site on
+    11 September 2026, and these tests pin every part of it the parser leans on,
+    so that a redesign fails here rather than silently emptying the page.
+    """
+
+    LIST_URL = "https://media.service.gov.wales/news"
+    STORY_URL = "https://media.service.gov.wales/news/seals-and-hares"
+
+    def _collector(self, pages):
+        from monitor.collectors.govwales import GovWalesNewsroomCollector
+        collector = GovWalesNewsroomCollector(_StubFetcher(pages))
+        return collector
+
+    def test_listing_and_story_are_parsed_into_an_item(self):
+        pages = {
+            self.LIST_URL: _card(
+                "/news/seals-and-hares", "Friday 11 Sep 2026, 11:30",
+                "Have your say on new protections for seals and hares",
+                "A short summary."),
+            self.STORY_URL: _story(
+                "2026-09-11 11:30", "Friday 11 Sep 2026, 11:30",
+                "Have your say on new protections for seals and hares",
+                "A short summary.",
+                "The consultation closes on 9 October 2026."),
+        }
+        collector = self._collector(pages)
+        items = list(collector.collect(since=date(2026, 9, 1)))
+
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item.item_date, date(2026, 9, 11))
+        self.assertEqual(item.forum, "Welsh Government")
+        self.assertEqual(item.raw_ref, "newsroom:seals-and-hares")
+        self.assertEqual(item.url, self.STORY_URL)
+        self.assertEqual(collector.errors, [])
+
+    def test_consultation_is_classified_and_its_deadline_read_from_the_body(self):
+        """The card summary alone is too thin to score fairly.
+
+        This is why each in-window story is fetched in full. The consultation on
+        implementing the Building Safety (Wales) Act 2026 — leaseholder
+        remediation costs, tribunal remediation orders — is core NRLA material
+        that appears nowhere in the one-line summary.
+        """
+        pages = {
+            self.LIST_URL: _card(
+                "/news/building-safety-act", "Wednesday 9 Sep 2026, 14:00",
+                "Implementing the Building Safety (Wales) Act 2026",
+                "Views sought."),
+            "https://media.service.gov.wales/news/building-safety-act": _story(
+                "2026-09-09 14:00", "Wednesday 9 Sep 2026, 14:00",
+                "Implementing the Building Safety (Wales) Act 2026",
+                "Views sought.",
+                "This consultation covers leaseholder remediation costs and "
+                "tribunal remediation orders. It closes on 4 December 2026."),
+        }
+        item = list(self._collector(pages).collect(since=date(2026, 9, 1)))[0]
+        self.assertEqual(item.source_kind, "consultation")
+        self.assertEqual(item.deadline, date(2026, 12, 4))
+        self.assertIn("leaseholder remediation costs", item.body)
+
+    def test_topic_links_are_not_mistaken_for_stories(self):
+        """`/news/t/housing` is a topic listing, not an announcement.
+
+        It sits in the same `.card` markup as a real story. Following one
+        produces an "announcement" whose body is a list of headlines, which
+        scores well and is entirely useless.
+        """
+        pages = {
+            self.LIST_URL: (
+                _card("/news/t/housing", "Friday 11 Sep 2026, 11:30", "Housing")
+                + _card("/news/real-story", "Friday 11 Sep 2026, 10:00",
+                        "A real announcement")),
+            "https://media.service.gov.wales/news/real-story": _story(
+                "2026-09-11 10:00", "Friday 11 Sep 2026, 10:00",
+                "A real announcement", "", "Body text."),
+        }
+        collector = self._collector(pages)
+        items = list(collector.collect(since=date(2026, 9, 1)))
+        self.assertEqual([i.title for i in items], ["A real announcement"])
+        self.assertNotIn("https://media.service.gov.wales/news/t/housing",
+                         collector.fetcher.requested)
+
+    def test_story_page_date_overrides_the_listing_date(self):
+        """A listing entry can be re-dated when a notice is edited.
+
+        The date on the notice itself is the one a reader would cite, and the
+        one the deadline arithmetic on the page has to agree with.
+        """
+        pages = {
+            self.LIST_URL: _card("/news/seals-and-hares",
+                                 "Friday 11 Sep 2026, 11:30", "A notice"),
+            self.STORY_URL: _story("2026-09-08 09:00",
+                                   "Tuesday 08 Sep 2026, 09:00",
+                                   "A notice", "", "Body."),
+        }
+        item = list(self._collector(pages).collect(since=date(2026, 9, 1)))[0]
+        self.assertEqual(item.item_date, date(2026, 9, 8))
+
+    def test_paging_stops_once_a_whole_page_predates_the_window(self):
+        """The listing is newest first, so an entirely old page ends the walk.
+
+        Without this the collector would walk all six pages every morning for
+        no new data — roughly three months of press notices re-fetched daily.
+        """
+        pages = {
+            self.LIST_URL: _card("/news/recent", "Friday 11 Sep 2026, 11:30",
+                                 "Recent"),
+            "https://media.service.gov.wales/news/recent": _story(
+                "2026-09-11 11:30", "Friday 11 Sep 2026, 11:30",
+                "Recent", "", "Body."),
+            "https://media.service.gov.wales/news?page=2": _card(
+                "/news/ancient", "Monday 02 Feb 2026, 09:00", "Ancient"),
+        }
+        collector = self._collector(pages)
+        list(collector.collect(since=date(2026, 9, 1)))
+        self.assertNotIn("https://media.service.gov.wales/news?page=3",
+                         collector.fetcher.requested)
+        self.assertNotIn("https://media.service.gov.wales/news/ancient",
+                         collector.fetcher.requested)
+
+    def test_unreachable_first_page_is_a_loud_error(self):
+        """A parser yielding nothing must never look like a quiet fortnight.
+
+        If this host is ever put behind the same CloudFront rule as
+        www.gov.wales, the Welsh Government half of the page disappears — and
+        the only thing standing between a reader and that silent gap is this
+        message.
+        """
+        collector = self._collector({})
+        self.assertEqual(list(collector.collect(since=date(2026, 9, 1))), [])
+        self.assertEqual(len(collector.errors), 1)
+        self.assertIn("could not be fetched", collector.errors[0])
+
+    def test_first_page_that_parses_to_nothing_is_a_different_loud_error(self):
+        """200 OK with no readable stories means the markup changed.
+
+        Reported separately from an unreachable host on purpose: the two have
+        different causes and different fixes, and a reader who is told the
+        wrong one loses days.
+        """
+        collector = self._collector({self.LIST_URL: "<html><body>Hello</body></html>"})
+        self.assertEqual(list(collector.collect(since=date(2026, 9, 1))), [])
+        self.assertEqual(len(collector.errors), 1)
+        self.assertIn("markup has probably changed", collector.errors[0])
+
+    def test_article_fetching_is_capped(self):
+        """A busy fortnight must not turn one run into hundreds of requests.
+
+        We are a guest on a press office's infrastructure; the cap is ours to
+        impose, not theirs to enforce.
+        """
+        from monitor.collectors.govwales import GovWalesNewsroomCollector
+        cards = "".join(
+            _card(f"/news/story-{n}", "Friday 11 Sep 2026, 11:30", f"Story {n}")
+            for n in range(12))
+        pages = {self.LIST_URL: cards}
+        for n in range(12):
+            pages[f"https://media.service.gov.wales/news/story-{n}"] = _story(
+                "2026-09-11 11:30", "Friday 11 Sep 2026, 11:30",
+                f"Story {n}", "", "Body.")
+        collector = self._collector(pages)
+        items = list(collector.collect(since=date(2026, 9, 1), max_articles=3))
+        self.assertEqual(len(items), 3)
+        self.assertLessEqual(
+            len([u for u in collector.fetcher.requested if "/news/story-" in u]), 3)
+
+
+# ---------------------------------------------------------------------------
+class TestGraphTokenCanRenewItself(unittest.TestCase):
+    """The bug that shipped as documentation.
+
+    The setup instructions told the reader to paste a Microsoft Graph access
+    token into a repository secret. Those expire in about an hour, so following
+    the instructions exactly gave one successful run and then a 401 every
+    morning in a log nobody reads — and a 401 does not empty the Welsh
+    Government section, it just stops adding to it, which looks like a quiet
+    fortnight in Cardiff Bay.
+    """
+
+    class _Session:
+        def __init__(self, status=200, payload=None):
+            self.status = status
+            self.payload = payload or {"access_token": "fresh-token"}
+            self.calls = []
+
+        def post(self, url, data=None, timeout=None):
+            self.calls.append({"url": url, "data": data})
+            outer = self
+
+            class _Resp:
+                status_code = outer.status
+
+                def json(self):
+                    return outer.payload
+            return _Resp()
+
+    FULL = {
+        "MONITOR_GRAPH_TENANT": "tenant-guid",
+        "MONITOR_GRAPH_CLIENT_ID": "client-guid",
+        "MONITOR_GRAPH_CLIENT_SECRET": "the-secret-value",
+    }
+
+    def test_client_credentials_produce_a_token(self):
+        from monitor.graph_auth import resolve_token
+        session = self._Session()
+        token, error = resolve_token(dict(self.FULL), session)
+        self.assertEqual(token, "fresh-token")
+        self.assertEqual(error, "")
+        self.assertEqual(session.calls[0]["data"]["grant_type"],
+                         "client_credentials")
+
+    def test_the_secret_is_never_put_in_a_url(self):
+        """A client secret in a query string ends up in proxy logs and error
+        reports. Form-encoded body only — this is the kind of thing a
+        well-meaning refactor breaks quietly."""
+        from monitor.graph_auth import resolve_token
+        session = self._Session()
+        resolve_token(dict(self.FULL), session)
+        call = session.calls[0]
+        self.assertNotIn("the-secret-value", call["url"])
+        self.assertNotIn("?", call["url"])
+        self.assertEqual(call["data"]["client_secret"], "the-secret-value")
+
+    def test_nothing_configured_is_not_an_error(self):
+        """A deployment inside the NRLA network reaches gov.wales directly and
+        needs no mailbox at all. Reporting that as a fault would put a
+        permanent warning on a page that is working perfectly."""
+        from monitor.graph_auth import resolve_token
+        token, error = resolve_token({}, self._Session())
+        self.assertEqual((token, error), ("", ""))
+
+    def test_half_configured_says_which_piece_is_missing(self):
+        from monitor.graph_auth import resolve_token
+        env = dict(self.FULL)
+        del env["MONITOR_GRAPH_CLIENT_SECRET"]
+        token, error = resolve_token(env, self._Session())
+        self.assertEqual(token, "")
+        self.assertIn("MONITOR_GRAPH_CLIENT_SECRET", error)
+
+    def test_a_pasted_token_still_works_and_takes_precedence(self):
+        """Kept because it is genuinely useful for one manual test — and
+        because someone mid-setup must not be broken silently. It warns, and
+        the docs say to delete it."""
+        from monitor.graph_auth import resolve_token
+        env = dict(self.FULL, MONITOR_GRAPH_TOKEN="pasted")
+        token, error = resolve_token(env, self._Session())
+        self.assertEqual((token, error), ("pasted", ""))
+
+    def test_microsoft_error_codes_are_translated_for_a_policy_officer(self):
+        """AADSTS7000215 means "you pasted the Secret ID instead of the secret
+        value". Nobody knows that, and searching for it lands on forum threads
+        about a different product."""
+        from monitor.graph_auth import resolve_token
+        session = self._Session(status=401, payload={
+            "error": "invalid_client",
+            "error_description": "AADSTS7000215: Invalid client secret provided."})
+        token, error = resolve_token(dict(self.FULL), session)
+        self.assertEqual(token, "")
+        self.assertIn("secret VALUE", error)
+        self.assertIn("Secret ID", error)
+
+    def test_expiry_risk_is_described_somewhere_a_human_will_see_it(self):
+        from monitor.graph_auth import describe_expiry_risk
+        text = describe_expiry_risk()
+        self.assertIn("expire", text)
+        self.assertIn("reminder", text.lower())
+
+
+# ---------------------------------------------------------------------------
+class TestMailboxReadsByDateNotByUnreadFlag(unittest.TestCase):
+    """Opening an email in Outlook used to hide it from the monitor forever.
+
+    The collector filtered on `isRead eq false` against a real person's inbox.
+    Reading a Welsh Government email — the entirely normal thing to do with an
+    email — removed it from the collector's view permanently, and nothing
+    anywhere said the consultation had been dropped.
+    """
+
+    def _collector(self):
+        collector = GovWalesMailboxCollector.__new__(GovWalesMailboxCollector)
+        collector.errors = []
+        collector.mailbox = "joshua.helm-cowley@nrla.org.uk"
+        collector.access_token = "token"
+        return collector
+
+    def test_the_query_filters_on_received_date(self):
+        url = self._collector().first_page_url(since=date(2026, 8, 21))
+        self.assertIn("receivedDateTime ge 2026-08-21T00:00:00Z", url)
+        self.assertIn("$orderby=receivedDateTime desc", url)
+
+    def test_the_query_never_mentions_the_unread_flag(self):
+        url = self._collector().first_page_url(since=date(2026, 8, 21))
+        self.assertNotIn("isRead", url)
+
+    def test_the_collector_never_writes_to_the_mailbox(self):
+        """Reading by date keeps the permission ask at Mail.Read, because
+        nothing has to be marked read. That is a materially smaller thing to
+        ask IT for, and IT are right to care about the difference.
+
+        Enforced by giving the collector a session that can only GET: any
+        attempt to PATCH a message read, or to move one, raises here rather
+        than turning up as a rejected permission request months later.
+        """
+        class _ReadOnlySession:
+            def get(self, url, headers=None, timeout=None):
+                return SimpleNamespace(status_code=200,
+                                       json=lambda: {"value": []}, text="")
+
+            def __getattr__(self, name):
+                raise AssertionError(
+                    f"the mailbox collector must not call session.{name}() — "
+                    "anything but GET means asking IT for Mail.ReadWrite")
+
+        collector = self._collector()
+        collector.fetcher = SimpleNamespace(session=_ReadOnlySession())
+        self.assertEqual(list(collector.collect(since=date(2026, 8, 21))), [])
+
+    def test_401_and_403_are_explained_differently(self):
+        """They look identical in a log and have completely different fixes —
+        one of which is a message to IT."""
+        collector = self._collector()
+        unauthorised = SimpleNamespace(status_code=401, text="{}")
+        forbidden = SimpleNamespace(status_code=403, text="{}")
+        self.assertIn("consent", collector._explain_status(unauthorised))
+        self.assertIn("application access policy",
+                      collector._explain_status(forbidden))
+
+
+# ---------------------------------------------------------------------------
+class TestCoveredSourcesAreNotNamedAsGaps(unittest.TestCase):
+    """A banner that stays up after its gap has closed trains people to ignore
+    banners — and that banner is the only thing standing between a reader and
+    the next silent gap."""
+
+    def test_rss_stops_being_named_once_the_newsroom_delivers(self):
+        from monitor.pipeline import SUBSTITUTED_BY
+        self.assertIn("Welsh Government — newsroom",
+                      SUBSTITUTED_BY["Welsh Government — RSS"])
+
+    def test_the_gov_wales_explanation_only_appears_for_a_welsh_source(self):
+        """It used to be printed whatever had failed. A broken Senedd
+        transcript feed produced a confident paragraph about CloudFront,
+        sending the reader to check the one place the material was not."""
+        from monitor.site import _coverage_banner
+        welsh = _coverage_banner(["Welsh Government — newsroom"])
+        self.assertIn("gov.wales", welsh)
+        senedd = _coverage_banner(["Senedd Record — tabled business"])
+        self.assertNotIn("gov.wales", senedd)
+        self.assertIn("Senedd Record", senedd)
+
+    def test_the_banner_agrees_with_itself_about_number(self):
+        from monitor.site import _coverage_banner
+        self.assertIn("This source is", _coverage_banner(["One source"]))
+        self.assertIn("These sources are", _coverage_banner(["One", "Two"]))
+
+    def test_no_gaps_panel_when_there_are_no_gaps(self):
+        from monitor.site import _partial_note
+        self.assertEqual(_partial_note([]), "")
+
+    def test_the_gaps_panel_is_calm_and_distinct_from_the_warning(self):
+        """The banner means "a source that should be reporting is not" — a
+        fault. This panel means "here is what this tool does not watch, by
+        design" — a standing limitation. Collapsing the two ends with nobody
+        reading either."""
+        from monitor.site import _partial_note
+        html_text = _partial_note(["The consultation register."])
+        self.assertIn('<details class="gaps">', html_text)
+        self.assertIn("What this page does not cover", html_text)
+        self.assertNotIn('class="warn"', html_text)
+
+    def test_the_consultation_register_drops_off_once_the_mailbox_runs(self):
+        from monitor.cli import _standing_gaps
+        without = _standing_gaps([{"sources": ["Welsh Government — newsroom"]}])
+        self.assertTrue(any("consultation register" in g for g in without))
+        with_mailbox = _standing_gaps(
+            [{"sources": ["Welsh Government — newsroom",
+                          "Welsh Government — mailbox"]}])
+        self.assertFalse(any("consultation register" in g for g in with_mailbox))
+
+    def test_written_questions_are_named_as_a_deliberate_exclusion(self):
+        """Not an oversight. The team has a separate tool, and a reader must be
+        able to tell the difference between "not watched" and "watched
+        elsewhere"."""
+        from monitor.cli import _standing_gaps
+        gaps = _standing_gaps([])
+        self.assertTrue(any("Written questions" in g for g in gaps))
+
+
+# ---------------------------------------------------------------------------
+class TestWelshGovernmentSetupGuide(unittest.TestCase):
+    """The original bug shipped as documentation, so it is pinned as
+    documentation. A guide that names a secret the code does not read, or omits
+    one it does, is the same failure again in a different file."""
+
+    GUIDE = Path(__file__).resolve().parent.parent / "WELSH-GOVERNMENT-SETUP.md"
+
+    def test_the_guide_exists(self):
+        self.assertTrue(self.GUIDE.exists(),
+                        "WELSH-GOVERNMENT-SETUP.md is what a non-developer "
+                        "follows to connect the mailbox route. Without it the "
+                        "four secrets are undiscoverable.")
+
+    def test_it_names_every_secret_the_code_actually_reads(self):
+        text = self.GUIDE.read_text(encoding="utf-8")
+        for secret in ("MONITOR_MAILBOX", "MONITOR_GRAPH_TENANT",
+                       "MONITOR_GRAPH_CLIENT_ID", "MONITOR_GRAPH_CLIENT_SECRET"):
+            self.assertIn(secret, text)
+
+    def test_it_asks_for_read_only_access(self):
+        text = self.GUIDE.read_text(encoding="utf-8")
+        self.assertIn("Mail.Read", text)
+        self.assertNotIn("Mail.ReadWrite", text)
+
+    def test_it_warns_about_the_secret_expiring(self):
+        """An expired secret does not announce itself. The Welsh Government
+        section just goes quiet, which looks exactly like a quiet fortnight."""
+        text = self.GUIDE.read_text(encoding="utf-8").lower()
+        self.assertIn("expir", text)
+        self.assertIn("renew", text)
+
+    def test_it_warns_against_the_old_pasted_token(self):
+        text = self.GUIDE.read_text(encoding="utf-8")
+        self.assertIn("MONITOR_GRAPH_TOKEN", text)
+        self.assertIn("hour", text)
+
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
