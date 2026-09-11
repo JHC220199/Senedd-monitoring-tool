@@ -2265,6 +2265,14 @@ class TestGovWalesConsultationRegister(unittest.TestCase):
         self.assertNotIn("Housing and regeneration menu", item.body)
         self.assertIn("rent guarantor schemes", item.body)
 
+    def test_the_budget_is_big_enough_for_every_open_consultation(self):
+        """The register is walked newest-first, so a budget smaller than the
+        number of open consultations drops the OLDEST — which are the ones
+        closing soonest. On the first live run a budget of 25 lost the Council
+        Tax Reduction Scheme consultation, closing in twelve days."""
+        from monitor.collectors.govwales import GovWalesConsultationsCollector
+        self.assertGreaterEqual(GovWalesConsultationsCollector.MAX_DETAILS, 50)
+
     def test_the_block_returning_is_a_loud_error(self):
         """This host rejected datacentre IPs for weeks. If it starts again,
         the run must say so — otherwise the consultations simply stop
@@ -2959,6 +2967,51 @@ class TestFridayForwardBusiness(unittest.TestCase):
             item_date=date(2026, 7, 1), deadline=None, url="q2")
         sections = select_business([tabled, answered], TAX, today=self.TODAY)
         self.assertEqual([i.url for i in sections["oral"]], ["q1"])
+
+    def test_an_oral_question_shows_the_question_not_its_reference(self):
+        """The first edition printed "OQ64467" and nothing else.
+
+        An oral question's title is its reference number, and every row in the
+        email used the title, so the email named a code instead of the
+        business. The reader could not tell that the question was about
+        protecting renters, who asked it, or which session it would be answered
+        in — which is the whole of what the row is for.
+        """
+        from monitor.forward import render_forward, select_business
+        question = self._item(
+            source_kind="oral_question", title="OQ64467",
+            body="Will the First Minister set out a timeline for new measures "
+                 "to protect tenants in the private rented sector?",
+            speaker="David Hughes", constituency="Pontypridd Cynon Merthyr",
+            agenda_item="To the First Minister",
+            item_date=date(2026, 9, 10), deadline=date(2026, 9, 15),
+            url="q1")
+        sections = select_business([question], TAX, today=self.TODAY)
+        _, body, _ = render_forward(sections, TAX, today=self.TODAY)
+        self.assertIn("protect tenants in the private rented sector", body)
+        self.assertIn("David Hughes", body)
+        self.assertIn("Pontypridd Cynon Merthyr", body)
+        # Which session it is down for, and when.
+        self.assertIn("To the First Minister", body)
+        self.assertIn("Tue 15 Sep", body)
+        # The reference still appears, as a reference rather than as the point.
+        self.assertIn("OQ64467", body)
+
+    def test_a_committee_row_does_not_say_the_same_thing_twice(self):
+        """The title already carries the committee's name and the date, so
+        printing the forum underneath it repeated the line verbatim."""
+        from monitor.forward import render_forward, select_business
+        meeting = self._item(
+            source_kind="calendar", deadline=None,
+            title="Local Government, Housing and Planning Committee — "
+                  "17 September 2026, 09.30",
+            body="The committee is scheduled to meet.",
+            forum="Local Government, Housing and Planning Committee",
+            item_date=date(2026, 9, 17), url="c1")
+        sections = select_business([meeting], TAX, today=self.TODAY)
+        _, body, _ = render_forward(sections, TAX, today=self.TODAY)
+        self.assertEqual(
+            body.count("Local Government, Housing and Planning Committee"), 1)
 
     def test_an_empty_week_sends_nothing_at_all(self):
         """Six "nothing this week" emails in a row teach the reader to delete
