@@ -233,6 +233,13 @@ class Store:
             tiers=split(row["tiers"]), entities=split(row["entities"]),
             signals=split(row["signals"]), matched_terms=split(row["matched_terms"]),
             force_alert=bool(row["force_alert"]),
+            # When this item was FIRST seen, not when this row was read.
+            # `Item.__post_init__` defaults it to "now" when it is missing, so
+            # omitting it here silently stamped every item in the archive with
+            # the current time — which made "new since last Friday" mean
+            # "everything", and the NEW tag on the weekly email useless.
+            collected_at=(datetime.fromisoformat(row["collected_at"])
+                          if row["collected_at"] else None),
             raw_ref=row["raw_ref"] or "",
         )
 

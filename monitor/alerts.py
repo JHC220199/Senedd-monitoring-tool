@@ -334,3 +334,66 @@ def send(subject: str, html_body: str, text_body: str,
             smtp.login(username, password)
         smtp.send_message(message)
     return True
+
+
+# ---------------------------------------------------------------------------
+# Sending without credentials, via Power Automate
+# ---------------------------------------------------------------------------
+
+def post_to_flow(url: str, subject: str, body: str, count: int,
+                 session=None, dry_run: bool = True) -> tuple[bool, str]:
+    """POST ``{subject, body, count}`` to a Power Automate HTTP trigger.
+
+    Why this rather than SMTP
+    -------------------------
+    SMTP needs an app password, which needs IT, which is weeks. A Power
+    Automate instant cloud flow needs nothing from anyone: the operator creates
+    it in their own account, and the flow sends the mail *as them* from
+    Microsoft's own infrastructure. **No credential of any kind is stored in
+    this repository or passed to this process** — the webhook URL is the only
+    secret, it is write-only, and the worst it can do is send its owner an
+    email.
+
+    This is the same pattern as the Westminster written-questions tool, which
+    has been running on it for months, so the two tools deliver the same way.
+
+    Returns ``(sent, message)``. Never raises: a failed weekly email must
+    annotate the run, not end it.
+    """
+    if count <= 0:
+        # An empty week is not worth an email. Six "nothing this week" messages
+        # in a row teach the reader to delete the seventh unread, and the
+        # seventh is the one with a consultation in it.
+        return False, ("Nothing scheduled or open that is relevant — no email "
+                       "sent, deliberately.")
+    if not url:
+        return False, ("No flow URL configured (MONITOR_FLOW_URL). Create a "
+                       "Power Automate instant cloud flow with an HTTP request "
+                       "trigger and store its POST URL as a repository secret "
+                       "— see FORWARD-EMAIL-SETUP.md.")
+    if dry_run:
+        return False, "Dry run — nothing sent. Add --send to deliver."
+
+    payload = {"subject": subject, "body": body, "count": count}
+    try:
+        if session is None:
+            import requests
+            session = requests.Session()
+        resp = session.post(url, json=payload, timeout=60)
+    except Exception as exc:  # noqa: BLE001 - network variety
+        return False, (f"Could not reach the Power Automate flow "
+                       f"({type(exc).__name__}: {exc}).")
+
+    if 200 <= resp.status_code < 300:
+        return True, f"Posted to the flow ({resp.status_code})."
+    if resp.status_code in (401, 403):
+        return False, ("The flow rejected the request "
+                       f"({resp.status_code}). The URL in MONITOR_FLOW_URL has "
+                       "probably been regenerated — open the flow in Power "
+                       "Automate, copy the HTTP POST URL again and update the "
+                       "secret.")
+    if resp.status_code == 404:
+        return False, ("The flow URL returned 404. The flow has been deleted, "
+                       "renamed or turned off in Power Automate.")
+    return False, (f"The flow returned {resp.status_code}: "
+                   f"{(resp.text or '')[:200]}")

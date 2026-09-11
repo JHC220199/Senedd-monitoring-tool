@@ -5,6 +5,7 @@
     python -m monitor.cli brief                     The briefing as markdown
     python -m monitor.cli digest   [--send]         Build (and optionally send)
     python -m monitor.cli alert    [--send]         Critical items only
+    python -m monitor.cli forward  [--send]         Friday future business
     python -m monitor.cli search   "rent control"   Query the archive
     python -m monitor.cli rescore                   Re-apply a tuned taxonomy
     python -m monitor.cli stats                     Archive health
@@ -518,6 +519,66 @@ def cmd_alert(args) -> int:
     return _report_not_sent(args, recipients, config)
 
 
+def cmd_forward(args) -> int:
+    """The Friday future-business email — what is scheduled, not what happened.
+
+    Replaces the forward-look half of the Camlas weekly briefing. Delivered
+    through a Power Automate flow rather than SMTP, so there is no credential
+    anywhere: the script POSTs a subject and a body, and the operator's own
+    flow sends the mail. See FORWARD-EMAIL-SETUP.md.
+    """
+    from pathlib import Path
+    from .forward import last_friday, render_forward, select_business
+
+    tax = Taxonomy.load(args.taxonomy)
+    store = Store(args.db)
+    try:
+        # No score floor: the page's strict rule is applied inside
+        # select_business, and it deliberately rescues low-scoring
+        # consultations that a raw cut-off would drop.
+        items = store.query(min_score=0, limit=5000)
+        today = date.today()
+        since = (date.fromisoformat(args.new_since) if args.new_since
+                 else last_friday(today))
+        sections = select_business(items, tax, today=today,
+                                   weeks_ahead=args.weeks)
+        repo = os.environ.get("GITHUB_REPOSITORY", "")
+        page_url = (f"https://{repo.split('/')[0].lower()}.github.io/"
+                    f"{repo.split('/')[1]}/") if "/" in repo else ""
+        subject, html_body, count = render_forward(
+            sections, tax, today=today, new_since=since, page_url=page_url)
+    finally:
+        store.close()
+
+    print(f"Subject: {subject}")
+    for name, rows in sections.items():
+        print(f"  {len(rows):>3}  {name}")
+
+    if args.out:
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html_body, encoding="utf-8")
+        print(f"Written to {out}")
+
+    sent, message = alerts_mod.post_to_flow(
+        os.environ.get("MONITOR_FLOW_URL", ""), subject, html_body, count,
+        dry_run=not args.send)
+    print(message)
+
+    if sent or count == 0:
+        return 0
+    if not args.send:
+        return 0
+    # Configured and asked to send, and it did not go. That is a real failure
+    # and the run should say so — silence here is how a weekly email stops
+    # arriving without anyone noticing for a month.
+    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(summary, "a", encoding="utf-8") as fh:
+            fh.write(f"\n> [!WARNING]\n> **The Friday future-business email "
+                     f"was not sent.** {message}\n")
+    return 2
+
+
 def cmd_search(args) -> int:
     store = Store(args.db)
     results = store.search(args.expression, limit=args.limit)
@@ -843,6 +904,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--to", default="")
     p.add_argument("--send", action="store_true")
     p.set_defaults(func=cmd_alert)
+
+    p = sub.add_parser("forward",
+                       help="the Friday future-business email")
+    p.add_argument("--out", default="out/forward.html")
+    p.add_argument("--weeks", type=int, default=3,
+                   help="how far ahead the diary sections look")
+    p.add_argument("--new-since", default="",
+                   help="ISO date; anything collected on or after it is "
+                        "tagged NEW. Defaults to the previous Friday.")
+    p.add_argument("--send", action="store_true",
+                   help="actually POST to the Power Automate flow")
+    p.set_defaults(func=cmd_forward)
 
     p = sub.add_parser("search", help="full-text search the archive")
     p.add_argument("expression")
