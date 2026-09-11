@@ -16,8 +16,9 @@ connection. The block is on where the request comes from, not on who is asking
 or how often. Changing the User-Agent does not fix it and should not be
 attempted: working around a WAF is both fragile and impolite.
 
-There are therefore two supported routes, and the recommended production design
-uses ROUTE B as primary with ROUTE A as an opportunistic supplement.
+There are therefore three supported routes. ROUTE C is the one that works
+everywhere and needs nothing set up; ROUTE B closes the gap it leaves; ROUTE A
+is an opportunistic supplement when running from an office network.
 
 ROUTE A — direct RSS (`GovWalesRSSCollector`)
     Works when the collector runs from a network the WAF accepts: an NRLA
@@ -41,7 +42,19 @@ ROUTE B — the official email subscription (`GovWalesMailboxCollector`)
     and it also replaces the consultation-alert half of the Camlas service
     outright.
 
-The consultation deadline parser below is shared by both routes, because
+ROUTE C — the Welsh Government newsroom (`GovWalesNewsroomCollector`)
+    `media.service.gov.wales` is a *different host* from www.gov.wales and is
+    not behind the CloudFront rule. Measured 19 August 2026 and again on
+    11 September 2026, it returns 200 from a cloud host. It is the Welsh
+    Government's own newsroom carrying the same press notices, tagged by topic.
+
+    It needs no account, no permission and no IT ticket, which is why it runs
+    on every run and why the Welsh Government section of the page is no longer
+    empty. What it does NOT carry is the consultation *register* — the
+    authoritative closing dates — so ROUTE B is still worth setting up, and the
+    page says so out loud rather than leaving a reader to assume full coverage.
+
+The consultation deadline parser below is shared by all three routes, because
 closing dates are the single most actionable field in the whole system.
 """
 
@@ -49,8 +62,10 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
+
+from bs4 import BeautifulSoup
 
 from ..models import Item, _clean
 from .base import Collector
@@ -59,6 +74,22 @@ from .base import Collector
 ANNOUNCEMENTS_RSS = "https://www.gov.wales/announcements/rss"
 CONSULTATIONS_PAGE = "https://www.gov.wales/consultations"
 SUBSCRIBE_PAGE = "https://www.gov.wales/subscribe/announcements"
+
+# The Welsh Government's own newsroom. A DIFFERENT HOST from www.gov.wales and
+# — measured 19 August 2026, re-measured 11 September 2026 — not behind the
+# CloudFront rule that makes www.gov.wales unreachable from a cloud host:
+#
+#     GET https://www.gov.wales/announcements/rss   -> 403
+#     GET https://www.gov.wales/consultations       -> 403
+#     GET https://media.service.gov.wales/news      -> 200
+#
+# It carries the same press notices, tagged by topic. Nothing is being worked
+# around: this is a second public address published by the same body, fetched
+# with the same honest User-Agent and the same 1.5s request floor as every
+# other source. If it is ever put behind the same rule, this collector fails
+# loudly (see the two note_error calls below) rather than going quiet.
+NEWSROOM_ROOT = "https://media.service.gov.wales"
+NEWSROOM_NEWS = f"{NEWSROOM_ROOT}/news"
 
 DC = "{http://purl.org/dc/elements/1.1/}"
 
@@ -214,8 +245,21 @@ class GovWalesMailboxCollector(Collector):
        ``Mail.Read`` scoped by an Exchange application access policy to that one
        mailbox. Scoping matters — without the policy the app can read every
        mailbox in the tenant, which IT will rightly refuse.
-    3. This collector reads unprocessed messages, converts each to an Item, and
-       marks them read so the next run does not reprocess them.
+    3. This collector reads messages RECEIVED SINCE a given date, and converts
+       each to an Item.
+
+    Why by date, and not by the unread flag
+    ---------------------------------------
+    The first version filtered on ``isRead eq false`` and marked each message
+    read. The mailbox is a real person's inbox, so opening a Welsh Government
+    email in Outlook — the entirely normal thing to do with an email — removed
+    it from the collector's view permanently. The consultation was then missing
+    from the page, and nothing anywhere said so.
+
+    Reading by ``receivedDateTime`` also keeps the permission ask at
+    ``Mail.Read`` rather than ``Mail.ReadWrite``, because nothing has to be
+    written back. That is a materially smaller thing to ask IT for, and IT are
+    right to care about the difference.
 
     Data protection
     ---------------
@@ -248,7 +292,22 @@ class GovWalesMailboxCollector(Collector):
         self.mailbox = mailbox
         self.access_token = access_token
 
-    def iter_messages(self, top: int = 100):
+    def first_page_url(self, since: date | None = None, top: int = 100) -> str:
+        """Build the Graph query for the first page of messages.
+
+        Separated out and given no side effects purely so it can be asserted
+        on in a test. The bug this replaces lived in a single f-string buried
+        inside a paging loop that needed a tenant to exercise, which is how it
+        survived review.
+        """
+        since = since or (date.today() - timedelta(days=21))
+        return (f"{self.GRAPH_ROOT}/users/{self.mailbox}/mailFolders/Inbox/messages"
+                f"?$filter=receivedDateTime ge {since.isoformat()}T00:00:00Z"
+                f"&$top={top}"
+                f"&$orderby=receivedDateTime desc"
+                f"&$select=id,subject,body,bodyPreview,receivedDateTime,from,webLink")
+
+    def iter_messages(self, since: date | None = None, top: int = 100):
         """Yield raw message dicts from Graph.
 
         Kept small and replaceable on purpose — everything below this line is
@@ -257,14 +316,12 @@ class GovWalesMailboxCollector(Collector):
         if not (self.mailbox and self.access_token):
             self.note_error(
                 "mailbox route not configured (no mailbox/token supplied). "
-                "This is the recommended production source for gov.wales; see "
-                "the specification for the Entra ID app registration steps."
+                "This closes the gov.wales consultation-register gap; see "
+                "WELSH-GOVERNMENT-SETUP.md for the four repository secrets."
             )
             return
 
-        url = (f"{self.GRAPH_ROOT}/users/{self.mailbox}/mailFolders/Inbox/messages"
-               f"?$filter=isRead eq false&$top={top}"
-               f"&$select=id,subject,body,bodyPreview,receivedDateTime,from,webLink")
+        url = self.first_page_url(since=since, top=top)
         headers = {"Authorization": f"Bearer {self.access_token}"}
         while url:
             try:
@@ -273,14 +330,41 @@ class GovWalesMailboxCollector(Collector):
                 self.note_error(f"Graph request failed: {exc}")
                 return
             if resp.status_code != 200:
-                self.note_error(f"Graph returned {resp.status_code}: {resp.text[:300]}")
+                self.note_error(self._explain_status(resp))
                 return
             payload = resp.json()
             yield from payload.get("value", [])
             url = payload.get("@odata.nextLink")
 
-    def collect(self):
-        for message in self.iter_messages():
+    def _explain_status(self, resp) -> str:
+        """Say what a Graph failure means to the person who has to fix it.
+
+        401 and 403 look identical in a log and have completely different
+        causes and completely different fixes — and the fix for one of them is
+        a message to IT, so guessing wastes days rather than minutes.
+        """
+        body = (resp.text or "")[:300]
+        if resp.status_code == 401:
+            return (
+                "Microsoft Graph returned 401 (unauthorised) for the mailbox "
+                "route. The credential was rejected: either the client secret "
+                "has expired, or admin consent for the application permission "
+                "Mail.Read was never granted — in Azure, the API permissions "
+                "screen must show a green tick in the Status column. "
+                f"Graph said: {body}")
+        if resp.status_code == 403:
+            return (
+                "Microsoft Graph returned 403 (forbidden) for the mailbox "
+                "route. The app signed in successfully but is not allowed to "
+                "read this mailbox. Usually the Exchange application access "
+                f"policy names a different mailbox from MONITOR_MAILBOX "
+                f"({self.mailbox}), or the permission granted was a delegated "
+                "one rather than an application one. "
+                f"Graph said: {body}")
+        return f"Graph returned {resp.status_code}: {body}"
+
+    def collect(self, since: date | None = None):
+        for message in self.iter_messages(since=since):
             item = self.message_to_item(message)
             if item:
                 yield item
@@ -329,4 +413,228 @@ class GovWalesMailboxCollector(Collector):
             forum="Welsh Government",
             deadline=parse_deadline(combined) if kind == "consultation" else None,
             raw_ref=f"mailbox:{self.mailbox}:{message.get('id','')}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# ROUTE C — the Welsh Government newsroom, reachable from anywhere
+# ---------------------------------------------------------------------------
+
+class GovWalesNewsroomCollector(Collector):
+    """Welsh Government press notices from media.service.gov.wales.
+
+    This is the route that finally put Welsh Government material on the page.
+    Neither of the other two could: RSS is blocked from any cloud host, and the
+    mailbox route needs an app registration from IT that may take weeks.
+
+    What it does NOT close
+    ----------------------
+    The consultation register at gov.wales/consultations holds the
+    *authoritative* closing dates, and that register is still unreachable. A
+    consultation is normally announced in the newsroom when it opens, so it is
+    usually seen — but the deadline parsed out of an announcement should be
+    confirmed against gov.wales before anyone plans around it. That limitation
+    is stated on the page itself, in the "What this page does not cover" panel,
+    rather than being left for a reader to discover.
+
+    Politeness
+    ----------
+    Twelve cards a page, one page fetched at a time, at most MAX_PAGES pages
+    and MAX_ARTICLES full articles per run, all through the shared Fetcher and
+    therefore behind the same 1.5s-per-host floor. A full run is well under a
+    hundred requests to a press office that serves far more than that a minute.
+    """
+
+    name = "gov_wales_newsroom"
+    source_kind = "press_release"
+
+    # Roughly three months at the newsroom's usual publishing rate. Deliberately
+    # more than the 21-day lookback, so a re-dated or late-appearing story is
+    # still found.
+    MAX_PAGES = 6
+
+    # Cards carry a one-paragraph summary, which is too thin for the taxonomy to
+    # score fairly — "Building Safety (Wales) Act 2026" can appear only in the
+    # body. So each in-window card is fetched in full, capped so a busy
+    # fortnight cannot turn one run into four hundred requests.
+    MAX_ARTICLES = 40
+
+    # "Wednesday 19 Aug 2026, 14:00" on a card; "2026-06-17 14:00" in the
+    # datetime attribute of a story page.
+    CARD_DATE_FORMAT = "%A %d %b %Y, %H:%M"
+    STORY_DATE_FORMAT = "%Y-%m-%d %H:%M"
+
+    def collect(self, since: date | None = None, max_articles: int | None = None):
+        start = since or (date.today() - timedelta(days=21))
+        budget = self.MAX_ARTICLES if max_articles is None else max_articles
+
+        seen: set[str] = set()
+        for page in range(1, self.MAX_PAGES + 1):
+            url = NEWSROOM_NEWS if page == 1 else f"{NEWSROOM_NEWS}?page={page}"
+            html = self.fetcher.get_text(url)
+
+            if html is None:
+                if page == 1:
+                    # Loud failure #1. If this host has since been put behind
+                    # the same rule as www.gov.wales, the Welsh Government half
+                    # of the page is gone and someone must be told — an empty
+                    # section is indistinguishable from a quiet fortnight.
+                    self.note_error(
+                        "The Welsh Government newsroom at "
+                        f"{NEWSROOM_NEWS} could not be fetched. If this is a "
+                        "403, the host has been put behind the same CloudFront "
+                        "rule as www.gov.wales and this route is dead — the "
+                        "mailbox route (WELSH-GOVERNMENT-SETUP.md) is then the "
+                        "only way to see Welsh Government announcements.")
+                return
+
+            cards = self._parse_cards(html)
+
+            if page == 1 and not cards:
+                # Loud failure #2, and a separate one on purpose. Page 1
+                # answering 200 with nothing parseable means the markup has
+                # changed, which is a different problem with a different fix
+                # from the host being blocked — and it is the failure most
+                # likely to masquerade as a quiet fortnight.
+                self.note_error(
+                    "The Welsh Government newsroom returned a page but no "
+                    "stories could be read from it — the markup has probably "
+                    "changed. The parser expects a '.card' per story, with "
+                    "'.card__date', '.card__title' and an 'a.card__link'. "
+                    "Until this is fixed the Welsh Government section is "
+                    "empty for the wrong reason.")
+                return
+
+            in_window = [c for c in cards if c["date"] and c["date"] >= start]
+
+            for card in in_window:
+                if card["slug"] in seen:
+                    continue
+                seen.add(card["slug"])
+                if budget <= 0:
+                    break
+                budget -= 1
+                item = self._story_to_item(card)
+                if item:
+                    yield item
+
+            # Everything on this page predates the window, so every later page
+            # does too — the listing is newest first.
+            if cards and not in_window:
+                return
+            if not cards:
+                return
+
+    # -- parsing -----------------------------------------------------------
+
+    def _parse_cards(self, html: str) -> list[dict]:
+        """Turn a listing page into card dicts. Never raises."""
+        soup = BeautifulSoup(html, "html.parser")
+        cards: list[dict] = []
+
+        for node in soup.select(".card"):
+            link = node.select_one("a.card__link") or node.select_one("a[href]")
+            if not link:
+                continue
+            href = (link.get("href") or "").strip()
+            # Topic links (/news/t/housing) sit in the same markup as stories
+            # and are not stories. Following them yields a listing page parsed
+            # as if it were an announcement.
+            if not href.startswith("/news/") or href.startswith("/news/t/"):
+                continue
+
+            title = _clean(link.get_text(" ", strip=True))
+            if not title:
+                continue
+
+            summary_node = node.select_one(".card__summary")
+            summary = _clean(summary_node.get_text(" ", strip=True)) if summary_node else ""
+
+            date_node = node.select_one(".card__date") or node.select_one("time")
+            card_date = self._parse_card_date(
+                date_node.get_text(" ", strip=True) if date_node else "")
+
+            cards.append({
+                "slug": href.rsplit("/", 1)[-1],
+                "url": f"{NEWSROOM_ROOT}{href}",
+                "title": title,
+                "summary": summary,
+                "date": card_date,
+            })
+        return cards
+
+    def _parse_card_date(self, text: str) -> date | None:
+        text = (text or "").strip()
+        if not text:
+            return None
+        try:
+            return datetime.strptime(text, self.CARD_DATE_FORMAT).date()
+        except ValueError:
+            pass
+        # Without the weekday, and without the time, in case either is dropped.
+        for fmt in ("%d %b %Y, %H:%M", "%A %d %b %Y", "%d %b %Y", "%d %B %Y"):
+            try:
+                return datetime.strptime(text, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    def _story_to_item(self, card: dict) -> Item | None:
+        html = self.fetcher.get_text(card["url"])
+        if html is None:
+            # One unreachable story is not worth a run-level error, but the
+            # card summary is better than nothing.
+            return self._item_from(card, body=card["summary"], tags=[],
+                                   story_date=None)
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        body_node = soup.select_one(".story__body")
+        summary_node = soup.select_one(".story__summary")
+        parts = [card["summary"]]
+        if summary_node:
+            parts.append(summary_node.get_text(" ", strip=True))
+        if body_node:
+            parts.append(body_node.get_text("\n", strip=True))
+        body = _clean("\n\n".join(p for p in parts if p))
+
+        tags = [t.get_text(" ", strip=True)
+                for t in soup.select(".story__tags a, .tag__link")]
+
+        story_date = None
+        date_node = soup.select_one("time.story__date") or soup.select_one("time")
+        if date_node:
+            raw = (date_node.get("datetime") or "").strip()
+            for fmt in (self.STORY_DATE_FORMAT, "%Y-%m-%d"):
+                try:
+                    story_date = datetime.strptime(raw, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if story_date is None:
+                story_date = self._parse_card_date(
+                    date_node.get_text(" ", strip=True))
+
+        return self._item_from(card, body=body, tags=tags, story_date=story_date)
+
+    def _item_from(self, card: dict, body: str, tags: list[str],
+                   story_date: date | None) -> Item:
+        # The story page wins. A listing entry can be re-dated when a notice is
+        # edited, and the date on the notice itself is the one a reader would
+        # cite.
+        item_date = story_date or card["date"]
+        kind, label = classify(card["title"], body)
+        combined = f"{card['title']}\n{body}"
+
+        return Item(
+            source_kind=kind,
+            source_name=f"Welsh Government — {label}",
+            title=card["title"],
+            body=combined,
+            url=card["url"],
+            item_date=item_date,
+            forum="Welsh Government",
+            agenda_item="; ".join(tags),
+            deadline=parse_deadline(combined) if kind == "consultation" else None,
+            raw_ref=f"newsroom:{card['slug']}",
         )
