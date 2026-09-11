@@ -618,26 +618,65 @@ def _coverage_banner(not_live: list[str]) -> str:
     page for weeks and nothing said the live feed behind them was dead.
 
     So the gap gets said out loud, in the reader's own terms, above the lists.
+
+    The gov.wales explanation is CONDITIONAL on a Welsh Government source
+    actually being one of the ones named. It used to be printed whatever had
+    failed, so a broken Senedd transcript feed produced a confident paragraph
+    about gov.wales and CloudFront — sending the reader to check the one place
+    the missing material definitely was not. A banner that explains the wrong
+    thing is worse than a banner that only names the source.
     """
     if not not_live:
         return ""
     names = ", ".join(sorted(not_live))
+    plural = len(not_live) > 1
+    lead = (f'These sources are not reporting: <b>{_e(names)}</b>.' if plural
+            else f'This source is not reporting: <b>{_e(names)}</b>.')
+
+    explanation = ""
+    if any("welsh government" in s.lower() or "gov.wales" in s.lower()
+           for s in not_live):
+        explanation = (
+            ' Welsh Government material — consultations, written statements '
+            'and announcements — is published on gov.wales, which blocks the '
+            'server this tool runs on. Check gov.wales directly for Welsh '
+            'Government consultations until this is reconnected.')
+
     return (
         '<div class="warn" role="status">'
         '<b>Not everything is being monitored.</b> '
-        f'This source is not reporting: <b>{_e(names)}</b>. '
-        'Welsh Government material — consultations, written statements and '
-        'announcements — is published on gov.wales, which blocks the server '
-        'this tool runs on. Until the shared mailbox is connected, treat the '
-        'lists below as Senedd business only, and check gov.wales directly '
-        'for Welsh Government consultations.'
+        f'{lead}{explanation}'
         '</div>')
+
+
+def _partial_note(gaps: list[str]) -> str:
+    """What this tool does not watch, by design.
+
+    Deliberately a different thing from the amber banner above, and it looks
+    different so that it reads as a different thing:
+
+        the banner  — "a source that should be reporting is not"  (a fault)
+        this panel  — "here is what this tool does not watch"     (a limit)
+
+    Collapsing the two would mean either permanently flying a fault warning for
+    something nobody intends to fix, or burying a real fault among standing
+    caveats. Both end the same way: nobody reads either.
+    """
+    if not gaps:
+        return ""
+    items = "".join(f"<li>{g}</li>" for g in gaps)
+    return (
+        '<details class="gaps">'
+        '<summary>What this page does not cover</summary>'
+        f'<ul>{items}</ul>'
+        '</details>')
 
 
 def render_site(items: list[Item], tax: Taxonomy,
                 generated: datetime | None = None,
                 repo: str = "",
-                not_live: list[str] | None = None) -> str:
+                not_live: list[str] | None = None,
+                gaps: list[str] | None = None) -> str:
     """The whole database as one self-contained HTML page."""
     generated = generated or datetime.now()
     today = date.today()
@@ -706,7 +745,7 @@ def render_site(items: list[Item], tax: Taxonomy,
             ("NEXT COMMITTEE MEETING", next_meeting or "—"),
         ])
 
-    banner = _coverage_banner(not_live or [])
+    banner = _coverage_banner(not_live or []) + _partial_note(gaps or [])
     payload = json.dumps(csv_rows, ensure_ascii=False)
     stamp = generated.strftime("%-d %b %Y at %H:%M") \
         if hasattr(generated, "strftime") else ""
@@ -776,6 +815,12 @@ def render_site(items: list[Item], tax: Taxonomy,
     border-radius:8px;padding:13px 16px;margin-bottom:18px;font-size:14px;
     line-height:1.55;color:{INK}}}
   .warn b{{color:#8A3B06}}
+  /* Calm on purpose. A standing limitation must not look like a fault. */
+  details.gaps{{background:#fff;border:1px solid {LINE};border-radius:8px;
+    padding:10px 14px;margin-bottom:18px;font-size:13.5px;color:{MUTED}}}
+  details.gaps summary{{cursor:pointer;font-weight:600;color:{BLUE}}}
+  details.gaps ul{{margin:10px 0 2px;padding-left:20px;line-height:1.6}}
+  details.gaps li{{margin-bottom:6px}}
   .empty{{padding:30px;text-align:center;color:{MUTED};background:#fff;
     border:1px solid {LINE};border-radius:10px;font-size:14px}}
   details.more{{margin-top:10px}}

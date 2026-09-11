@@ -32,6 +32,7 @@ from datetime import date, timedelta
 from . import alerts as alerts_mod
 from .collectors.base import Fetcher
 from .dashboard import render as render_dashboard
+from .graph_auth import resolve_token
 from .pipeline import Pipeline
 from .relevance import Scorer, Taxonomy
 from .store import Store
@@ -49,9 +50,24 @@ def _pipeline(args) -> tuple[Pipeline, Store, Taxonomy]:
     tax = Taxonomy.load(args.taxonomy)
     store = Store(args.db)
     fetcher = Fetcher(min_interval=args.interval)
+
+    # The mailbox route is only attempted when a mailbox is named. A deployment
+    # inside the NRLA network reaches gov.wales directly and should never talk
+    # to Microsoft at all — asking it to would produce a confusing failure for
+    # a feature that deployment does not use.
+    mailbox = os.environ.get("MONITOR_MAILBOX", "")
+    graph_token = ""
+    if mailbox:
+        graph_token, graph_error = resolve_token(os.environ, fetcher.session)
+        if graph_error:
+            # Printed, not raised. The reader is a policy officer looking at a
+            # run log, and this sentence tells them what to do next.
+            print(f"\n  Welsh Government mailbox route not available: "
+                  f"{graph_error}\n")
+
     pipe = Pipeline(store, taxonomy=tax, fetcher=fetcher,
-                    mailbox=os.environ.get("MONITOR_MAILBOX", ""),
-                    graph_token=os.environ.get("MONITOR_GRAPH_TOKEN", ""),
+                    mailbox=mailbox,
+                    graph_token=graph_token,
                     govwales_route=getattr(args, "govwales_route", None)
                     or os.environ.get("MONITOR_GOVWALES_ROUTE", "auto"))
     return pipe, store, tax
@@ -172,6 +188,39 @@ def _briefing_markdown(args) -> str:
         store.close()
 
 
+def _standing_gaps(runs: list[dict]) -> list[str]:
+    """What this tool does not watch, by design — for the page's own panel.
+
+    Standing limitations, not faults. A reader who can see the list can judge
+    what the page is silent about; a reader who cannot will reasonably assume
+    that an empty section means nothing happened.
+
+    The mailbox gaps are listed only while the mailbox route is not running.
+    `per_source` is not persisted in the runs table, but `sources` — the list
+    of sources attempted — is, so that is what the presence test uses.
+    """
+    gaps = [
+        "Written statements laid before the Senedd, unless they were also "
+        "issued as a press announcement.",
+        "Documents laid before the Senedd. There is no collector for the laid "
+        "documents register yet; it is how the Council Tax Reduction Scheme "
+        "consultation reached the supplier's briefing and not this page.",
+        "Written questions. These are deliberately excluded — the team's "
+        "dedicated Westminster and Senedd written-questions tool tracks them.",
+    ]
+
+    attempted = set(runs[0].get("sources") or []) if runs else set()
+    if not any("mailbox" in s.lower() for s in attempted):
+        gaps.insert(0,
+                    "The Welsh Government consultation register at "
+                    "gov.wales/consultations, which holds the authoritative "
+                    "closing dates. Announcements that launch a consultation "
+                    "ARE captured from the Welsh Government newsroom, so most "
+                    "are seen — but confirm the deadline on gov.wales before "
+                    "relying on it.")
+    return gaps
+
+
 def cmd_site(args) -> int:
     """Build the hosted database page that GitHub Pages serves.
 
@@ -208,7 +257,8 @@ def cmd_site(args) -> int:
 
         page = render_site(items, tax,
                            repo=os.environ.get("GITHUB_REPOSITORY", ""),
-                           not_live=not_live)
+                           not_live=not_live,
+                           gaps=_standing_gaps(runs))
     finally:
         store.close()
 

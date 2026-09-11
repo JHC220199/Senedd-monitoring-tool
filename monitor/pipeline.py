@@ -20,6 +20,7 @@ from .collectors.base import Fetcher
 from .collectors.committee_work import SeneddCommitteeWorkCollector
 from .collectors.forward_look import SeneddCalendarCollector
 from .collectors.govwales import (GovWalesMailboxCollector,
+                                  GovWalesNewsroomCollector,
                                   GovWalesRSSCollector)
 from .collectors.legislation import LegislationCollector, SeneddBillCollector
 from .collectors.record_search import RecordSearchCollector
@@ -31,6 +32,23 @@ from .store import Store
 
 
 log = logging.getLogger(__name__)
+
+
+# A source that is *replaced* by another, and the sources that replace it.
+#
+# The page names "Welsh Government — RSS" as not reporting, which was exactly
+# right while nothing else covered Welsh Government material: an empty section
+# reads as "nothing to report" when it means "not looking". It stops being
+# right the moment announcements start arriving by another route. A banner that
+# stays up after the gap it describes has closed teaches people to ignore
+# banners, and that banner is the only thing standing between a reader and a
+# silent gap the next time one opens.
+SUBSTITUTED_BY = {
+    "Welsh Government — RSS": (
+        "Welsh Government — newsroom",
+        "Welsh Government — mailbox",
+    ),
+}
 
 
 @dataclass
@@ -115,6 +133,7 @@ class Pipeline:
         bills = SeneddBillCollector(self.fetcher)
         calendar = SeneddCalendarCollector(self.fetcher)
         gov_rss = GovWalesRSSCollector(self.fetcher)
+        gov_news = GovWalesNewsroomCollector(self.fetcher)
         gov_mail = GovWalesMailboxCollector(
             self.fetcher, mailbox=self.mailbox, access_token=self.graph_token)
         research = SeneddResearchCollector(self.fetcher)
@@ -144,9 +163,14 @@ class Pipeline:
         yield ("Senedd Bills and Acts", bills, lambda: bills.collect(), False)
         yield ("Senedd forward look", calendar, lambda: calendar.collect(), False)
 
+        # BEFORE the RSS source, and not optional. This is the route that works
+        # from a cloud host, so if it returns nothing that is a real fault and
+        # should be reported as one.
+        yield ("Welsh Government — newsroom", gov_news,
+               lambda: gov_news.collect(since=start), False)
         if have_mailbox:
             yield ("Welsh Government — mailbox", gov_mail,
-                   lambda: gov_mail.collect(), False)
+                   lambda: gov_mail.collect(since=start), False)
         yield ("Welsh Government — RSS", gov_rss,
                lambda: gov_rss.collect(), rss_optional)
         # Reachable everywhere, and partially closes the gov.wales gap: Senedd
@@ -187,6 +211,16 @@ class Pipeline:
                 elif collector.errors or label in report.sources_failed:
                     if label not in report.sources_failed:
                         report.sources_failed.append(label)
+
+        # A substituted source whose replacement actually delivered is no
+        # longer a gap, so it stops being named on the page. Done after the run
+        # loop rather than inside it because the replacement may be collected
+        # after the source it replaces.
+        for source, substitutes in SUBSTITUTED_BY.items():
+            if source not in report.sources_substituted:
+                continue
+            if any(report.per_source.get(s, 0) > 0 for s in substitutes):
+                report.sources_substituted.remove(source)
 
         new, total = self.store.upsert_many(all_items)
         report.new_items = new
