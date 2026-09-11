@@ -71,6 +71,24 @@ If a daily email is ever wanted, the SMTP route still exists — set
 `MONITOR_SMTP_HOST`, `MONITOR_SMTP_USER`, `MONITOR_SMTP_PASS`, `MONITOR_FROM`
 and `MONITOR_TO`, and the formatted digest sends from an NRLA address.
 
+### One email that is deliberately wanted: Friday future business
+
+A *per-run* notification is noise. A weekly forward look is not, and it is the
+half of the supplier's service that a page cannot replace — a page has to be
+opened, and a deadline you did not know about is one you do not go looking for.
+
+Every Friday afternoon, one email: consultations closing soonest, committee
+meetings in the next three weeks, Plenary business, and oral questions tabled
+for forthcoming sittings — filtered by exactly the same strict rule as the live
+page. Open items repeat every week until they close, because that is what a
+forward-business list is; anything first seen since last Friday is tagged
+**NEW**. An entirely empty week sends nothing at all.
+
+It is delivered by POSTing to a Power Automate flow the operator owns, so there
+is no SMTP host, no app password and no IT ticket — the same arrangement the
+Westminster written-questions tool already runs on. Five minutes of setup:
+[`FORWARD-EMAIL-SETUP.md`](FORWARD-EMAIL-SETUP.md).
+
 **If a run went green and something looks wrong, read `TROUBLESHOOTING.md`.**
 
 ---
@@ -114,6 +132,7 @@ python -m monitor.cli export --out data/archive.sql
 | `publish` | Writes `BRIEFING.md` and `briefings/YYYY-Wnn.md`. The workflow passes `--no-issue`, so no GitHub issue is opened and nothing is emailed. `--dry-run` to see what it would do. |
 | `digest --days N [--send]` | Build the periodic digest. **Dry run by default.** |
 | `alert [--send]` | Email unnotified Critical items only. **Dry run by default.** |
+| `forward [--send]` | The Friday future-business email — consultations closing soonest, committee meetings in the next three weeks, Plenary business, and oral questions tabled for forthcoming sittings. Sent through a Power Automate flow, so there are no SMTP credentials anywhere. **Dry run by default.** See [`FORWARD-EMAIL-SETUP.md`](FORWARD-EMAIL-SETUP.md). |
 | `search "rent control"` | Full-text search the whole archive. |
 | `rescore` | Re-apply the current taxonomy to everything already collected. No network. |
 | `stats` | Archive size, band distribution, upcoming deadlines, recent run health. |
