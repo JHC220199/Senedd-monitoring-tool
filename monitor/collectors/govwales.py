@@ -698,13 +698,21 @@ class GovWalesConsultationsCollector(Collector):
     name = "gov_wales_consultations"
     source_kind = "consultation"
 
-    # Ten to a page, newest publication first. Six pages is roughly the last
-    # three months of publications, which comfortably covers anything still
-    # open — consultations here run eight to twelve weeks.
-    MAX_PAGES = 6
+    # Ten to a page, newest publication first. Page 5 reaches back to April, so
+    # eight pages covers anything still open by a wide margin — consultations
+    # here run eight to twelve weeks.
+    MAX_PAGES = 8
 
     # Bounds a run when the Welsh Government has had a busy quarter.
-    MAX_DETAILS = 25
+    #
+    # This was 25, and 25 was wrong. The register is walked newest-first, so a
+    # budget smaller than the number of open consultations silently drops the
+    # OLDEST ones — which are precisely the ones closing soonest. On the first
+    # live run it cost the Council Tax Reduction Scheme consultation, closing
+    # in twelve days. Only open consultations are fetched, and there are rarely
+    # more than thirty of those, so this is a genuine ceiling rather than a
+    # throttle.
+    MAX_DETAILS = 60
 
     def collect(self):
         budget = self.MAX_DETAILS
