@@ -5,7 +5,7 @@
 > [!WARNING]
 > **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`, `Senedd forward look`
 
-**8** open consultations · **8** closing within three weeks · **15** developments to review
+**9** open consultations · **8** closing within three weeks · **15** developments to review
 
 ## Respond — things with a deadline
 
@@ -19,6 +19,7 @@
 | **7 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | 14 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | 14 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| Closes 30 November | [Shape plans for a new clean energy company, owned by Wales, to benefit Wales](https://media.service.gov.wales/news/shape-plans-for-a-new-clean-energy-company-owned-by-wales-to-benefit-wales)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 
 <details><summary>Open, but no closing date published yet (13)</summary>
 
@@ -131,4 +132,4 @@ Touches property taxation and budget & legislative programme. Read for context b
 
 ---
 
-<sub>100 items scored from 229 collected records, 11 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>103 items scored from 232 collected records, 11 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
