@@ -22,9 +22,21 @@
 #        MONITOR_SMTP_HOST   smtp.office365.com
 #        MONITOR_SMTP_USER   joshua.helm-cowley@nrla.org.uk
 #        MONITOR_SMTP_PASS   (app password or a dedicated service account)
-#      Optional, for the Welsh Government mailbox route:
-#        MONITOR_MAILBOX     joshua.helm-cowley@nrla.org.uk
-#        MONITOR_GRAPH_TOKEN (app-only token, Mail.Read, scoped to that mailbox)
+#      Optional, for the Welsh Government mailbox route — see
+#      WELSH-GOVERNMENT-SETUP.md, which is written for someone who has never
+#      opened the Azure portal:
+#        MONITOR_MAILBOX              joshua.helm-cowley@nrla.org.uk
+#        MONITOR_GRAPH_TENANT         Directory (tenant) ID
+#        MONITOR_GRAPH_CLIENT_ID      Application (client) ID
+#        MONITOR_GRAPH_CLIENT_SECRET  the client secret VALUE, not the Secret ID
+#
+#      Do NOT create MONITOR_GRAPH_TOKEN. An earlier version of the setup
+#      instructions said to paste a Graph access token there. Those last about
+#      an hour, so it works for one run and then returns 401 every morning in a
+#      log nobody reads. The four secrets above let the tool fetch itself a
+#      fresh token on every run, which is the arrangement that survives being
+#      left alone. The token is still read if present, and still overrides
+#      them, so an old one must be deleted rather than merely ignored.
 #   4. Actions -> "Senedd policy monitor" -> Run workflow, to prove it works.
 #
 # From then on it runs itself. Nobody prompts anything.
@@ -40,12 +52,17 @@
 #   `data/monitor.sqlite3` is gitignored. It is rebuilt from the SQL on each run.
 #
 # THE ONE LIMITATION, STATED PLAINLY
-#   GitHub's runners are datacentre hosts, so gov.wales returns 403 (see
-#   SPECIFICATION.md section 4.4a). Every Senedd source works fine. The Welsh
-#   Government half arrives through the shared-mailbox route, which is why
-#   MONITOR_MAILBOX is worth setting up. Without it you get Senedd coverage only
-#   — still the large majority of the value, but be clear-eyed that it is not
-#   everything.
+#   GitHub's runners are datacentre hosts, so www.gov.wales returns 403 (see
+#   SPECIFICATION.md section 4.4a). Every Senedd source works fine. Welsh
+#   Government ANNOUNCEMENTS arrive anyway, from media.service.gov.wales — a
+#   different Welsh Government host that is not behind that rule, and which
+#   needs no setup at all.
+#
+#   What is still missing without MONITOR_MAILBOX is the consultation REGISTER
+#   at gov.wales/consultations, which holds the authoritative closing dates. A
+#   consultation is normally announced when it opens, so most are seen; the
+#   deadline should be confirmed at source. The live page says so itself, in
+#   the "What this page does not cover" panel.
 
 name: Senedd policy monitor
 
@@ -117,6 +134,11 @@ jobs:
       - name: Collect, score and store
         env:
           MONITOR_MAILBOX: ${{ secrets.MONITOR_MAILBOX }}
+          MONITOR_GRAPH_TENANT: ${{ secrets.MONITOR_GRAPH_TENANT }}
+          MONITOR_GRAPH_CLIENT_ID: ${{ secrets.MONITOR_GRAPH_CLIENT_ID }}
+          MONITOR_GRAPH_CLIENT_SECRET: ${{ secrets.MONITOR_GRAPH_CLIENT_SECRET }}
+          # Read last, and only so that an old pasted token is not silently
+          # ignored by someone who thinks it is still the thing doing the work.
           MONITOR_GRAPH_TOKEN: ${{ secrets.MONITOR_GRAPH_TOKEN }}
         # --govwales-route mailbox stops the unreachable gov.wales RSS being
         # reported as a broken source on a host where it can never work.
