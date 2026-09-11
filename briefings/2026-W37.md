@@ -3,7 +3,7 @@
 *As at Friday 11 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
 > [!WARNING]
-> **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`, `Senedd forward look`
+> **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`, `Senedd forthcoming business`, `Senedd forward look`
 
 **9** open consultations · **8** closing within three weeks · **15** developments to review
 
