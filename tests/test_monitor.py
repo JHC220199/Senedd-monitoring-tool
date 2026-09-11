@@ -2640,6 +2640,36 @@ class TestForthcomingBusiness(unittest.TestCase):
         self.assertEqual(len(collector.errors), 1)
         self.assertIn("calendar could not be read", collector.errors[0])
 
+    def test_tabled_questions_survive_a_blocked_business_senedd(self):
+        """The two halves must not share a fate.
+
+        business.senedd.wales returned 403 to GitHub Actions on 11 September
+        2026 — the same datacentre-IP block www.gov.wales uses, on a host that
+        had always worked. record.senedd.wales does not block. Losing the
+        agendas must not also lose the tabled questions, which are the more
+        valuable half: they are the thing the supplier briefing had and this
+        tool did not.
+        """
+        collector = self._collector({"order:15-09-2026": ORDER_PAPER_HTML})
+        items = list(collector.collect(start=date(2026, 9, 11),
+                                       end=date(2026, 10, 2)))
+        tabled = [i for i in items if i.source_kind == "oral_question"]
+        self.assertEqual(len(tabled), 2)
+        # Still said out loud, because the agendas really are missing.
+        self.assertEqual(len(collector.errors), 1)
+        self.assertIn("PLENARY STATEMENTS AND DEBATES", collector.errors[0])
+
+    def test_sitting_days_are_probed_without_a_calendar(self):
+        """Plenary has sat on Tuesdays and Wednesdays for years. Probing them
+        costs one request each and the order paper confirms or denies it —
+        which beats depending on a calendar that is currently blocked."""
+        collector = self._collector({})
+        list(collector.collect(start=date(2026, 9, 14), end=date(2026, 9, 20)))
+        self.assertIn("order:15-09-2026", collector.fetcher.requested)
+        self.assertIn("order:16-09-2026", collector.fetcher.requested)
+        self.assertNotIn("order:14-09-2026", collector.fetcher.requested)
+        self.assertNotIn("order:19-09-2026", collector.fetcher.requested)
+
     def test_recess_is_not_an_error(self):
         """A calendar that reads fine and contains no Plenary sitting is the
         Senedd being in recess, which is a real answer."""
