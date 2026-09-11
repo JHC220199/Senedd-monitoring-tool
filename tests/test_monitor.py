@@ -2543,6 +2543,40 @@ class TestFridayForwardBusiness(unittest.TestCase):
         self.assertFalse(sent)
         self.assertIn("no email sent", message)
 
+    def test_not_switched_on_yet_is_not_a_failed_run(self):
+        """A repository where the flow has not been created must not go red
+        every Friday. A warning that is always on is a warning nobody reads,
+        and the week it means something is the week it gets ignored.
+
+        Configured-and-failed is the opposite case and must exit non-zero.
+        """
+        from monitor.cli import cmd_forward
+        tmp = tempfile.mkdtemp()
+        try:
+            db = str(Path(tmp) / "t.sqlite3")
+            store = Store(db)
+            # A real item, so the run has something to send and the exit code
+            # is decided by the configuration rather than by an empty week.
+            store.upsert(self._item(deadline=date.today() + timedelta(days=30)))
+            store.close()
+            args = SimpleNamespace(db=db, taxonomy=None, out="", weeks=3,
+                                   new_since="", send=True)
+            with mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": ""},
+                                 clear=False):
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    self.assertEqual(cmd_forward(args), 0)
+            self.assertIn("MONITOR_FLOW_URL", out.getvalue())
+
+            args = SimpleNamespace(db=db, taxonomy=None, out="", weeks=3,
+                                   new_since="", send=True)
+            with mock.patch.dict(os.environ,
+                                 {"MONITOR_FLOW_URL": "https://example.invalid/f"},
+                                 clear=False):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(cmd_forward(args), 2)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     def test_written_questions_are_excluded_from_the_email_too(self):
         from monitor.forward import render_forward, select_business
         sections = select_business([self._item()], TAX, today=self.TODAY)
