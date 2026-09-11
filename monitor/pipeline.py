@@ -18,6 +18,7 @@ from datetime import date, datetime, timedelta
 
 from .collectors.base import Fetcher
 from .collectors.committee_work import SeneddCommitteeWorkCollector
+from .collectors.forthcoming import SeneddForthcomingBusinessCollector
 from .collectors.forward_look import SeneddCalendarCollector
 from .collectors.govwales import (GovWalesMailboxCollector,
                                   GovWalesNewsroomCollector,
@@ -132,6 +133,7 @@ class Pipeline:
         legislation = LegislationCollector(self.fetcher)
         bills = SeneddBillCollector(self.fetcher)
         calendar = SeneddCalendarCollector(self.fetcher)
+        forthcoming = SeneddForthcomingBusinessCollector(self.fetcher)
         gov_rss = GovWalesRSSCollector(self.fetcher)
         gov_news = GovWalesNewsroomCollector(self.fetcher)
         gov_mail = GovWalesMailboxCollector(
@@ -162,6 +164,14 @@ class Pipeline:
                lambda: legislation.collect(), False)
         yield ("Senedd Bills and Acts", bills, lambda: bills.collect(), False)
         yield ("Senedd forward look", calendar, lambda: calendar.collect(), False)
+        # What is about to be said, rather than what was said. Every other
+        # Senedd source here reads the Record, and the Record is a record — an
+        # oral question tabled on Thursday for Tuesday's sitting was invisible
+        # until Tuesday evening, which is a day too late to brief anyone.
+        yield ("Senedd forthcoming business", forthcoming,
+               lambda: forthcoming.collect(start=date.today(),
+                                           end=date.today() + timedelta(days=21)),
+               False)
 
         # BEFORE the RSS source, and not optional. This is the route that works
         # from a cloud host, so if it returns nothing that is a real fault and
