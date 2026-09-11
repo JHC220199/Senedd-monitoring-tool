@@ -78,6 +78,17 @@ themes:
       - private rental
       - private tenant
       - private tenants
+      # "renter" and "renters" were missing until 11 September 2026, and the
+      # cost was concrete: an oral question tabled for the first sitting of the
+      # new term — "Will the First Minister set out a timeline for the
+      # introduction of new measures to better protect renters?" — scored zero
+      # and would never have reached the page or the Friday email. The supplier
+      # briefing carried it. "Renters" is now the ordinary political word for
+      # the people this organisation exists to work with, so the taxonomy has
+      # to know it. Social tenants are almost always called tenants rather than
+      # renters, so the false-positive risk is small.
+      - renter
+      - renters
       - buy to let
       - buy-to-let
       - landlord
