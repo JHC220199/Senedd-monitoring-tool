@@ -8,7 +8,7 @@
 -- exports byte-identically and produces no git commit.
 --
 -- Tables: items, score_history, runs
--- Rows:   324
+-- Rows:   331
 --
 -- NOTE: deliberately no generation timestamp. An earlier version had one, which
 -- meant every export differed by one line even when the data was identical — so
@@ -19,7 +19,7 @@
 PRAGMA foreign_keys = OFF;
 BEGIN TRANSACTION;
 
--- items (279 rows)
+-- items (285 rows)
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('0102623cd3f691b1ef7f', 'plenary_transcript', 'Plenary', '3. Business Statement and Announcement', 'Trefnydd, I''d like to ask for a statement from the Cabinet Minister for Local Government, Housing and Planning. Community right to buy is an important step towards ensuring that local communities across Wales have the agency and the ability to invest in their own futures and to design them. Assets that are owned by communities and that are managed by them can inspire enterprise, create opportunities and help to transform lives. But significant barriers continue in terms of ensuring that local voices are heard and that community interests are safeguarded through legislation. It''s possible that we will hear something from the First Minister soon when he will outline the Government''s legislative programme. But, given the importance of community right to buy to communities across Wales, could the Trefnydd arrange a statement by the Cabinet Minister for Local Government, Housing and Planning, to note the Welsh Government''s detailed plans for a community right to buy Bill, and when we can expect it to be introduced before the Senedd?', 'https://record.senedd.wales/Plenary/16085', '2026-07-14', 'Lis McLean', '', '12149', '', '', 'Plenary', '3. Business Statement and Announcement', '16085', 'http://www.senedd.tv/en/16085?startPos=7612&l=en', NULL, 121.0, 'High', 'digest', 'social_housing; fiscal_and_legislative_context; named_welsh_legislation', 'Context; Housing system', 'Housing minister; First Minister / Cabinet', '', 'Community Right to Buy Bill; community right to buy; legislative programme; right to buy', 0, '2026-08-04T14:03:08.883353', 'https://record.senedd.wales/XMLExport/Download?meetingID=16085&xmlDownloadType=EnglishTranscript#767734', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('010b647a9d0f6e8534cb', 'plenary_transcript', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', 'Thank you, Deputy Presiding Officer, and I will be under a minute.
 
@@ -46,6 +46,53 @@ The First Minister will also say:
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('041e5e303f728ae71cb6', 'plenary_transcript', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', 'Thank you, Minister. I believe you met with the Welsh Cladiators recently, so thank you for that. I''m sure that legislation does take time, but people are living in unsafe buildings, so I urge you to put pressure on those in the coming weeks. So, thank you for your answer to that.
 
  I''d like to turn to housing. I note your statement on Monday confirmed your commitment, or reconfirmed your commitment, to create 20,000 social homes. Another statement, though, without an annual target means there is no way to measure your Government''s performance. But, of course, housing is a question of supply and demand. There is a severe lack of accountability and transparency on who is actually living in our council and social housing. Data in England shows that significant amounts of housing are being allocated to people who are foreign nationals. So, Minister, will you commit your department to collect accurate nationality data from councils and housing associations so the people of Wales can know who will be living in these houses that taxpayers are subsidising?', 'https://record.senedd.wales/Plenary/16086', '2026-07-15', 'Francesca O''Brien', '', '12190', '', '', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', '16086', 'http://www.senedd.tv/en/16086?startPos=3947&l=en', NULL, 104.5, 'High', 'digest', 'housing_supply; social_housing', 'Housing system; Planning & place', 'Housing minister; Opposition housing leads', '', 'housing associations; social homes; social housing', 0, '2026-08-04T14:03:05.063049', 'https://record.senedd.wales/XMLExport/Download?meetingID=16086&xmlDownloadType=EnglishTranscript#768138', NULL, NULL, NULL, NULL);
+INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('0433be60912e5ca4b51d', 'consultation', 'Welsh Government — Consultation', 'Rent Guarantor Guidance for Local Housing Authorities', 'Rent Guarantor Guidance for Local Housing Authorities
+We want your views on our draft guidance for rent guarantor schemes.
+How to respond
+Consultation ends:
+19 October 2026
+Consultation launched:
+27 July 2026
+Consultation description
+We are consulting on our proposals in relation to:
+objectives of a rent guarantor scheme
+eligibility criteria for tenants, landlords and properties
+scope of the guarantee
+the role and responsibility of the local authority or scheme provider, landlords and tenants
+tenancy, sustainment and support
+Consultation documents
+Rent Guarantor Guidance for Local Housing Authorities
+Rent Guarantor Guidance for Local Housing Authorities
+,
+ HTML
+HTML
+How to respond
+Submit your comments by
+19 October 2026
+, in any of the following ways:
+Online form
+Respond online
+Email
+Download the
+response form
+.
+Complete and email to:
+PrivateSectorHousing@gov.wales
+Post
+Download the
+response form
+.
+Complete and send to:
+Housing Affordability Team
+Housing and Regeneration Directorate
+Welsh Government
+Cathays Park
+Cardiff
+CF10 3NQ
+First published
+27 July 2026
+Last updated
+27 July 2026', 'https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities', NULL, '', '', '', '', '', 'Welsh Government', '27 July 2026 Open consultation Housing', '', '', '2026-10-19', 210.0, 'Critical', 'immediate', 'private_rented_sector; rent_controls_and_affordability; welfare_and_support', 'Housing system; Private rented sector', '', 'Consultation open', 'consultation; guarantor; housing affordability; landlords; tenancy; we want your views', 0, '2026-09-11T15:28:55.853835', 'consultations:rent-guarantor-guidance-local-housing-authorities', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('052378d208934f6618ae', 'calendar', 'Senedd forward look', 'Climate Change, Environment, Sustainability and Rural Affairs Committee — 07 October 2026, 09.00', 'Climate Change, Environment, Sustainability and Rural Affairs Committee is scheduled to meet on 07 October 2026 at 09.00.
 Meeting status: Confirmed
 This is an opportunity to influence: committee papers and any call for written evidence are normally published in the two weeks beforehand.', 'https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16275', '2026-10-07', '', '', '', '', '', 'Climate Change, Environment, Sustainability and Rural Affairs Committee', '', '16275', '', '2026-10-07', 48.0, 'Low', 'dashboard', 'committee_scrutiny', 'Housing system', '', 'Opportunity to influence', 'Climate Change, Environment, Sustainability and Rural Affairs Committee; written evidence', 0, '2026-08-13T07:57:38.850238', 'https://business.senedd.wales/mgWebService.asmx#GetAllMeetingsByDate', NULL, NULL, NULL, NULL);
@@ -246,6 +293,50 @@ INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, s
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('36a68bf6d9f3a3f5a2f3', 'calendar', 'Senedd forward look', 'Climate Change, Environment, Sustainability and Rural Affairs Committee — 23 September 2026, 09.00', 'Climate Change, Environment, Sustainability and Rural Affairs Committee is scheduled to meet on 23 September 2026 at 09.00.
 Meeting status: Confirmed
 This is an opportunity to influence: committee papers and any call for written evidence are normally published in the two weeks beforehand.', 'https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16233', '2026-09-23', '', '', '', '', '', 'Climate Change, Environment, Sustainability and Rural Affairs Committee', '', '16233', '', '2026-09-23', 48.0, 'Low', 'dashboard', 'committee_scrutiny', 'Housing system', '', 'Opportunity to influence', 'Climate Change, Environment, Sustainability and Rural Affairs Committee; written evidence', 0, '2026-08-04T14:04:40.438626', 'https://business.senedd.wales/mgWebService.asmx#GetAllMeetingsByDate', NULL, NULL, NULL, NULL);
+INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('37296767a06640facf92', 'consultation', 'Welsh Government — Consultation', 'Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds', 'Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds
+We want your views on the changes we want to make to the Council Tax Reduction Scheme in Wales.
+How to respond
+Consultation ends:
+23 September 2026
+Consultation launched:
+15 July 2026
+Consultation description
+We propose to:
+simplify scheme administration
+improve financial certainty for residents, while maintaining support
+make the scheme work more effectively for councils and applicants
+Consultation documents
+Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds
+Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds
+,
+ HTML
+HTML
+How to respond
+Submit your comments by
+23 September 2026
+, in any of the following ways:
+Online form
+Respond online
+Email
+Download the
+response form
+.
+Complete and email to:
+CTandNDR.Consultations@gov.wales
+Post
+Download the
+response form
+.
+Complete and post to:
+Council Tax Policy
+Welsh Government
+Cathays Park
+Cardiff
+CF10 3NQ
+First published
+15 July 2026
+Last updated
+15 July 2026', 'https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds', NULL, '', '', '', '', '', 'Welsh Government', '15 July 2026 Open consultation Housing', '', '', '2026-09-23', 105.0, 'High', 'digest', 'taxation_of_property', 'Tax & finance', '', 'Consultation open', 'consultation; consultations; council tax; council tax reduction scheme; we want your views', 0, '2026-09-11T15:29:02.628546', 'consultations:council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('3a199587c1599b916c0a', 'calendar', 'Senedd forward look', 'Legislation Committee — 21 September 2026, 12.00', 'Legislation Committee is scheduled to meet on 21 September 2026 at 12.00.
 Meeting status: Confirmed; Hybrid
 This is an opportunity to influence: committee papers and any call for written evidence are normally published in the two weeks beforehand.', 'https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16254', '2026-09-21', '', '', '', '', '', 'Legislation Committee', '', '16254', '', '2026-09-21', 48.0, 'Low', 'dashboard', 'committee_scrutiny', 'Housing system', '', 'Opportunity to influence', 'Legislation Committee; written evidence', 0, '2026-08-04T14:04:40.425615', 'https://business.senedd.wales/mgWebService.asmx#GetAllMeetingsByDate', NULL, NULL, NULL, NULL);
@@ -690,6 +781,62 @@ INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, s
  So, yes, while we have these schemes and they are transforming some lives, there are clearly gaps in the provision, and we know they exist and we need to do something about them. Now, when young people with disabilities consistently say that the systems that they''re meant to be using, that are meant to be there—. Well, they say, ''They''re not actually built with us in mind.'' And that''s not an opinion, that''s their own individual lived experience. These are the people who know the issues best, and the systems would work better if we did a better job of listening to the people who use them. So, that should always be our starting point—for this Welsh Government, for all of us in this Senedd, we really need to, always, get out into our communities, listen and learn and act.', 'https://record.senedd.wales/Plenary/16086', '2026-07-15', 'Shav Taj', '', '12175', '', '', 'Plenary', '6. Member Debate under Standing Order 11.21(iv): Young people and employment', '16086', 'http://www.senedd.tv/en/16086?startPos=8103&l=en', NULL, 22.0, 'Noise', 'archive', 'welfare_and_support', 'Housing system', '', '', 'universal credit', 0, '2026-08-04T14:03:05.445142', 'https://record.senedd.wales/XMLExport/Download?meetingID=16086&xmlDownloadType=EnglishTranscript#768228', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('8ae239334c8fb5647936', 'plenary_transcript', 'Plenary', '1. Questions to the Deputy First Minister and Cabinet Minister for Social Justice', 'Thanks for your response. Cabinet Minister, households across Wales are facing further cost-of-living pressures as prices keep rising. Also in Plaid''s ''The First 100 Days'' document was a commitment to review Welsh benefits such as the discretionary assistance fund. The Welsh Conservatives have always advocated for struggling families to be able to access the support that they''re entitled to, something that sadly did not happen under Labour. In 2023, the Welsh Government made £90 million available to support people with the cost of living when it came to fuel, yet less than £65 million had been spent. Whilst 427,000 households were eligible for support, only 316,000 households applied. Labour failed to properly inform the people of Wales about the assistance that they could receive, and I sincerely hope that doesn''t happen here under Plaid Cymru''s watch. So, what plans does the Welsh Government have to review the Welsh benefits system and help prevent households from being in crisis in the first place?', 'https://record.senedd.wales/Plenary/16084', '2026-07-08', 'Natasha Asghar', '', '336', '', '', 'Plenary', '1. Questions to the Deputy First Minister and Cabinet Minister for Social Justice', '16084', 'http://www.senedd.tv/en/16084?startPos=1729&l=en', NULL, 60.5, 'Medium', 'digest', 'welfare_and_support', 'Housing system', 'Sector bodies; First Minister / Cabinet', '', 'discretionary assistance fund', 0, '2026-08-04T14:03:15.622013', 'https://record.senedd.wales/XMLExport/Download?meetingID=16084&xmlDownloadType=EnglishTranscript#766855', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('8c21534fec8497f1fd8c', 'plenary_transcript', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', 'Thank you very much. ''Planning Policy Wales'' is kept under continual review to ensure that it remains effective, relevant and responsive to emerging evidence. Officials are currently reviewing planning guidance, and they are doing so to identify which aspects may need to be updated in future to ensure that the planning framework reflects the priorities of this Welsh Government.', 'https://record.senedd.wales/Plenary/16086', '2026-07-15', 'Sian Gwenllian', '', '4981', '', '', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', '16086', 'http://www.senedd.tv/en/16086?startPos=4834&l=en', NULL, 60.5, 'Medium', 'digest', 'planning_system', 'Planning & place', 'Housing minister', '', 'Planning Policy Wales; planning guidance; planning policy', 0, '2026-08-04T14:03:05.159197', 'https://record.senedd.wales/XMLExport/Download?meetingID=16086&xmlDownloadType=EnglishTranscript#768142', NULL, NULL, NULL, NULL);
+INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('8cb4fa9486ea37e2ed35', 'consultation', 'Welsh Government — Consultation', 'Stationary vehicle engine idling: local authority guidance', 'Stationary vehicle engine idling: local authority guidance
+We want your views on draft guidance for local authorities (LAs) on tackling unnecessary vehicle engine idling.
+How to respond
+Consultation ends:
+4 December 2026
+Consultation launched:
+11 September 2026
+Consultation description
+The guidance is designed to promote a consistent and effective approach across Wales. It provides:
+advice and examples to support LAs in developing and delivering local communications and initiatives to discourage stationary engine idling.
+guidance on the use of enforcement powers in the context of new regulations, which come into force on 30 September 2026.
+Consultation documents
+Consultation document
+Consultation document
+,
+ HTML
+HTML
+Draft guidance for local authorities
+,
+ file type: PDF, file size: 595 KB
+PDF
+595 KB
+If you need a more accessible version of this document please email
+digital@gov.wales
+. Please tell us the format you need. If you use assistive technology please tell us what this is.
+Help and support
+For more information about this consultation e-mail
+airqualitypolicy@gov.wales
+How to respond
+Submit your comments by
+4 December 2026
+, in any of the following ways:
+Online form
+Respond online
+Email
+Download the
+response form
+.
+Complete and return to:
+airqualitypolicy@gov.wales
+Post
+Download the
+response form
+.
+Complete and return to:
+WG55272
+Air Quality Policy
+Environmental Protection Division
+Welsh Government
+Cathays Park
+Cardiff
+CF10 3NQ
+First published
+11 September 2026
+Last updated
+11 September 2026', 'https://www.gov.wales/stationary-vehicle-engine-idling-local-authority-guidance', NULL, '', '', '', '', '', 'Welsh Government', '11 September 2026 Open consultation Environment and climate change', '', '', '2026-12-04', 84.0, 'Medium', 'digest', 'local_government_enforcement', 'Housing system', '', 'Consultation open', 'consultation; enforcement powers; we want your views', 0, '2026-09-11T15:28:30.254149', 'consultations:stationary-vehicle-engine-idling-local-authority-guidance', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('8cbbd1910efc7640500e', 'plenary_transcript', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', 'The new legislation that I was involved in drawing up in the last Senedd is more far-reaching than the legislation in England, which came into force some years ago. We are consulting on new regulations. I pushed the previous administration to include the ability to do that. So, we are consulting on new regulations that will mean that those people living in buildings that haven''t been remediated, or who are facing additional costs because their service charges have increased because of work that has to be done—those people will have a route to tribunal, once those new regulations are in place. Now, that is a significant step forward, and it''s going to take a little time, a few months, before we bring those regulations into force. I hope that everyone will support—I''m sure that you will support—those regulations.
 
  There are three aspects of this in reality, aren''t there? There is the new legislation in Wales, but there is also the remediation work, which is extremely slow in happening; it is extremely slow—we accept that. I have invited the companies that are continuing with this work to meet with me next month, where they will get a very clear message that this Government insists that that remediation work should be accelerated, and that the pace should go up.', 'https://record.senedd.wales/Plenary/16086', '2026-07-15', 'Sian Gwenllian', '', '4981', '', '', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', '16086', 'http://www.senedd.tv/en/16086?startPos=3846&l=en', NULL, 71.5, 'Medium', 'digest', 'building_safety_and_leasehold', 'Property & energy', 'Housing minister', '', 'service charges', 0, '2026-08-04T14:03:05.051321', 'https://record.senedd.wales/XMLExport/Download?meetingID=16086&xmlDownloadType=EnglishTranscript#768156', NULL, NULL, NULL, NULL);
@@ -1072,6 +1219,49 @@ INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, s
  The Welsh Government''s settlement is directly linked, as we know, to decisions made by the UK Government. It can change, even in-year, up and down. Only a few days after I appeared before the Finance Committee, the UK Government announced its defence investment plan. That is expected to lead to a direct negative consequence for our capital budget this year. If the cut of 1 per cent anticipated hits all departments of Government equally, that will mean the loss of between £25 million and £30 million immediately during this financial year alone, and there is more to come.
 
  This is a supplementary budget.', 'https://record.senedd.wales/Plenary/16085', '2026-07-14', 'Elin Jones', 'Cabinet Minister for Finance', '162', '', '', 'Plenary', '9. Debate: The First Supplementary Budget 2026-27', '16085', 'http://www.senedd.tv/en/16085?startPos=22645&l=en', NULL, 71.5, 'Medium', 'digest', 'fiscal_and_legislative_context; committee_scrutiny', 'Context; Housing system', 'First Minister / Cabinet', '', 'Finance Committee; final budget; supplementary budget', 0, '2026-08-04T14:03:10.441935', 'https://record.senedd.wales/XMLExport/Download?meetingID=16085&xmlDownloadType=EnglishTranscript#767932', NULL, NULL, NULL, NULL);
+INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('cedfa4b1ca4dcc960f3e', 'consultation', 'Welsh Government — Consultation', 'Classification of self-catering properties for local tax purposes', 'Classification of self-catering properties for local tax purposes
+We want your views on proposed changes to the treatment of self-catering properties for local tax purposes.
+How to respond
+Consultation ends:
+23 October 2026
+Consultation launched:
+31 July 2026
+Consultation description
+We are consulting on:
+reviewing the criteria used to classify self-catering properties for local tax
+proposals for exemptions
+Consultation documents
+Classification of self-catering properties for local tax purposes
+Classification of self-catering properties for local tax purposes
+,
+ HTML
+HTML
+How to respond
+Submit your comments by
+23 October 2026
+, in any of the following ways:
+Online form
+Respond online
+Email
+Download the
+response form
+.
+Complete and return to:
+CTandNDR.Consultations@gov.wales
+Post
+Download the
+response form
+.
+Complete and return to:
+Non-Domestic Rates Policy and Legislation Branch
+Welsh Government
+Cathays Park
+Cardiff
+CF10 3NQ
+First published
+31 July 2026
+Last updated
+17 August 2026', 'https://www.gov.wales/classification-self-catering-properties-local-tax-purposes', NULL, '', '', '', '', '', 'Welsh Government', '17 August 2026 Open consultation Housing', '', '', '2026-10-23', 154.0, 'Critical', 'immediate', 'taxation_of_property; second_homes_and_short_term_lets', 'Planning & place; Tax & finance', '', 'Consultation open', 'consultation; consultations; non-domestic rates; self-catering; we want your views', 0, '2026-09-11T15:28:43.388787', 'consultations:classification-self-catering-properties-local-tax-purposes', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('cf22873644c93120ea99', 'plenary_transcript', 'Plenary', '5. Member’s Legislative Debate under Standing Order 11.21(iv): A Bill on corporate parenting', 'I understand that Government say the voluntary charter is better because it can reach private and third sector bodies that legislation cannot, but let us be honest about how private organisations behave. They follow the law not a leaflet, so the charter''s breadth is precisely its weakness—it reaches widely because it demands less. Keep it for the bodies we cannot compel, but for our health boards and NHS trusts, the bodies we can bind, a care leaver deserves the duty the law enforces, not a promise quietly set aside. We do not leave safeguarding to goodwill, so we should not leave corporate parenting to it either.
 
  The Counsel General leaned heavily on one specific defence: that part 6 of the code of practice is being revisited with a new chapter on corporate parenting to be laid later this year. I must tell the Chamber that this defence is a dead end. By law, its scope is strictly limited. It applies solely to local authorities exercising social services functions. It cannot legally impose a single duty on a health board. 
@@ -1211,6 +1401,50 @@ INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, s
 
  What I would say is that, in terms of public procurement, specifically—', 'https://record.senedd.wales/Plenary/16086', '2026-07-15', 'Shav Taj', '', '12175', '', '', 'Plenary', '6. Member Debate under Standing Order 11.21(iv): Young people and employment', '16086', 'http://www.senedd.tv/en/16086?startPos=11645&l=en', NULL, 38.5, 'Low', 'dashboard', 'taxation_of_property', 'Tax & finance', '', '', 'business rates', 0, '2026-08-04T14:03:05.848706', 'https://record.senedd.wales/XMLExport/Download?meetingID=16086&xmlDownloadType=EnglishTranscript#768304', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('e4513bc82c96a5106bc2', 'plenary_transcript', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', 'As you update ''Planning Policy Wales'', can you confirm your intention, therefore, to make the planning system more permissive so that we can build the homes Wales needs and, indeed, build the industrial developments that Wales needs? Will you make it more permissive, or will you continue to risk letting the not-in-my-backyard brigade stop developments and delay developments that have overwhelming public benefit?', 'https://record.senedd.wales/Plenary/16086', '2026-07-15', 'Huw Thomas', '', '12156', '', '', 'Plenary', '2. Questions to the Cabinet Minister for Local Government, Housing and Planning', '16086', 'http://www.senedd.tv/en/16086?startPos=5161&l=en', NULL, 60.5, 'Medium', 'digest', 'planning_system', 'Planning & place', 'Housing minister', '', 'Planning Policy Wales; planning policy; planning system', 0, '2026-08-04T14:03:05.188393', 'https://record.senedd.wales/XMLExport/Download?meetingID=16086&xmlDownloadType=EnglishTranscript#768184', NULL, NULL, NULL, NULL);
+INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('e5aae1dc1412353e94e9', 'consultation', 'Welsh Government — Consultation', 'Regulations for designating Building Safety Authorities', 'Regulations for designating Building Safety Authorities
+We want your views on our proposals for regulations designating the local authorities that will be building safety authorities for the purposes of the Building Safety (Wales) Act 2026.
+How to respond
+Consultation ends:
+16 October 2026
+Consultation launched:
+10 August 2026
+Consultation description
+We are consulting on:
+our proposed building safety authorities
+whether any further provision should be included in the regulations about the exercise of functions by a building safety authority
+Consultation documents
+Regulations for designating Building Safety Authorities
+Regulations for designating Building Safety Authorities
+,
+ HTML
+HTML
+How to respond
+Submit your comments by
+16 October 2026
+, in any of the following ways:
+Online form
+Respond online
+Email
+Download the
+response form
+.
+Complete and return to:
+buildingsafety@gov.wales
+Post
+Download the
+response form
+.
+Complete and return to:
+Building Safety Reform Team
+Housing and Regeneration Directorate
+Welsh Government
+Cathays Park
+Cardiff
+CF10 3NQ
+First published
+10 August 2026
+Last updated
+10 August 2026', 'https://www.gov.wales/regulations-designating-building-safety-authorities', NULL, '', '', '', '', '', 'Welsh Government', '10 August 2026 Open consultation Building and planning', '', '', '2026-10-16', 147.0, 'Critical', 'immediate', 'building_safety_and_leasehold; named_welsh_legislation', 'Context; Property & energy', '', 'Consultation open', 'Building Safety (Wales) Act; building safety; consultation; we want your views', 0, '2026-09-11T15:28:44.915123', 'consultations:regulations-designating-building-safety-authorities', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('e7a519ef7565f7146618', 'oral_question', 'Oral Question', 'Oral Question - OQ64366', 'When will the Welsh Government update Planning Policy Wales?', 'https://record.senedd.wales/OralQuestion/64366', '2026-07-08', 'James Evans', '', '8585', '', 'Brycheiniog Tawe Nedd', 'Senedd (tabled business)', 'Tabled on 08/07/2026', '', '', NULL, 35.0, 'Low', 'dashboard', 'planning_system', 'Planning & place', 'Other committee chairs', '', 'Planning Policy Wales; planning policy', 0, '2026-08-04T14:03:47.876424', 'record_search:type=oral_question:query=planning', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('e8f4103cdff65a5b553b', 'plenary_transcript', 'Plenary', '8. Legislative Consent Motion: Steel Industry (Nationalisation) Bill', 'Lywydd, diolch yn fawr. I move the motion and recommend that the Senedd gives its consent to the relevant provisions in the Steel Industry (Nationalisation) Bill as set out in the legislative consent memorandum.
 
@@ -1227,6 +1461,49 @@ INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, s
  While there is currently no intention or need to use these powers in Wales, it is right that they exist, and it is the UK Government that holds the resources to act at this scale. Let''s remind ourselves what is at stake. Once the electric arc furnace at Port Talbot is operational—the second largest anywhere in the world—nearly half of the UK''s steel-making capacity will be here in Wales. The future of steel in these islands is a Welsh future. The Bill does not secure that future by itself, but it ensures that no Government can ever again claim that the means to defend it, if necessary, is missing. It''s on this basis, clear-eyed and with our expectations on the record, that I recommend the Senedd gives its consent.', 'https://record.senedd.wales/Plenary/16085', '2026-07-14', 'Adam Price', 'Cabinet Minister for Enterprise, Connectivity and Energy', '5030', '', '', 'Plenary', '8. Legislative Consent Motion: Steel Industry (Nationalisation) Bill', '16085', 'http://www.senedd.tv/en/16085?startPos=20149&l=en', NULL, 16.5, 'Noise', 'archive', 'fiscal_and_legislative_context', 'Context', '', '', 'Legislative Consent Motion', 0, '2026-08-04T14:03:10.220284', 'https://record.senedd.wales/XMLExport/Download?meetingID=16085&xmlDownloadType=EnglishTranscript#767876', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('ed0caaa4c76e1efb094b', 'plenary_transcript', 'Plenary', '1. Questions to the First Minister', 'Well, as I said earlier, the Government is accelerating the roll-out of 12.5 hours of funded childcare for all two-year-olds across Wales. The additional funding in the supplementary budget should enable local authorities to make progress on this first phase of the expansion. I am pleased that officials are having positive feedback from local authorities on the difference that the funding will make.', 'https://record.senedd.wales/Plenary/16085', '2026-07-14', 'Rhun ap Iorwerth', 'First Minister of Wales', '2717', '', '', 'Plenary', '1. Questions to the First Minister', '16085', 'http://www.senedd.tv/en/16085?startPos=3239&l=en', NULL, 38.5, 'Low', 'dashboard', 'fiscal_and_legislative_context', 'Context', 'First Minister / Cabinet', '', 'supplementary budget', 0, '2026-08-04T14:03:08.474763', 'https://record.senedd.wales/XMLExport/Download?meetingID=16085&xmlDownloadType=EnglishTranscript#767561', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('ed109e214efce399144e', 'legislation', 'Acts of Senedd Cymru', 'Planning (Wales) Act 2026', 'Planning (Wales) Act 2026', 'https://www.legislation.gov.uk/asc/2026/6/2026-04-28/data.xml', '2026-07-07', '', '', '', '', '', 'legislation.gov.uk', '', '', '', NULL, 71.5, 'Medium', 'digest', 'planning_system; named_welsh_legislation', 'Context; Planning & place', '', '', 'Planning (Wales) Act', 0, '2026-08-04T14:04:14.610728', 'https://www.legislation.gov.uk/asc/data.feed', NULL, NULL, NULL, NULL);
+INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('ed53f0b5ddd08d0624bf', 'consultation', 'Welsh Government — Consultation', 'Codes of practice for the management of student accommodation', 'Codes of practice for the management of student accommodation
+We want your views on whether the Welsh Ministers should approve new codes of practice for the management of student accommodation.
+How to respond
+Consultation ends:
+25 September 2026
+Consultation launched:
+30 July 2026
+Consultation description
+We are consulting on:
+whether it is appropriate for the Welsh Ministers to approve new codes of practice which lay down standards of conduct and practice in the management of student accommodation.
+Consultation documents
+Codes of practice for the management of student accommodation
+Codes of practice for the management of student accommodation
+,
+ HTML
+HTML
+How to respond
+Submit your comments by
+25 September 2026
+, in any of the following ways:
+Online form
+Respond online
+Email
+Download the
+response form
+.
+Complete and send to:
+PrivateSectorHousing@gov.wales
+Post
+Download the
+response form
+.
+Complete and send to:
+Housing Affordability Team
+Housing and Regeneration
+Welsh Government
+Cathays Park
+Cardiff
+CF10 3NQ
+First published
+30 July 2026
+Last updated
+30 July 2026', 'https://www.gov.wales/codes-practice-management-student-accommodation-0', NULL, '', '', '', '', '', 'Welsh Government', '30 July 2026 Open consultation Housing', '', '', '2026-09-25', 126.0, 'High', 'digest', 'rent_controls_and_affordability', 'Private rented sector', '', 'Consultation open', 'consultation; housing affordability; we want your views', 0, '2026-09-11T15:28:52.879047', 'consultations:codes-practice-management-student-accommodation-0', NULL, NULL, NULL, NULL);
 INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, speaker, speaker_role, speaker_id, party, constituency, forum, agenda_item, meeting_id, video_url, deadline, score, band, channel, themes, tiers, entities, signals, matched_terms, force_alert, collected_at, raw_ref, notified_at, reviewed_by, review_note, review_status) VALUES ('ee13c234d6520277a7eb', 'plenary_transcript', 'Plenary', '1. Questions to the Cabinet Minister for Health and Care', 'Thank you for that question. The Member made an important point at the outset in talking about the importance of the supplementary budget yesterday, in providing £145 million in this financial year in order to address waiting lists, to improve infrastructure and to improve the provision that we have for waiting lists. It was incredibly disappointing to see Labour and Liberal Members siding with Reform to vote against policies and against funding that would tackle one of the most pressing issues that has faced us in health in Wales over a decade and more.
 
  But, we will continue with our plans to address those waiting lists, and this will directly benefit the people of Powys. We are aware of people who have been on waiting lists for far too long in Powys. They will benefit from this. But, we will also ensure that there is a rapid diagnostic centre for cancer introduced in Powys too so that people are seen earlier, rather than people going to hospitals that are long distances away when they get to stage 4 in their cancer journey, which will be far too late for many of them. We will see them more quickly and ensure that they get an earlier diagnosis too.', 'https://record.senedd.wales/Plenary/16086', '2026-07-15', 'Mabon ap Gwynfor', '', '269', '', '', 'Plenary', '1. Questions to the Cabinet Minister for Health and Care', '16086', 'http://www.senedd.tv/en/16086?startPos=619&l=en', NULL, 55.0, 'Medium', 'digest', 'fiscal_and_legislative_context', 'Context', '', 'Bill progress', 'Stage 4; supplementary budget', 0, '2026-08-04T14:03:04.729565', 'https://record.senedd.wales/XMLExport/Download?meetingID=16086&xmlDownloadType=EnglishTranscript#768025', NULL, NULL, NULL, NULL);
@@ -1341,7 +1618,7 @@ INSERT INTO items (uid, source_kind, source_name, title, body, url, item_date, s
 Meeting status: Confirmed; Hybrid
 This is an opportunity to influence: committee papers and any call for written evidence are normally published in the two weeks beforehand.', 'https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16249', '2026-09-17', '', '', '', '', '', 'Finance Committee', '', '16249', '', '2026-09-17', 48.0, 'Low', 'dashboard', 'committee_scrutiny', 'Housing system', '', 'Opportunity to influence', 'Finance Committee; written evidence', 0, '2026-08-04T14:04:40.416516', 'https://business.senedd.wales/mgWebService.asmx#GetAllMeetingsByDate', NULL, NULL, NULL, NULL);
 
--- runs (45 rows)
+-- runs (46 rows)
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('0d3ce3935068', '2026-08-15T08:56:48.774825', '2026-08-15T09:00:54.824409', 197, 55, '["Senedd Record \u2014 transcripts: no meetings found between 2026-07-25 and 2026-08-15. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Welsh Government \u2014 RSS: gov.wales RSS unavailable from this host. This is expected on cloud infrastructure: the CloudFront WAF rejects datacentre IPs with HTTP 403. Use the mailbox route (GovWalesMailboxCollector) or run from the NRLA network. Subscription page: https://www.gov.wales/subscribe/announcements"]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts"]', '["Welsh Government \u2014 RSS"]');
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('17de56239ec3', '2026-08-29T13:57:51.359704', '2026-08-29T14:01:13.942305', 90, 18, '["Senedd committee consultations and inquiries: no committee register supplied, so committee inquiry pages were not checked. Pass committees={id: title} from GetCommittees \u2014 without this, inquiries with no consultation record (such as the Empty Properties follow-up) are invisible.", "Senedd Record \u2014 transcripts: no meetings found between 2026-08-08 and 2026-08-29. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Senedd forward look: GetCommittees returned HTTP 403", "Senedd forward look: GetAllMeetingsByDate returned HTTP 403", "Senedd forward look: no scheduled Senedd business between 2026-08-29 and 2026-10-24. During a long recess this is correct \u2014 the Senedd rose on 17 July 2026 and returned on 14 September 2026. Outside recess, treat this as a failure and check GetAllMeetingsByDate directly.", "Welsh Government \u2014 RSS: gov.wales RSS unavailable from this host. This is expected on cloud infrastructure: the CloudFront WAF rejects datacentre IPs with HTTP 403. Use the mailbox route (GovWalesMailboxCollector) or run from the NRLA network. Subscription page: https://www.gov.wales/subscribe/announcements"]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts", "Senedd forward look"]', '["Welsh Government \u2014 RSS"]');
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('17f9a81189bf', '2026-08-28T18:53:02.349752', '2026-08-28T18:56:29.520755', 92, 18, '["Senedd committee consultations and inquiries: no committee register supplied, so committee inquiry pages were not checked. Pass committees={id: title} from GetCommittees \u2014 without this, inquiries with no consultation record (such as the Empty Properties follow-up) are invisible.", "Senedd Record \u2014 transcripts: no meetings found between 2026-08-07 and 2026-08-28. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Senedd forward look: GetCommittees returned HTTP 403", "Senedd forward look: GetAllMeetingsByDate returned HTTP 403", "Senedd forward look: no scheduled Senedd business between 2026-08-28 and 2026-10-23. During a long recess this is correct \u2014 the Senedd rose on 17 July 2026 and returned on 14 September 2026. Outside recess, treat this as a failure and check GetAllMeetingsByDate directly.", "Welsh Government \u2014 RSS: gov.wales RSS unavailable from this host. This is expected on cloud infrastructure: the CloudFront WAF rejects datacentre IPs with HTTP 403. Use the mailbox route (GovWalesMailboxCollector) or run from the NRLA network. Subscription page: https://www.gov.wales/subscribe/announcements"]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts", "Senedd forward look"]', '["Welsh Government \u2014 RSS"]');
@@ -1357,6 +1634,7 @@ INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, so
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('4668e6b1868a', '2026-08-06T08:10:22.932697', '2026-08-06T08:14:24.831146', 176, 48, '["Welsh Government \u2014 RSS: gov.wales RSS unavailable from this host. This is expected on cloud infrastructure: the CloudFront WAF rejects datacentre IPs with HTTP 403. Use the mailbox route (GovWalesMailboxCollector) or run from the NRLA network. Subscription page: https://www.gov.wales/subscribe/announcements"]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Welsh Government \u2014 RSS", "Senedd Research"]', '[]', '["Welsh Government \u2014 RSS"]');
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('543d28568d0d', '2026-09-07T12:51:06.235097', '2026-09-07T12:54:21.381271', 188, 20, '["Senedd committee consultations and inquiries: no committee register supplied, so committee inquiry pages were not checked. Pass committees={id: title} from GetCommittees \u2014 without this, inquiries with no consultation record (such as the Empty Properties follow-up) are invisible.", "Senedd Record \u2014 transcripts: no meetings found between 2026-08-17 and 2026-09-07. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Senedd forward look: GetCommittees returned HTTP 403", "Senedd forward look: GetAllMeetingsByDate returned HTTP 403", "Senedd forward look: no scheduled Senedd business between 2026-09-07 and 2026-11-02. During a long recess this is correct \u2014 the Senedd rose on 17 July 2026 and returned on 14 September 2026. Outside recess, treat this as a failure and check GetAllMeetingsByDate directly."]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts", "Senedd forward look"]', '[]');
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('54666f02099c', '2026-09-11T15:09:17.721626', '2026-09-11T15:13:18.889640', 246, 27, '["Senedd committee consultations and inquiries: no committee register supplied, so committee inquiry pages were not checked. Pass committees={id: title} from GetCommittees \u2014 without this, inquiries with no consultation record (such as the Empty Properties follow-up) are invisible.", "Senedd Record \u2014 transcripts: no meetings found between 2026-08-21 and 2026-09-11. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Senedd forward look: GetCommittees returned HTTP 403", "Senedd forward look: GetAllMeetingsByDate returned HTTP 403", "Senedd forward look: no scheduled Senedd business between 2026-09-11 and 2026-11-06. During a long recess this is correct \u2014 the Senedd rose on 17 July 2026 and returned on 14 September 2026. Outside recess, treat this as a failure and check GetAllMeetingsByDate directly.", "Senedd forthcoming business: The Senedd meetings calendar could not be read, so SCHEDULED PLENARY STATEMENTS AND DEBATES are missing \u2014 a statement on non-domestic rates, say, will not be seen until after it is made. Tabled oral questions are unaffected: they come from record.senedd.wales, which is read separately. Either https://business.senedd.wales/mgCalendarMonthView.aspx is unreachable from this host \u2014 business.senedd.wales returned 403 to GitHub Actions on 11 September 2026, the same datacentre-IP block www.gov.wales uses \u2014 or its markup has changed; the parser looks for links to ieListDocuments."]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Senedd forthcoming business", "Welsh Government \u2014 newsroom", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts", "Senedd forward look"]', '[]');
+INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('55abfc9cea58', '2026-09-11T15:25:38.681122', '2026-09-11T15:30:27.617884', 270, 33, '["Senedd committee consultations and inquiries: no committee register supplied, so committee inquiry pages were not checked. Pass committees={id: title} from GetCommittees \u2014 without this, inquiries with no consultation record (such as the Empty Properties follow-up) are invisible.", "Senedd Record \u2014 transcripts: no meetings found between 2026-08-21 and 2026-09-11. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Senedd forward look: GetCommittees returned HTTP 403", "Senedd forward look: GetAllMeetingsByDate returned HTTP 403", "Senedd forward look: no scheduled Senedd business between 2026-09-11 and 2026-11-06. During a long recess this is correct \u2014 the Senedd rose on 17 July 2026 and returned on 14 September 2026. Outside recess, treat this as a failure and check GetAllMeetingsByDate directly.", "Senedd forthcoming business: The Senedd meetings calendar could not be read, so SCHEDULED PLENARY STATEMENTS AND DEBATES are missing \u2014 a statement on non-domestic rates, say, will not be seen until after it is made. Tabled oral questions are unaffected: they come from record.senedd.wales, which is read separately. Either https://business.senedd.wales/mgCalendarMonthView.aspx is unreachable from this host \u2014 business.senedd.wales returned 403 to GitHub Actions on 11 September 2026, the same datacentre-IP block www.gov.wales uses \u2014 or its markup has changed; the parser looks for links to ieListDocuments."]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Senedd forthcoming business", "Welsh Government \u2014 consultations", "Welsh Government \u2014 newsroom", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts", "Senedd forward look"]', '[]');
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('5aed5963d6e4', '2026-08-06T09:12:42.704545', '2026-08-06T09:17:00.474218', 176, 48, '["Welsh Government \u2014 RSS: gov.wales RSS unavailable from this host. This is expected on cloud infrastructure: the CloudFront WAF rejects datacentre IPs with HTTP 403. Use the mailbox route (GovWalesMailboxCollector) or run from the NRLA network. Subscription page: https://www.gov.wales/subscribe/announcements"]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Welsh Government \u2014 RSS", "Senedd Research"]', '[]', '["Welsh Government \u2014 RSS"]');
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('70a31390f777', '2026-08-21T07:22:29.878398', '2026-08-21T07:25:31.508385', 80, 14, '["Senedd committee consultations and inquiries: active consultations feed unavailable: https://business.senedd.wales/mgRss.aspx?f=76. This feed is how committee consultations are discovered \u2014 without it, calls for evidence will be missed.", "Senedd committee consultations and inquiries: no committee register supplied, so committee inquiry pages were not checked. Pass committees={id: title} from GetCommittees \u2014 without this, inquiries with no consultation record (such as the Empty Properties follow-up) are invisible.", "Senedd Record \u2014 transcripts: no meetings found between 2026-07-31 and 2026-08-21. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Senedd forward look: GetCommittees returned HTTP 403", "Senedd forward look: GetAllMeetingsByDate returned HTTP 403", "Senedd forward look: no scheduled Senedd business between 2026-08-21 and 2026-10-16. During a long recess this is correct \u2014 the Senedd rose on 17 July 2026 and returned on 14 September 2026. Outside recess, treat this as a failure and check GetAllMeetingsByDate directly.", "Welsh Government \u2014 RSS: gov.wales RSS unavailable from this host. This is expected on cloud infrastructure: the CloudFront WAF rejects datacentre IPs with HTTP 403. Use the mailbox route (GovWalesMailboxCollector) or run from the NRLA network. Subscription page: https://www.gov.wales/subscribe/announcements"]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts", "Senedd committee consultations and inquiries", "Senedd forward look"]', '["Welsh Government \u2014 RSS"]');
 INSERT INTO runs (run_id, started_at, finished_at, collected, stored, errors, sources, sources_failed, sources_substituted) VALUES ('711c2f3a5ae6', '2026-09-11T14:58:26.102865', '2026-09-11T15:02:19.648175', 210, 23, '["Senedd committee consultations and inquiries: no committee register supplied, so committee inquiry pages were not checked. Pass committees={id: title} from GetCommittees \u2014 without this, inquiries with no consultation record (such as the Empty Properties follow-up) are invisible.", "Senedd Record \u2014 transcripts: no meetings found between 2026-08-21 and 2026-09-11. During recess this is correct \u2014 the Senedd rose for summer on 17 July 2026 and returns on 14 September 2026.", "Senedd forward look: GetCommittees returned HTTP 403", "Senedd forward look: GetAllMeetingsByDate returned HTTP 403", "Senedd forward look: no scheduled Senedd business between 2026-09-11 and 2026-11-06. During a long recess this is correct \u2014 the Senedd rose on 17 July 2026 and returned on 14 September 2026. Outside recess, treat this as a failure and check GetAllMeetingsByDate directly.", "Senedd forthcoming business: The Senedd meetings calendar could not be read, so no forthcoming Plenary business was collected. Either https://business.senedd.wales/mgCalendarMonthView.aspx is unreachable from this host, or its markup has changed \u2014 the parser looks for links to ieListDocuments. Tabled oral questions and scheduled statements will be missing from the page and the Friday email until this works."]', '["Senedd committee consultations and inquiries", "Senedd Record \u2014 transcripts", "Senedd Record \u2014 tabled business", "Legislation (Acts and Welsh SIs)", "Senedd Bills and Acts", "Senedd forward look", "Senedd forthcoming business", "Welsh Government \u2014 newsroom", "Welsh Government \u2014 RSS", "Senedd Research"]', '["Senedd Record \u2014 transcripts", "Senedd forthcoming business", "Senedd forward look"]', '[]');
