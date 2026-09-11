@@ -1,0 +1,135 @@
+# The Friday future-business email.
+#
+# WHAT IT IS
+#   Camlas's weekly "Senedd Future Business" email, rebuilt: consultations
+#   closing soonest, committee meetings in the next three weeks, Plenary
+#   business, and oral questions tabled for forthcoming sittings — filtered to
+#   NRLA relevance by exactly the same rule as the live page.
+#
+# HOW IT IS DELIVERED, AND WHY THERE ARE NO CREDENTIALS HERE
+#   It POSTs {subject, body, count} to a Power Automate flow, which sends the
+#   mail from the operator's own account. No SMTP host, no app password, no IT
+#   ticket. The webhook URL is the only secret, it is write-only, and the worst
+#   anyone can do with it is send its owner an email. This is the same pattern
+#   the Westminster written-questions tool already runs on.
+#
+#   ONE-TIME SETUP: FORWARD-EMAIL-SETUP.md. Five minutes, no Azure.
+#
+# WHY THERE ARE TWO CRON LINES
+#   GitHub's cron is always UTC and does not follow British Summer Time. A
+#   single "0 14 * * 5" is 15.00 in summer and 14.00 in winter, and the hour
+#   the email arrives silently shifts twice a year. So both hours are
+#   scheduled, and the first step below checks the actual London time and stops
+#   the run if it is the wrong one. The concurrency group means the two can
+#   never overlap.
+#
+#   The same problem, and the same fix, as on the PA-Monitoring-Tools repo.
+
+name: Senedd future business (Friday)
+
+on:
+  schedule:
+    - cron: "0 14 * * 5"      # 15.00 London while BST is in force
+    - cron: "0 15 * * 5"      # 15.00 London while GMT is in force
+  workflow_dispatch:          # run it on demand from the Actions tab
+
+concurrency:
+  group: senedd-forward
+  cancel-in-progress: false
+
+permissions:
+  contents: read              # reads the committed archive; commits nothing
+  # Issue-writing permission is deliberately withheld, for the same reason as
+  # in the daily workflow: the run must not be able to start emailing by
+  # opening issues. A future edit that re-adds the step fails loudly instead of
+  # quietly resuming the notifications the directorate asked to stop.
+
+env:
+  # The hour, in London time, the email is meant to arrive.
+  TARGET_LONDON_HOUR: "15"
+
+jobs:
+  forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Stop unless it is the right hour in London
+        # A workflow_dispatch run is always allowed through: someone clicking
+        # "Run workflow" at 10am means it, and making them wait until three
+        # would be absurd.
+        id: clock
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Manual run — continuing."
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          HOUR=$(TZ=Europe/London date +%H)
+          if [ "$HOUR" = "$TARGET_LONDON_HOUR" ]; then
+            echo "London time is ${HOUR}:00 — this is the intended run."
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "London time is ${HOUR}:00, not ${TARGET_LONDON_HOUR}:00."
+            echo "This is the other cron line, which exists so that the email"
+            echo "arrives at the same local hour in both BST and GMT. Stopping."
+            echo "go=no" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the repository
+        if: steps.clock.outputs.go == 'yes'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.clock.outputs.go == 'yes'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        if: steps.clock.outputs.go == 'yes'
+        run: pip install -r requirements.txt
+
+      - name: Run the tests first
+        # The email goes to a person rather than to a page nobody has opened
+        # yet, so a broken build must not reach them.
+        if: steps.clock.outputs.go == 'yes'
+        run: python -m tests.test_monitor
+
+      - name: Restore the archive from the committed SQL export
+        # Read-only: this workflow never exports or commits. The daily run owns
+        # the archive, and two workflows both committing it would collide.
+        if: steps.clock.outputs.go == 'yes'
+        run: python -m monitor.cli restore --from data/archive.sql
+
+      - name: Build and send the future-business email
+        if: steps.clock.outputs.go == 'yes'
+        env:
+          MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}
+        run: python -m monitor.cli forward --send --out out/forward.html
+
+      - name: Put the email on this page too
+        # So that "did it go, and what was in it?" is answerable from the run
+        # itself, without waiting for the mail to arrive or digging through
+        # Power Automate's run history.
+        if: steps.clock.outputs.go == 'yes' && always()
+        run: |
+          {
+            echo "### Friday future business"
+            echo ""
+            echo "The email built by this run is the \`senedd-future-business\`"
+            echo "artifact at the foot of this page. If nothing was sent, the"
+            echo "step above says why in plain English — the most likely"
+            echo "reasons are an empty week (deliberate) and a missing or"
+            echo "regenerated \`MONITOR_FLOW_URL\` secret."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep a copy of what was sent
+        if: steps.clock.outputs.go == 'yes' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: senedd-future-business-${{ github.run_number }}
+          path: out/forward.html
+          retention-days: 90
+          if-no-files-found: ignore
