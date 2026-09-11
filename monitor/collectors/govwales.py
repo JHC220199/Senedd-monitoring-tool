@@ -16,9 +16,17 @@ connection. The block is on where the request comes from, not on who is asking
 or how often. Changing the User-Agent does not fix it and should not be
 attempted: working around a WAF is both fragile and impolite.
 
-There are therefore three supported routes. ROUTE C is the one that works
-everywhere and needs nothing set up; ROUTE B closes the gap it leaves; ROUTE A
-is an opportunistic supplement when running from an office network.
+**That block was not permanent.** On 11 September 2026 www.gov.wales answered
+GitHub's runners normally again — the RSS feed above returned a hundred items
+from the same host that had refused it for weeks. Whether that is a settled
+change or a temporary one is not knowable from here, so every route below
+stays, and each one says so out loud when it stops working rather than going
+quiet.
+
+There are therefore four supported routes. ROUTE D reads the consultation
+register directly and is the only one that carries authoritative closing dates;
+ROUTE C works everywhere and needs nothing set up; ROUTE B is the durable
+answer if the block returns; ROUTE A is an opportunistic supplement.
 
 ROUTE A — direct RSS (`GovWalesRSSCollector`)
     Works when the collector runs from a network the WAF accepts: an NRLA
@@ -114,6 +122,10 @@ DEADLINE_PATTERNS = [
     re.compile(r"deadline\s*(?:for responses)?\s*[:\-]?\s*(\d{1,2}\s+\w+\s+\d{4})", re.I),
     re.compile(r"until\s+(\d{1,2}\s+\w+\s+\d{4})", re.I),
     re.compile(r"clos(?:es|ing)\s*(?:date)?\s*[:\-]?\s*(\d{4}-\d{2}-\d{2})", re.I),
+    # The consultation register's own wording, which none of the patterns above
+    # matched: every gov.wales consultation page carries "Consultation ends:"
+    # and that line IS the authoritative closing date.
+    re.compile(r"consultation\s+ends\s*[:\-]?\s*(\d{1,2}\s+\w+\s+\d{4})", re.I),
 ]
 
 
@@ -138,6 +150,17 @@ def parse_deadline(text: str) -> date | None:
             except ValueError:
                 continue
     return None
+
+
+def _one_line(text: str) -> str:
+    """Collapse a title onto one line.
+
+    `_clean` normalises spaces and tabs but deliberately keeps newlines, which
+    is right for a body and wrong for a heading: an anchor wrapped across two
+    lines in the source produced a title with a line break in the middle of it,
+    which then appeared that way on the page and in the email.
+    """
+    return re.sub(r"\s+", " ", _clean(text)).strip()
 
 
 def classify(title: str, body: str = "") -> tuple[str, str]:
@@ -543,7 +566,7 @@ class GovWalesNewsroomCollector(Collector):
             if not href.startswith("/news/") or href.startswith("/news/t/"):
                 continue
 
-            title = _clean(link.get_text(" ", strip=True))
+            title = _one_line(link.get_text(" ", strip=True))
             if not title:
                 continue
 
@@ -637,4 +660,156 @@ class GovWalesNewsroomCollector(Collector):
             agenda_item="; ".join(tags),
             deadline=parse_deadline(combined) if kind == "consultation" else None,
             raw_ref=f"newsroom:{card['slug']}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# ROUTE D — the consultation register itself
+# ---------------------------------------------------------------------------
+
+class GovWalesConsultationsCollector(Collector):
+    """Open consultations from gov.wales/consultations.
+
+    WHY THIS EXISTS, AND WHY IT MIGHT STOP WORKING
+    ----------------------------------------------
+    This is the register the whole Welsh Government half of the tool has been
+    working around. It holds the authoritative closing dates, and on
+    11 September 2026 the first Friday email was compared against the supplier
+    briefing it replaces and was missing four consultations from it — every one
+    of them core NRLA business:
+
+        Rent Guarantor Guidance for Local Housing Authorities     19 Oct
+        Codes of practice for the management of student accommodation  25 Sep
+        Council Tax Reduction Scheme: reassessment thresholds     23 Sep
+        Classification of self-catering properties for local tax  23 Oct
+
+    None had a newsroom announcement, so no other route could see them.
+
+    The register sits on www.gov.wales, which rejected datacentre IPs for
+    weeks — that block is the reason `GovWalesRSSCollector` exists in the shape
+    it does. On 11 September 2026 it answered GitHub's runners normally. That
+    may be a permanent change or it may not, so this collector is written to
+    fail loudly rather than quietly: if the block returns, the run says so and
+    the page's coverage banner names it, instead of the consultations simply
+    ceasing to appear. WELSH-GOVERNMENT-SETUP.md stays in the repository so
+    that the mailbox route can be set up later if that happens.
+    """
+
+    name = "gov_wales_consultations"
+    source_kind = "consultation"
+
+    # Ten to a page, newest publication first. Six pages is roughly the last
+    # three months of publications, which comfortably covers anything still
+    # open — consultations here run eight to twelve weeks.
+    MAX_PAGES = 6
+
+    # Bounds a run when the Welsh Government has had a busy quarter.
+    MAX_DETAILS = 25
+
+    def collect(self):
+        budget = self.MAX_DETAILS
+        seen: set[str] = set()
+
+        for page in range(self.MAX_PAGES):
+            url = CONSULTATIONS_PAGE if page == 0 else f"{CONSULTATIONS_PAGE}?page={page}"
+            html = self.fetcher.get_text(url)
+
+            if html is None:
+                if page == 0:
+                    self.note_error(
+                        "The Welsh Government consultation register at "
+                        f"{CONSULTATIONS_PAGE} could not be fetched. If this "
+                        "is a 403, the CloudFront datacentre-IP block that "
+                        "used to cover this host has returned, and the "
+                        "authoritative closing dates are no longer visible. "
+                        "The mailbox route in WELSH-GOVERNMENT-SETUP.md is "
+                        "the durable answer when that happens.")
+                return
+
+            entries = self._parse_listing(html)
+            if page == 0 and not entries:
+                self.note_error(
+                    "The Welsh Government consultation register returned a "
+                    "page but no consultations could be read from it — the "
+                    "markup has probably changed. The parser expects "
+                    "'li.index-list__item' with '.index-list__title' and "
+                    "'.index-list__type'. Until this is fixed, Welsh "
+                    "Government consultations are missing rather than absent.")
+                return
+            if not entries:
+                return
+
+            for entry in entries:
+                if entry["slug"] in seen or not entry["open"]:
+                    continue
+                seen.add(entry["slug"])
+                if budget <= 0:
+                    return
+                budget -= 1
+                if item := self._detail_to_item(entry):
+                    yield item
+
+    # -- parsing -----------------------------------------------------------
+
+    def _parse_listing(self, html: str) -> list[dict]:
+        soup = BeautifulSoup(html, "html.parser")
+        entries: list[dict] = []
+
+        for node in soup.select("li.index-list__item"):
+            link = node.select_one(".index-list__title a") or node.select_one("a[href]")
+            if not link:
+                continue
+            href = (link.get("href") or "").strip()
+            if not href or href.startswith("#"):
+                continue
+            title = _one_line(link.get_text(" ", strip=True))
+            if not title:
+                continue
+
+            type_el = node.select_one(".index-list__type")
+            status = _clean(type_el.get_text(" ", strip=True)) if type_el else ""
+            meta_el = node.select_one(".index-list__meta")
+            meta = _clean(meta_el.get_text(" ", strip=True)) if meta_el else ""
+
+            entries.append({
+                "title": title,
+                "url": href if href.startswith("http") else f"https://www.gov.wales{href}",
+                "slug": href.rstrip("/").rsplit("/", 1)[-1],
+                # "Open consultation" / "Closed consultation". A closed one is
+                # of no use in a forward look and must never appear on the page
+                # with a countdown beside it.
+                "open": status.lower().startswith("open"),
+                "meta": meta,
+            })
+        return entries
+
+    def _detail_to_item(self, entry: dict) -> Item | None:
+        html = self.fetcher.get_text(entry["url"])
+        if html is None:
+            return None
+
+        soup = BeautifulSoup(html, "html.parser")
+        main = soup.find("main") or soup.body or soup
+        # Navigation and the cookie banner are not consultation text, and a
+        # stray "housing" in a site-wide menu would score every page alike.
+        for junk in main.select("nav, header, footer, script, style"):
+            junk.decompose()
+        body = _clean(main.get_text("\n", strip=True))[:6000]
+
+        deadline = parse_deadline(body)
+        combined = f"{entry['title']}\n{body}"
+
+        return Item(
+            source_kind="consultation",
+            source_name="Welsh Government — Consultation",
+            title=entry["title"],
+            body=combined,
+            url=entry["url"],
+            # The register shows the publication date; the closing date is the
+            # one that matters and it is parsed from the page itself.
+            item_date=None,
+            forum="Welsh Government",
+            agenda_item=entry["meta"],
+            deadline=deadline,
+            raw_ref=f"consultations:{entry['slug']}",
         )
