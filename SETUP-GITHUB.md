@@ -12,11 +12,13 @@ readable audit trail of what was found each day, the weekly records, and the
 dashboard as a downloadable file. Runs on a schedule whether anyone is looking
 or not.
 
-**You don't get gov.wales.** GitHub's runners are datacentre hosts and gov.wales
-returns HTTP 403 to those regardless of what you send — verified on every path.
-Every Senedd source works fine, which is the large majority of the value. For
-Welsh Government announcements and consultations, either set up the shared
-mailbox route (step 5) or accept the gap knowingly.
+**You don't get `www.gov.wales`.** GitHub's runners are datacentre hosts and
+`www.gov.wales` returns HTTP 403 to those regardless of what you send — verified
+on every path. Welsh Government *announcements* arrive anyway, from
+`media.service.gov.wales` — the newsroom, a different Welsh Government host that
+is not behind that rule and needs no setup. What is still missing is the
+consultation **register**, which holds the authoritative closing dates: set up
+the mailbox route (step 5) or accept that gap knowingly.
 
 **Cost:** each run uses roughly 3 minutes of runner time, so about 200 minutes a
 month. GitHub includes a monthly allowance of Actions minutes on paid plans and
@@ -79,16 +81,28 @@ in a secret name.
 
 **5. Optional but worth it: the Welsh Government mailbox**
 
-Subscribe a shared mailbox to `gov.wales/subscribe/announcements`, then add:
+This closes the consultation-register gap. The full beginner walkthrough,
+including a paste-ready email to IT, is **`WELSH-GOVERNMENT-SETUP.md`**. In
+short: subscribe at `gov.wales/subscribe/consultations` and
+`gov.wales/subscribe/announcements`, then add:
 
 | Secret | Value |
 |---|---|
 | `MONITOR_MAILBOX` | `joshua.helm-cowley@nrla.org.uk` |
-| `MONITOR_GRAPH_TOKEN` | app-only token, `Mail.Read` |
+| `MONITOR_GRAPH_TENANT` | Directory (tenant) ID |
+| `MONITOR_GRAPH_CLIENT_ID` | Application (client) ID |
+| `MONITOR_GRAPH_CLIENT_SECRET` | the client secret **value**, not the Secret ID |
+
+**Do not create `MONITOR_GRAPH_TOKEN`.** It holds a pasted Graph access token,
+which lasts about an hour: one good run, then `401` every morning where nobody
+sees it. The four secrets above let the tool fetch a fresh token on each run. An
+existing `MONITOR_GRAPH_TOKEN` overrides them, so delete it.
 
 **Scope the Graph permission** with an Exchange application access policy
 restricting the app registration to that one mailbox. Without it the grant can
-read every mailbox in the tenant, and IT will rightly refuse it.
+read every mailbox in the tenant, and IT will rightly refuse it. Ask for
+`Mail.Read` — never `Mail.ReadWrite`. The collector reads by received date and
+marks nothing, so it has no reason to write.
 
 ---
 

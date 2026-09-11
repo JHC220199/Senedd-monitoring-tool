@@ -166,11 +166,39 @@ minutes, click into the run, and the briefing will be on the page.
 # Other things that look like failures but are not
 
 **"Welsh Government — RSS" shows as collected another way.** Correct and
-expected. GitHub's runners are datacentre hosts and gov.wales returns 403 to
-them. It is not a bug and not something to work around — the site is entitled to
-refuse automated traffic. Senedd coverage is unaffected. To add the Welsh
-Government half, use the shared-mailbox route (`MONITOR_MAILBOX`) or run on an
-NRLA server; `deploy/AUTOMATION.md` covers both.
+expected. GitHub's runners are datacentre hosts and `www.gov.wales` returns 403
+to them. It is not a bug and not something to work around — the site is entitled
+to refuse automated traffic. Welsh Government announcements arrive from
+"Welsh Government — newsroom" (`media.service.gov.wales`) instead, and once that
+source returns items the RSS source stops being named on the page at all.
+
+**"Welsh Government — newsroom" returned nothing.** This one IS a fault, and the
+run log says which of the two it is. Either the newsroom could not be fetched —
+in which case that host has probably been put behind the same rule as
+`www.gov.wales`, and the mailbox route becomes the only way to see Welsh
+Government material — or the page was fetched but no stories could be read from
+it, which means the markup has changed and the parser in
+`monitor/collectors/govwales.py` needs updating. The two are reported
+separately on purpose: they have different fixes.
+
+**Welsh Government consultations still missing their closing dates.** Expected
+without the mailbox route. The newsroom carries the announcement, not the
+consultation register at `gov.wales/consultations` where the authoritative
+closing dates live. `WELSH-GOVERNMENT-SETUP.md` closes it; the live page says so
+in the "What this page does not cover" panel meanwhile.
+
+**Welsh Government emails stopped appearing after you read one in Outlook.**
+Fixed, and worth knowing about because it was invisible. The mailbox collector
+used to filter on the unread flag, so opening an email removed it from the
+tool's view permanently. It now reads by received date and marks nothing.
+
+**`401` or `403` from Microsoft Graph.** The log gives the plain-English cause
+rather than the raw code. `401` is a rejected credential — an expired client
+secret, or admin consent never granted (the API permissions screen must show a
+green tick). `403` means the app signed in but is not allowed at that mailbox —
+usually the Exchange application access policy names a different one, or the
+permission granted was delegated rather than application. The five error
+messages that actually occur are tabulated in `WELSH-GOVERNMENT-SETUP.md`.
 
 **No commit after a run.** Expected during recess. The archive export is
 deterministic, so an unchanged archive produces a byte-identical file and

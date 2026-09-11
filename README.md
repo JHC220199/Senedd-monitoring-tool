@@ -19,21 +19,29 @@ Three places, none of which need any credential, any server or any IT request:
 
 ### What is NOT being monitored
 
-**The Welsh Government feed is not running.** gov.wales blocks datacentre IP
-ranges, so from GitHub Actions the feed returns nothing — consultations, written
-statements and announcements published there are invisible to this tool. Every
-run records it and the live page now carries a banner naming it, because an empty
-section must not be mistaken for a quiet week.
+**Welsh Government announcements ARE running.** `www.gov.wales` blocks
+datacentre IP ranges and always will, but `media.service.gov.wales` — the Welsh
+Government's own newsroom, a different host carrying the same press notices — is
+reachable from GitHub Actions and is read on every run. No account, no
+permission, no IT ticket.
 
-To fix it, one of:
+**The consultation register is not.** `gov.wales/consultations` holds the
+*authoritative* closing dates and is still unreachable. A consultation is
+normally announced in the newsroom when it opens, so most are seen — but confirm
+the deadline at source before planning around it. To close this properly, one
+of:
 
-- connect the shared mailbox `joshua.helm-cowley@nrla.org.uk` to Microsoft Graph and
-  set `MONITOR_MAILBOX` and `MONITOR_GRAPH_TOKEN` as repository secrets, so the
-  gov.wales notification emails become the feed (`--govwales-route mailbox`); or
+- follow **[`WELSH-GOVERNMENT-SETUP.md`](WELSH-GOVERNMENT-SETUP.md)** and
+  connect `joshua.helm-cowley@nrla.org.uk` to Microsoft Graph, so the Welsh
+  Government's own consultation-alert emails become a source; or
 - run `collect` from inside the NRLA network, where gov.wales is reachable.
 
 **Laid documents have no source.** Papers laid before the Senedd are not
 collected, which `VALIDATION.md` identifies as a systematic blind spot.
+
+All of this is stated on the live page itself, in the collapsed
+**"What this page does not cover"** panel — so a reader who never opens this
+file can still tell an empty section from an unmonitored one.
 
 Demonstration fixtures used to stand in for the Welsh Government feed and were
 displayed as real open consultations. They have been removed
@@ -256,17 +264,28 @@ export MONITOR_SMTP_USER="joshua.helm-cowley@nrla.org.uk"
 export MONITOR_SMTP_PASS="..."          # use a secret store, not a shell profile
 ```
 
-For the gov.wales mailbox route:
+For the gov.wales mailbox route — the full walkthrough is
+[`WELSH-GOVERNMENT-SETUP.md`](WELSH-GOVERNMENT-SETUP.md):
 
 ```bash
 export MONITOR_MAILBOX="joshua.helm-cowley@nrla.org.uk"
-export MONITOR_GRAPH_TOKEN="..."        # app-only token, Mail.Read
+export MONITOR_GRAPH_TENANT="..."         # Directory (tenant) ID
+export MONITOR_GRAPH_CLIENT_ID="..."      # Application (client) ID
+export MONITOR_GRAPH_CLIENT_SECRET="..."  # the secret VALUE, not the Secret ID
 ```
+
+**Do not use `MONITOR_GRAPH_TOKEN`.** It takes a pasted Graph access token,
+which expires in about an hour — one successful run, then a `401` every morning
+in a log nobody reads. The three values above let the tool fetch itself a fresh
+token on every run. The pasted token is still honoured, and still takes
+precedence, so an old one must be deleted rather than left in place.
 
 **Scope the Graph permission.** Apply an Exchange application access policy
 restricting the app registration to that single mailbox. Without it, an
 application-permission `Mail.Read` grant can read every mailbox in the tenant,
-and IT will rightly refuse it.
+and IT will rightly refuse it. The permission asked for is `Mail.Read`, never
+`Mail.ReadWrite`: the collector reads by received date and never marks anything
+read, so it has no reason to write.
 
 ---
 
