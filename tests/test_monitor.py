@@ -2447,6 +2447,246 @@ class TestWelshGovernmentSetupGuide(unittest.TestCase):
         self.assertIn("hour", text)
 
 
+ORDER_PAPER_HTML = """<html><head><title>Oral Questions tabled on 10/09/2026
+for answer on 15/09/2026 - Welsh Parliament</title></head><body>
+<h2 class="subheading orderpaper">First Minister</h2>
+<div class="itemContent oralQuestion orderPaper">
+  <span class="numbering">4</span>
+  <div class="topBar"><div class="memberBar"><div class="memberDetail">
+    <span class="name">Gareth Beer</span>
+    <span class="area">Sir Gaerfyrddin</span></div></div>
+    <span class="title">OQ64456</span><span class="tabledIn">(e)</span>
+    <span class="date">Tabled on 10/09/2026</span></div>
+  <div class="itemContent__content"><p>Will the First Minister make a statement
+    on waiting times for cataract surgery in Sir Gaerfyrddin?</p></div>
+</div>
+<div class="itemContent oralQuestion orderPaper">
+  <span class="numbering">5</span>
+  <div class="topBar"><div class="memberBar"><div class="memberDetail">
+    <span class="name">David Hughes</span>
+    <span class="area">Pontypridd Cynon Merthyr</span></div></div>
+    <span class="title">OQ64467</span><span class="tabledIn">(e)</span>
+    <span class="date">Tabled on 10/09/2026</span></div>
+  <div class="itemContent__content"><p>Will the First Minister set out a
+    timeline for the introduction of new measures to better protect
+    renters?</p></div>
+</div></body></html>"""
+
+# What the Senedd returns for a day with no sitting, or before questions have
+# been tabled: HTTP 200, a polite error page, and no questions.
+NO_SITTING_HTML = """<html><head><title>Welsh Parliament</title></head><body>
+<p>An error has occurred, please return to the Search page and try again.</p>
+</body></html>"""
+
+PLENARY_AGENDA_HTML = """<html><head><title>Agenda for Plenary on Tuesday,
+15 September 2026, 13.30</title></head><body>
+<h1>Agenda for Plenary on Tuesday, 15 September 2026, 13.30</h1>
+<table class="mgItemTable">
+<tr><td class="mgFootnoteMarkerCell">(45 mins)</td>
+    <td class="mgItemNumberCell">1.</td>
+    <td><p class="mgAiTitleTxt">Questions to the First Minister</p>
+        <ul class="mgActionList"><li>View the background to item 1.</li></ul></td></tr>
+<tr><td class="mgFootnoteMarkerCell">(30 mins)</td>
+    <td class="mgItemNumberCell">2.</td>
+    <td><p class="mgAiTitleTxt">Business Statement and Announcement</p></td></tr>
+<tr><td class="mgFootnoteMarkerCell">(30 mins)</td>
+    <td class="mgItemNumberCell">4.</td>
+    <td><p class="mgAiTitleTxt">Statement by the Cabinet Minister for Finance:
+        Rebalancing the non-domestic rates system</p>
+        <div class="mgWordPara">A statement on reform of non-domestic
+        rates.</div></td></tr>
+</table></body></html>"""
+
+CALENDAR_HTML = """<html><body>
+<a href="ieListDocuments.aspx?CId=986&amp;MId=16253">Meeting of Legislation
+  Committee on 14/09 at 13.30</a>
+<a href="ieListDocuments.aspx?CId=908&amp;MId=16260">Meeting of Plenary on
+  15/09 at 13.30</a>
+<a href="ieListDocuments.aspx?CId=908&amp;MId=16261">Meeting of Plenary on
+  16/09 at 13.30</a>
+</body></html>"""
+
+
+class TestForthcomingBusiness(unittest.TestCase):
+    """What is about to be said, not what was said.
+
+    Every other Senedd source in this tool reads the Record, and the Record is
+    a record. The first Friday email, compared against the supplier briefing it
+    replaces, was missing an entire section for that reason — an oral question
+    tabled on 10 September for the 15 September sitting:
+
+        5. David Hughes MS (Pontypridd Cynon Merthyr): Will the First Minister
+           set out a timeline for the introduction of new measures to better
+           protect renters?
+
+    The supplier had it on the Friday. This tool would have seen it on Tuesday
+    evening, after it was asked, which is one working day too late to brief
+    anybody. Both the source and the parser are pinned here.
+    """
+
+    def _collector(self, pages):
+        from monitor.collectors.forthcoming import (
+            SeneddForthcomingBusinessCollector)
+        return SeneddForthcomingBusinessCollector(_StubParamFetcher(pages))
+
+    def test_a_tabled_question_becomes_an_item_before_it_is_asked(self):
+        collector = self._collector({
+            "calendar": CALENDAR_HTML,
+            "agenda:16260": PLENARY_AGENDA_HTML,
+            "order:15-09-2026": ORDER_PAPER_HTML,
+        })
+        items = list(collector.collect(start=date(2026, 9, 11),
+                                       end=date(2026, 10, 2)))
+        tabled = [i for i in items if i.source_kind == "oral_question"]
+        self.assertEqual(len(tabled), 2)
+        renters = next(i for i in tabled if "renters" in i.body)
+        self.assertEqual(renters.title, "OQ64467")
+        self.assertEqual(renters.speaker, "David Hughes")
+        self.assertEqual(renters.constituency, "Pontypridd Cynon Merthyr")
+        self.assertEqual(renters.item_date, date(2026, 9, 10))   # tabled
+        self.assertEqual(renters.deadline, date(2026, 9, 15))    # answered
+        self.assertIn("First Minister", renters.agenda_item)
+        self.assertEqual(collector.errors, [])
+
+    def test_that_question_is_relevant_enough_to_be_shown(self):
+        """The collector is only half the fix.
+
+        "Renter" and "renters" were not in the taxonomy, so this question
+        scored zero and would have been collected and then silently dropped by
+        the relevance rule — a more expensive failure than not collecting it,
+        because everything would have looked like it was working.
+        """
+        item = make_item(
+            "Will the First Minister set out a timeline for the introduction "
+            "of new measures to better protect renters?",
+            source_kind="oral_question", title="OQ64467")
+        self.assertGreater(item.score, 0)
+        self.assertIn("private_rented_sector", item.themes)
+        self.assertTrue(TAX.qualifies_for_site(item))
+
+    def test_irrelevant_questions_on_the_same_order_paper_are_dropped(self):
+        """Twelve questions a sitting, most of them about something else.
+        Strict relevance is the whole reason this is readable."""
+        cataracts = make_item(
+            "Will the First Minister make a statement on waiting times for "
+            "cataract surgery in Sir Gaerfyrddin?",
+            source_kind="oral_question", title="OQ64456")
+        self.assertFalse(TAX.qualifies_for_site(cataracts))
+
+    def test_scheduled_statements_are_collected_from_the_agenda(self):
+        """"Statement by the Cabinet Minister for Finance: Rebalancing the
+        non-domestic rates system" is core NRLA business, and it is on the
+        agenda days before it is made."""
+        collector = self._collector({
+            "calendar": CALENDAR_HTML,
+            "agenda:16260": PLENARY_AGENDA_HTML,
+            "order:15-09-2026": NO_SITTING_HTML,
+        })
+        items = list(collector.collect(start=date(2026, 9, 11),
+                                       end=date(2026, 10, 2)))
+        agenda = [i for i in items if i.source_kind == "calendar"]
+        self.assertEqual(len(agenda), 1)
+        self.assertIn("non-domestic rates", agenda[0].title)
+        self.assertEqual(agenda[0].item_date, date(2026, 9, 15))
+        self.assertEqual(agenda[0].forum, "Plenary")
+
+    def test_routine_agenda_machinery_is_not_collected(self):
+        """"Questions to the First Minister" and "Business Statement and
+        Announcement" appear on every sitting and carry no subject. Listing
+        them would put the same two lines in "coming up" every week."""
+        collector = self._collector({
+            "calendar": CALENDAR_HTML,
+            "agenda:16260": PLENARY_AGENDA_HTML,
+            "order:15-09-2026": NO_SITTING_HTML,
+        })
+        titles = [i.title for i in collector.collect(start=date(2026, 9, 11),
+                                                     end=date(2026, 10, 2))]
+        self.assertNotIn("Questions to the First Minister", titles)
+        self.assertNotIn("Business Statement and Announcement", titles)
+
+    def test_a_day_with_no_sitting_is_silent_not_an_error(self):
+        """The Senedd answers 200 with an error page for a day it is not
+        sitting, and for a sitting whose questions are not tabled yet. Treating
+        that as a fault would make the run red every Monday."""
+        collector = self._collector({
+            "calendar": CALENDAR_HTML,
+            "agenda:16260": PLENARY_AGENDA_HTML,
+            "order:15-09-2026": NO_SITTING_HTML,
+        })
+        items = list(collector.collect(start=date(2026, 9, 11),
+                                       end=date(2026, 10, 2)))
+        self.assertEqual([i for i in items if i.source_kind == "oral_question"],
+                         [])
+        self.assertEqual(collector.errors, [])
+
+    def test_an_order_paper_that_parses_to_nothing_is_a_loud_error(self):
+        """A page that says it carries tabled questions and yields none means
+        the markup moved. That is the failure that looks like a quiet week."""
+        broken = ORDER_PAPER_HTML.replace("itemContent oralQuestion orderPaper",
+                                          "itemContent somethingElse")
+        collector = self._collector({
+            "calendar": CALENDAR_HTML,
+            "agenda:16260": PLENARY_AGENDA_HTML,
+            "order:15-09-2026": broken,
+        })
+        list(collector.collect(start=date(2026, 9, 11), end=date(2026, 10, 2)))
+        self.assertEqual(len(collector.errors), 1)
+        self.assertIn("markup has probably changed", collector.errors[0])
+
+    def test_an_unreadable_calendar_is_a_loud_error(self):
+        collector = self._collector({})
+        self.assertEqual(list(collector.collect(start=date(2026, 9, 11),
+                                                end=date(2026, 10, 2))), [])
+        self.assertEqual(len(collector.errors), 1)
+        self.assertIn("calendar could not be read", collector.errors[0])
+
+    def test_recess_is_not_an_error(self):
+        """A calendar that reads fine and contains no Plenary sitting is the
+        Senedd being in recess, which is a real answer."""
+        collector = self._collector({
+            "calendar": '<a href="ieListDocuments.aspx?CId=986&MId=1">'
+                        'Meeting of Legislation Committee</a>'})
+        self.assertEqual(list(collector.collect(start=date(2026, 9, 11),
+                                                end=date(2026, 10, 2))), [])
+        self.assertEqual(collector.errors, [])
+
+    def test_only_plenary_meetings_are_followed(self):
+        collector = self._collector({
+            "calendar": CALENDAR_HTML,
+            "agenda:16260": PLENARY_AGENDA_HTML,
+            "order:15-09-2026": NO_SITTING_HTML,
+        })
+        list(collector.collect(start=date(2026, 9, 11), end=date(2026, 10, 2)))
+        self.assertNotIn("agenda:16253", collector.fetcher.requested)
+
+
+class _StubParamFetcher:
+    """Serves canned pages keyed by what was asked for, not by URL.
+
+    The Senedd's ModernGov pages are addressed by query string, so keying on a
+    full URL would make these tests assert the exact order of query parameters
+    — which is not a property worth pinning and would break on a harmless
+    refactor.
+    """
+
+    def __init__(self, pages: dict):
+        self.pages = pages
+        self.requested: list[str] = []
+
+    def get_text(self, url, params=None):
+        params = params or {}
+        if "mgCalendarMonthView" in url:
+            key = "calendar"
+        elif "ieListDocuments" in url:
+            key = f"agenda:{params.get('MId')}"
+        elif "OrderPaper" in url:
+            key = "order:" + url.rstrip("/").rsplit("/", 1)[-1]
+        else:
+            key = url
+        self.requested.append(key)
+        return self.pages.get(key)
+
+
 # ---------------------------------------------------------------------------
 # The Friday future-business email.
 # ---------------------------------------------------------------------------
