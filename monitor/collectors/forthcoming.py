@@ -107,25 +107,53 @@ class SeneddForthcomingBusinessCollector(Collector):
     # matches the diary window in the Friday email. The caps below bound a run
     # at roughly thirty requests even if the Senedd publishes an unusual burst.
     MAX_MEETINGS = 12
+    MAX_ORDER_PAPERS = 10
 
     def collect(self, start: date | None = None, end: date | None = None):
         start = start or date.today()
         end = end or (start + timedelta(days=21))
 
-        meeting_ids = self._plenary_meeting_ids(start, end)
-        if meeting_ids is None:          # the calendar itself failed; already noted
-            return
+        # The agenda half depends on business.senedd.wales, which returned 403
+        # to GitHub Actions on 11 September 2026 — the same datacentre-IP block
+        # that www.gov.wales applies, on a host that used to work. The order
+        # paper half lives on record.senedd.wales, which does not block, so the
+        # two halves must not share a fate: losing the agendas must not also
+        # lose the tabled questions, which are the more valuable of the two.
+        meeting_ids = self._plenary_meeting_ids(start, end) or []
 
-        seen_dates: list[date] = []
+        sittings: set[date] = set()
         for meeting_id in meeting_ids[:self.MAX_MEETINGS]:
             sitting, items = self._agenda(meeting_id)
             if sitting is None or not (start <= sitting <= end):
                 continue
-            seen_dates.append(sitting)
+            sittings.add(sitting)
             yield from items
 
-        for sitting in sorted(set(seen_dates)):
+        # Probe the days the Senedd normally sits, whether or not the calendar
+        # was readable. The order paper identifies itself in its own title, so
+        # a probe on a day with no sitting costs one request and yields
+        # nothing — which is cheaper and more robust than depending on a
+        # calendar that is currently blocked.
+        for candidate in self._likely_sitting_days(start, end):
+            sittings.add(candidate)
+
+        for sitting in sorted(sittings)[:self.MAX_ORDER_PAPERS]:
             yield from self._order_paper(sitting)
+
+    @staticmethod
+    def _likely_sitting_days(start: date, end: date) -> list[date]:
+        """Tuesdays and Wednesdays in the window.
+
+        Plenary has sat on those two days for years. This is a fallback for
+        finding candidate dates to ask about, not an assertion that the Senedd
+        is sitting — the order paper itself is what confirms that.
+        """
+        days, cursor = [], start
+        while cursor <= end:
+            if cursor.weekday() in (1, 2):     # Tuesday, Wednesday
+                days.append(cursor)
+            cursor += timedelta(days=1)
+        return days
 
     # -- Plenary meetings --------------------------------------------------
 
@@ -159,12 +187,16 @@ class SeneddForthcomingBusinessCollector(Collector):
 
         if not readable:
             self.note_error(
-                "The Senedd meetings calendar could not be read, so no "
-                "forthcoming Plenary business was collected. Either "
-                f"{CALENDAR} is unreachable from this host, or its markup has "
-                "changed — the parser looks for links to ieListDocuments. "
-                "Tabled oral questions and scheduled statements will be "
-                "missing from the page and the Friday email until this works.")
+                "The Senedd meetings calendar could not be read, so SCHEDULED "
+                "PLENARY STATEMENTS AND DEBATES are missing — a statement on "
+                "non-domestic rates, say, will not be seen until after it is "
+                "made. Tabled oral questions are unaffected: they come from "
+                "record.senedd.wales, which is read separately. Either "
+                f"{CALENDAR} is unreachable from this host — business."
+                "senedd.wales returned 403 to GitHub Actions on 11 September "
+                "2026, the same datacentre-IP block www.gov.wales uses — or "
+                "its markup has changed; the parser looks for links to "
+                "ieListDocuments.")
             return None
         return ids
 
