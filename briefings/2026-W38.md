@@ -1,11 +1,11 @@
 # NRLA Senedd policy briefing
 
-*As at Monday 14 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Tuesday 15 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
 > [!WARNING]
-> **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd Record — transcripts`, `Senedd forward look`
+> **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd forward look`
 
-**15** open consultations · **8** closing within three weeks · **16** developments to review
+**15** open consultations · **6** closing within three weeks · **19** developments to review
 
 ## Respond — things with a deadline
 
@@ -13,14 +13,14 @@
 |---|---|---|
 | **Closed** | [Priorities for the Climate Change, Environment, Sustainability and Rural Affairs Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=623)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Priorities for the Climate Change, Environment, Sustainability and Rural Affairs Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=623)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes today** | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes today** | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **4 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **4 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 9 days left | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| 11 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 11 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 11 days left | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closed** | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closed** | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **3 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **3 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 8 days left | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| 10 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 10 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 10 days left | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 16 October | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 19 October | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _3 more — see the full dashboard_ | |
@@ -39,6 +39,12 @@
 </details>
 
 ## Review — what has happened
+
+**[3. Introductory evidence session with the Cabinet Minister for Government Effectiveness and the Constitution](https://record.senedd.wales/Committee/16266)**  
+<sub>14 September 2026 · Public Accounts and Public Administration Committee · Andrew Griffin, Dafydd Trystan Davies, Anna Nicholl</sub>  
+Touches committee scrutiny and budget & legislative programme. Read and decide whether a line to take is needed.  
+> Cabinet Minister, on 8 June, you laid before the Senedd the legislative consent memorandum on the Public Office (Accountability) Bill. The Business Committee referred this to this committee and the Legislation Committee for scrutiny. What's the Cabinet Minister’s understanding of the Bill’s timetable in the UK…
+<sub>[Watch this moment](http://www.senedd.tv/en/16266?startPos=2400&l=en)</sub>
 
 **[OQ64467](https://record.senedd.wales/OrderPaper/OralQuestions/15-09-2026/)**  
 <sub>10 September 2026 · Plenary · David Hughes</sub>  
@@ -116,16 +122,10 @@ Touches planning system and named welsh legislation. Check whether the stage aff
 Touches homelessness, social housing and named welsh legislation. Check whether the stage affects members, and brief if so.  
 > Homelessness and Social Housing Allocation (Wales) Act 2026 Current stage: Royal Assent (01 April 2026) Stage history: Bill introduced 19 May 2025; Stage 1 04 Nov 2025; Stage 3 03 Feb 2026; Stage 3 11 Dec 2025; Stage 4 10 Feb 2026; Royal Assent 01 Apr 2026
 
-**[Visitor Accommodation (Register and Levy) Etc. (Wales) Act 2025](https://business.senedd.wales/mgIssueHistoryHome.aspx?IId=44788)**  
-<sub>18 September 2025 · Senedd</sub>  
-Touches second homes & short-term lets and named welsh legislation. Check whether the stage affects members, and brief if so.  
-> Visitor Accommodation (Register and Levy) Etc. (Wales) Act 2025 Current stage: Royal Assent (18 September 2025) Stage history: Stage 1 01 Apr 2025; Stage 1 25 Nov 2024; Stage 2 15 May 2025; Stage 3 01 Jul 2025; Royal Assent 18 Sep 2025; Royal Assent 08 Jul 2025
-
-_1 further items in the full dashboard._
+_4 further items in the full dashboard._
 
 ## Coming up
 
-- **14 September 2026** — [Legislation Committee — 14 September 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16253)
 - **16 September 2026** — [Equality, Human Rights and Social Justice Committee — 16 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16246)
 - **16 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 16 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16232)
 - **17 September 2026** — [Local Government, Housing and Planning Committee — 17 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16256)
@@ -135,7 +135,8 @@ _1 further items in the full dashboard._
 - **23 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 23 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16233)
 - **24 September 2026** — [Finance Committee — 24 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16250)
 - **24 September 2026** — [Local Government, Housing and Planning Committee — 24 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16257)
+- **28 September 2026** — [Legislation Committee — 28 September 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16255)
 
 ---
 
-<sub>113 items scored from 242 collected records, 14 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>118 items scored from 251 collected records, 15 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
