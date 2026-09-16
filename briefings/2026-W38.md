@@ -1,11 +1,11 @@
 # NRLA Senedd policy briefing
 
-*As at Tuesday 15 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Wednesday 16 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
 > [!WARNING]
 > **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd forward look`
 
-**15** open consultations · **6** closing within three weeks · **19** developments to review
+**15** open consultations · **6** closing within three weeks · **20** developments to review
 
 ## Respond — things with a deadline
 
@@ -15,12 +15,12 @@
 | **Closed** | [Priorities for the Climate Change, Environment, Sustainability and Rural Affairs Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=623)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **3 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **3 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 8 days left | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| 10 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 10 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 10 days left | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **2 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **2 days left** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **7 days left** | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| 9 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 9 days left | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 9 days left | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 16 October | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 19 October | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _3 more — see the full dashboard_ | |
@@ -40,11 +40,17 @@
 
 ## Review — what has happened
 
+**[1. Questions to the First Minister](https://record.senedd.wales/Plenary/16260)**  
+<sub>15 September 2026 · Plenary · Zaynub Akbar, David Hughes, Rhun ap Iorwerth and 2 others</sub>  
+Touches evictions & possession, budget & legislative programme and homelessness. Read and decide whether a line to take is needed.  
+> Brif Weinidog, private renting has become increasingly unaffordable, with many households now spending a really unsustainable amount of their income simply on keeping a roof over their heads. Recent Citizens Advice data has shown that some people are spending up to 70 per cent of their income on rent alone, and in…
+<sub>[Watch this moment](http://www.senedd.tv/en/16260?startPos=2282&l=en)</sub>
+
 **[3. Introductory evidence session with the Cabinet Minister for Government Effectiveness and the Constitution](https://record.senedd.wales/Committee/16266)**  
-<sub>14 September 2026 · Public Accounts and Public Administration Committee · Andrew Griffin, Dafydd Trystan Davies, Anna Nicholl</sub>  
+<sub>14 September 2026 · Public Accounts and Public Administration Committee · Dafydd Trystan Davies, Andrew Griffin, Anna Nicholl</sub>  
 Touches committee scrutiny and budget & legislative programme. Read and decide whether a line to take is needed.  
-> Cabinet Minister, on 8 June, you laid before the Senedd the legislative consent memorandum on the Public Office (Accountability) Bill. The Business Committee referred this to this committee and the Legislation Committee for scrutiny. What's the Cabinet Minister’s understanding of the Bill’s timetable in the UK…
-<sub>[Watch this moment](http://www.senedd.tv/en/16266?startPos=2400&l=en)</sub>
+> I set out, in response to the letter from the Legislation Committee, my understanding of the timetable, which is clearly in the hands of my colleagues in the UK Government. The Bill completed its passage through the Commons before summer recess and had its Second Reading in the Lords on 1 September. The dates are not…
+<sub>[Watch this moment](http://www.senedd.tv/en/16266?startPos=2427&l=en)</sub>
 
 **[OQ64467](https://record.senedd.wales/OrderPaper/OralQuestions/15-09-2026/)**  
 <sub>10 September 2026 · Plenary · David Hughes</sub>  
@@ -117,12 +123,7 @@ Touches second homes & short-term lets and named welsh legislation. Check whethe
 Touches planning system and named welsh legislation. Check whether the stage affects members, and brief if so.  
 > Planning (Wales) Act 2026 Current stage: Royal Assent (27 April 2026) Stage history: Royal Assent 27 Apr 2026; Royal Assent 07 Apr 2026
 
-**[Homelessness and Social Housing Allocation (Wales) Act 2026](https://business.senedd.wales/mgIssueHistoryHome.aspx?IId=45883)**  
-<sub>01 April 2026 · Senedd</sub>  
-Touches homelessness, social housing and named welsh legislation. Check whether the stage affects members, and brief if so.  
-> Homelessness and Social Housing Allocation (Wales) Act 2026 Current stage: Royal Assent (01 April 2026) Stage history: Bill introduced 19 May 2025; Stage 1 04 Nov 2025; Stage 3 03 Feb 2026; Stage 3 11 Dec 2025; Stage 4 10 Feb 2026; Royal Assent 01 Apr 2026
-
-_4 further items in the full dashboard._
+_5 further items in the full dashboard._
 
 ## Coming up
 
@@ -139,4 +140,4 @@ _4 further items in the full dashboard._
 
 ---
 
-<sub>118 items scored from 251 collected records, 15 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>120 items scored from 265 collected records, 16 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
