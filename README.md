@@ -36,6 +36,15 @@ of:
   Government's own consultation-alert emails become a source; or
 - run `collect` from inside the NRLA network, where gov.wales is reachable.
 
+**The Senedd diary is about a week deep, not three.** `business.senedd.wales`
+has refused GitHub's runners since August 2026 (an Azure WAF, HTTP 403), so the
+ModernGov forward look — the three-week committee and Plenary diary — fails on
+every run. The diary now comes from **senedd.tv**, which is reachable and lists
+every broadcast meeting, with its agenda, for the next five sitting days.
+Meetings held wholly in private are not on senedd.tv. The August entries the
+forward look left behind are no longer shown while it is failing, because a
+diary that cannot be refreshed is believed and should not be.
+
 **Laid documents have no source.** Papers laid before the Senedd are not
 collected, which `VALIDATION.md` identifies as a systematic blind spot.
 
@@ -89,6 +98,21 @@ is no SMTP host, no app password and no IT ticket — the same arrangement the
 Westminster written-questions tool already runs on. Five minutes of setup:
 [`FORWARD-EMAIL-SETUP.md`](FORWARD-EMAIL-SETUP.md).
 
+### And one for sitting days: the morning briefing
+
+The supplier's "Bore da" email, rebuilt from senedd.tv and the Welsh Government
+newsroom: every broadcast meeting today with its agenda, every Welsh Government
+announcement since the last briefing, and the next sitting day's meetings. The
+**whole day**, as the supplier sends it — with anything that matches the page's
+relevance rules tagged **NRLA**, and oral questions on NRLA issues tabled for
+today listed under Plenary. Nothing is sent when the Senedd is not sitting.
+
+It is started at 07.30 London time by a Power Automate recurrence, not by
+GitHub's timer, because GitHub began the 06.30 UTC daily run five to six hours
+late on every day of September 2026. It sends through the same flow as the
+Friday email. Fifteen minutes of setup, including one GitHub token:
+[`MORNING-BRIEFING-SETUP.md`](MORNING-BRIEFING-SETUP.md).
+
 **If a run went green and something looks wrong, read `TROUBLESHOOTING.md`.**
 
 ---
@@ -132,6 +156,7 @@ python -m monitor.cli export --out data/archive.sql
 | `publish` | Writes `BRIEFING.md` and `briefings/YYYY-Wnn.md`. The workflow passes `--no-issue`, so no GitHub issue is opened and nothing is emailed. `--dry-run` to see what it would do. |
 | `digest --days N [--send]` | Build the periodic digest. **Dry run by default.** |
 | `alert [--send]` | Email unnotified Critical items only. **Dry run by default.** |
+| `morning [--send] [--date YYYY-MM-DD]` | The morning briefing for a sitting day — today's agenda from senedd.tv, Welsh Government announcements since the last briefing, and the next sitting day. NRLA-relevant items tagged. Sends nothing if the Senedd is not sitting. **Dry run by default.** See [`MORNING-BRIEFING-SETUP.md`](MORNING-BRIEFING-SETUP.md). |
 | `forward [--send]` | The Friday future-business email — consultations closing soonest, committee meetings in the next three weeks, Plenary business, and oral questions tabled for forthcoming sittings. Sent through a Power Automate flow, so there are no SMTP credentials anywhere. **Dry run by default.** See [`FORWARD-EMAIL-SETUP.md`](FORWARD-EMAIL-SETUP.md). |
 | `search "rent control"` | Full-text search the whole archive. |
 | `rescore` | Re-apply the current taxonomy to everything already collected. No network. |
