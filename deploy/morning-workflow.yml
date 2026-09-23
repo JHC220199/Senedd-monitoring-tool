@@ -1,0 +1,98 @@
+# The morning briefing — what the Senedd is doing today.
+#
+# WHAT IT IS
+#   The supplier's "Bore da" email, rebuilt: every broadcast meeting today with
+#   its agenda, Welsh Government announcements since the last briefing, and
+#   the next sitting day's meetings. Anything that matches the NRLA's relevance
+#   rules is tagged NRLA; everything else is listed so the whole day is there.
+#   Sent only when the Senedd is sitting — decided by senedd.tv's own diary.
+#
+# WHY THERE IS NO SCHEDULE HERE
+#   Deliberately. GitHub does not promise when a scheduled run starts, and in
+#   September 2026 the daily workflow set for 06.30 UTC began between 11.29
+#   and 13.07 UTC — five to six and a half hours late, every single day. A
+#   morning briefing on that timer is an afternoon briefing.
+#
+#   So the clock lives in Power Automate: a flow with a Recurrence trigger at
+#   07.30 London time calls GitHub's "run workflow" endpoint for this file. A
+#   manually started run does not wait in the scheduled queue. Power Automate's
+#   recurrence also takes a time zone, so there is no BST/GMT juggling.
+#
+#   ONE-TIME SETUP: MORNING-BRIEFING-SETUP.md. About fifteen minutes, no IT.
+#
+# HOW IT IS DELIVERED
+#   Exactly as the Friday email: POST {subject, body, count} to the Power
+#   Automate HTTP flow whose URL is in MONITOR_FLOW_URL. The same flow sends
+#   both emails — nothing new to build on that side.
+
+name: Senedd morning briefing
+
+on:
+  workflow_dispatch:          # started by Power Automate at 07.30, or by hand
+
+concurrency:
+  group: senedd-morning
+  cancel-in-progress: false
+
+permissions:
+  contents: read              # reads the committed archive; commits nothing
+  # Issue-writing permission is deliberately withheld, as in every workflow in
+  # this repository: the run must not be able to start emailing by opening
+  # issues. That is how the per-run notification the directorate asked to stop
+  # was delivered, and withholding the permission keeps it stopped.
+
+jobs:
+  morning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the tests first
+        # The email goes to a person, so a broken build must not reach them.
+        run: python -m tests.test_monitor
+
+      - name: Restore the archive from the committed SQL export
+        # For the oral questions tabled for today. Read-only: this workflow
+        # never exports or commits — the daily run owns the archive.
+        run: python -m monitor.cli restore --from data/archive.sql
+
+      - name: Build and send the morning briefing
+        # Reads senedd.tv and the Welsh Government newsroom live, so the
+        # agenda and the overnight announcements are this morning's, not
+        # whatever the late-running daily collection last saw.
+        env:
+          MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}
+        run: python -m monitor.cli morning --send --out out/morning.html
+
+      - name: Put the email on this page too
+        if: always()
+        run: |
+          {
+            echo "### Morning briefing"
+            echo ""
+            echo "The email built by this run is the \`senedd-morning-briefing\`"
+            echo "artifact at the foot of this page. If nothing was sent, the"
+            echo "step above says why — most often that the Senedd is not"
+            echo "sitting today, which is deliberate."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep a copy of what was sent
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: senedd-morning-briefing-${{ github.run_number }}
+          path: out/morning.html
+          retention-days: 30
+          if-no-files-found: ignore
