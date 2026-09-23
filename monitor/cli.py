@@ -189,6 +189,40 @@ def _briefing_markdown(args) -> str:
         store.close()
 
 
+FORWARD_LOOK_REF = "mgWebService.asmx"
+
+
+def _forward_look_failing(runs: list[dict]) -> bool:
+    """Is the ModernGov forward look on business.senedd.wales failing?
+
+    Read from the latest run's errors, which are prefixed with the source's
+    label. The source is optional now that senedd.tv substitutes for it, so it
+    no longer appears in `sources_failed` — but it still records why.
+    """
+    errors = (runs[0].get("errors") or []) if runs else []
+    return any(str(e).startswith("Senedd forward look:") for e in errors)
+
+
+def _without_unverifiable_diary(items: list, runs: list[dict]) -> list:
+    """Drop diary entries that no working source can currently vouch for.
+
+    The forward look last succeeded on 4 August 2026. Everything it collected
+    then stayed in the archive and kept appearing on the page and in the
+    Friday email as though current — including a Local Government, Housing and
+    Planning Committee meeting on 24 September that neither senedd.tv nor the
+    supplier's own briefing listed. A diary that cannot be refreshed is worse
+    than a shorter one, because it is believed.
+
+    Only while the forward look is failing. If business.senedd.wales lets the
+    runners back in, its entries are current again and return on their own.
+    """
+    if not _forward_look_failing(runs):
+        return items
+    return [i for i in items
+            if not (i.source_kind == "calendar"
+                    and FORWARD_LOOK_REF in (i.raw_ref or ""))]
+
+
 def _standing_gaps(runs: list[dict]) -> list[str]:
     """What this tool does not watch, by design — for the page's own panel.
 
@@ -209,6 +243,17 @@ def _standing_gaps(runs: list[dict]) -> list[str]:
         "Written questions. These are deliberately excluded — the team's "
         "dedicated Westminster and Senedd written-questions tool tracks them.",
     ]
+
+    # The diary. Listed while the ModernGov forward look is failing, which the
+    # run records as an error against its label — the source itself is now
+    # optional, so it no longer appears in sources_failed.
+    if _forward_look_failing(runs):
+        gaps.insert(0,
+                    "Committee meetings and Plenary business more than about a "
+                    "week ahead. business.senedd.wales blocks this tool, so the "
+                    "diary comes from senedd.tv, which lists the next five "
+                    "sitting days and broadcast meetings only. The Friday "
+                    "email's diary is correspondingly shorter than three weeks.")
 
     attempted = set(runs[0].get("sources") or []) if runs else set()
     covered = any("mailbox" in s.lower() or "consultations" in s.lower()
@@ -251,6 +296,7 @@ def cmd_site(args) -> int:
         # cannot tell an empty section from an unmonitored one. Both failed and
         # substituted sources are named on the page.
         runs = store.last_runs(limit=1)
+        items = _without_unverifiable_diary(items, runs)
         not_live: list[str] = []
         if runs:
             not_live = sorted(set(runs[0].get("sources_failed") or [])
@@ -538,7 +584,8 @@ def cmd_forward(args) -> int:
         # No score floor: the page's strict rule is applied inside
         # select_business, and it deliberately rescues low-scoring
         # consultations that a raw cut-off would drop.
-        items = store.query(min_score=0, limit=5000)
+        items = _without_unverifiable_diary(
+            store.query(min_score=0, limit=5000), store.last_runs(limit=1))
         today = date.today()
         since = (date.fromisoformat(args.new_since) if args.new_since
                  else last_friday(today))
@@ -591,6 +638,105 @@ def cmd_forward(args) -> int:
             fh.write(f"\n> [!WARNING]\n> **The Friday future-business email "
                      f"was not sent.** {message}\n")
     return 2
+
+
+def cmd_morning(args) -> int:
+    """The morning briefing — what the Senedd is doing today.
+
+    Replaces the supplier's "Bore da" email. Started at 07.30 London time by a
+    Power Automate flow rather than by GitHub's timer, which ran five to six
+    hours late on every day of September 2026. Delivered through the same
+    Power Automate HTTP flow as the Friday email. See MORNING-BRIEFING-SETUP.md.
+    """
+    from pathlib import Path
+    from .collectors.govwales import GovWalesNewsroomCollector
+    from .collectors.seneddtv import SeneddTVScheduleCollector
+    from .morning import build, london_today, render_morning, window_start
+
+    tax = Taxonomy.load(args.taxonomy)
+    today = date.fromisoformat(args.date) if args.date else london_today()
+    fetcher = Fetcher(min_interval=args.interval)
+
+    tv = SeneddTVScheduleCollector(fetcher)
+    meetings = tv.meetings()
+    for err in tv.errors:
+        print(f"  senedd.tv: {err}")
+
+    if not meetings and tv.errors:
+        # Cannot tell "not sitting" from "cannot see". Saying nothing would be
+        # the quiet failure this whole tool is built to avoid, so the run goes
+        # red, which is what makes GitHub tell its owner.
+        print("\nsenedd.tv could not be read, so there is no way to know whether "
+              "the Senedd is sitting today. Nothing sent.")
+        _summary_note("WARNING", "**No morning briefing today: senedd.tv could "
+                      "not be read.** " + " ".join(tv.errors))
+        return 2
+
+    todays = [m for m in meetings if m.when == today]
+    if not todays:
+        print(f"No broadcast Senedd business on {today:%A %-d %B} — the Senedd is "
+              "not sitting, so nothing is sent. This is deliberate.")
+        return 0
+
+    recent = SeneddTVScheduleCollector.parse_recent_dates(tv.home_html)
+    since = window_start(today, recent)
+    newsroom = GovWalesNewsroomCollector(fetcher)
+    news = newsroom.recent(since, max_articles=args.max_articles)
+
+    store = Store(args.db)
+    try:
+        questions = [i for i in store.query(min_score=0, limit=5000)
+                     if i.source_kind == "oral_question" and i.deadline == today]
+    finally:
+        store.close()
+
+    briefing = build(meetings, news, questions, tax, today=today,
+                     recent_sittings=recent)
+    if newsroom.errors:
+        briefing.notes.append(
+            "The Welsh Government newsroom could not be read this morning, so "
+            "the Welsh Government section may be incomplete.")
+
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    page_url = (f"https://{repo.split('/')[0].lower()}.github.io/"
+                f"{repo.split('/')[1]}/") if "/" in repo else ""
+    subject, html_body, count = render_morning(briefing, page_url=page_url)
+
+    print(f"Subject: {subject}")
+    print(f"  {len(briefing.today_blocks):>3}  meetings today")
+    print(f"  {len(briefing.announcements):>3}  Welsh Government announcements "
+          f"since {since:%a %d %b %H:%M} UTC")
+    print(f"  {len(briefing.next_blocks):>3}  meetings on "
+          f"{briefing.next_day or 'the next sitting day'}")
+    print(f"  {briefing.marked_count:>3}  marked NRLA")
+
+    if args.out:
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html_body, encoding="utf-8")
+        print(f"Written to {out}")
+
+    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
+    sent, message = alerts_mod.post_to_flow(
+        flow_url, subject, html_body, count, dry_run=not args.send)
+    print(message)
+
+    if sent or not args.send:
+        return 0
+    if not flow_url:
+        _summary_note("NOTE", "**The morning briefing is not switched on yet.** "
+                      "It uses the same Power Automate flow as the Friday "
+                      "email: see `MORNING-BRIEFING-SETUP.md`.")
+        return 0
+    _summary_note("WARNING", f"**The morning briefing was not sent.** {message}")
+    return 2
+
+
+def _summary_note(kind: str, text: str) -> None:
+    """Annotate the Actions run page, where 'did it go?' gets asked."""
+    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(summary, "a", encoding="utf-8") as fh:
+            fh.write(f"\n> [!{kind}]\n> {text}\n")
 
 
 def cmd_search(args) -> int:
@@ -930,6 +1076,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--send", action="store_true",
                    help="actually POST to the Power Automate flow")
     p.set_defaults(func=cmd_forward)
+
+    p = sub.add_parser("morning",
+                       help="the morning briefing, on sitting days")
+    p.add_argument("--out", default="out/morning.html")
+    p.add_argument("--date", default="",
+                   help="ISO date to brief on, for testing. Defaults to today "
+                        "in London.")
+    p.add_argument("--max-articles", type=int, default=30,
+                   help="cap on Welsh Government notices read in full")
+    p.add_argument("--send", action="store_true",
+                   help="actually POST to the Power Automate flow")
+    p.set_defaults(func=cmd_morning)
 
     p = sub.add_parser("search", help="full-text search the archive")
     p.add_argument("expression")

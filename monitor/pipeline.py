@@ -28,6 +28,7 @@ from .collectors.legislation import LegislationCollector, SeneddBillCollector
 from .collectors.record_search import RecordSearchCollector
 from .collectors.record_transcripts import RecordTranscriptCollector
 from .collectors.senedd_research import SeneddResearchCollector
+from .collectors.seneddtv import SeneddTVScheduleCollector
 from .models import Item
 from .relevance import Scorer, Taxonomy
 from .store import Store
@@ -50,6 +51,14 @@ SUBSTITUTED_BY = {
         "Welsh Government — newsroom",
         "Welsh Government — mailbox",
         "Welsh Government — consultations",
+    ),
+    # business.senedd.wales has answered 403 to GitHub's runners since August
+    # 2026 (an Azure Application Gateway WAF). senedd.tv carries the same
+    # meetings and agendas for the next five sitting days. It is a partial
+    # substitute — five days, not three weeks — and the page says so in its
+    # "does not cover" panel rather than in the fault banner.
+    "Senedd forward look": (
+        "Senedd diary (senedd.tv)",
     ),
 }
 
@@ -135,6 +144,7 @@ class Pipeline:
         legislation = LegislationCollector(self.fetcher)
         bills = SeneddBillCollector(self.fetcher)
         calendar = SeneddCalendarCollector(self.fetcher)
+        tv_diary = SeneddTVScheduleCollector(self.fetcher)
         forthcoming = SeneddForthcomingBusinessCollector(self.fetcher)
         gov_rss = GovWalesRSSCollector(self.fetcher)
         gov_news = GovWalesNewsroomCollector(self.fetcher)
@@ -166,7 +176,13 @@ class Pipeline:
         yield ("Legislation (Acts and Welsh SIs)", legislation,
                lambda: legislation.collect(), False)
         yield ("Senedd Bills and Acts", bills, lambda: bills.collect(), False)
-        yield ("Senedd forward look", calendar, lambda: calendar.collect(), False)
+        # The diary. senedd.tv first, because it is the one that works from
+        # here; the ModernGov forward look is kept, and optional, so that if
+        # business.senedd.wales ever lets the runners back in it resumes on its
+        # own and the three-week diary comes back with it.
+        yield ("Senedd diary (senedd.tv)", tv_diary,
+               lambda: tv_diary.collect(), False)
+        yield ("Senedd forward look", calendar, lambda: calendar.collect(), True)
         # What is about to be said, rather than what was said. Every other
         # Senedd source here reads the Record, and the Record is a record — an
         # oral question tabled on Thursday for Tuesday's sitting was invisible

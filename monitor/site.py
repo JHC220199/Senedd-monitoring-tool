@@ -597,8 +597,11 @@ def _upcoming(items: list[Item], tax: Taxonomy, today: date,
             f'<div class="meta">{_e(i.forum or i.source_name or "")}</div>'
             f'</div></li>')
     if not rows:
-        return 0, ('<div class="empty">No relevant sittings scheduled — '
-                   'the Senedd is in recess until 14 September.</div>')
+        # This used to say "the Senedd is in recess until 14 September" — true
+        # when it was written in the summer, and still printed on 23 September
+        # with the Senedd sitting. An empty diary says only what is known.
+        return 0, ('<div class="empty">No NRLA-relevant meetings or sittings in '
+                   'the diary for the next few sitting days.</div>')
     return len(rows), '<ul class="rows">' + "".join(rows) + "</ul>"
 
 
