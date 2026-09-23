@@ -44,6 +44,19 @@ from monitor.store import Store                                          # noqa:
 TAX = Taxonomy.load()
 SCORER = Scorer(TAX)
 
+# Nothing this suite does may reach the run page of the workflow running it.
+#
+# The email commands append plain-English notes to $GITHUB_STEP_SUMMARY, which
+# is exactly right in production — and on a runner that variable is set while
+# the tests run too. So every green run of the Friday workflow, and the first
+# morning briefing on 23 September 2026, carried "The Friday future-business
+# email is not switched on yet" and "was not sent … example.invalid" at the top
+# of its page: the tests' fake flow URL, reported as though it were real. The
+# earlier fix (TestTestsDoNotAnnotateTheRun) closed the `::error` route; this
+# closes the summary-file route, for the whole suite at once, before any test
+# can run.
+os.environ.pop("GITHUB_STEP_SUMMARY", None)
+
 
 def make_item(body: str, **kwargs) -> Item:
     defaults = dict(source_kind="plenary_transcript", source_name="Plenary",
@@ -1302,6 +1315,11 @@ class TestTestsDoNotAnnotateTheRun(unittest.TestCase):
     This re-runs the tests most likely to leak and fails if any workflow
     command escapes.
     """
+
+    def test_the_suite_cannot_write_to_the_run_summary(self):
+        """The Friday email's tests wrote their fake-URL failures onto the
+        page of every real run — including the first morning briefing."""
+        self.assertNotIn("GITHUB_STEP_SUMMARY", os.environ)
 
     def test_the_email_failure_tests_emit_no_workflow_commands(self):
         suite = unittest.defaultTestLoader.loadTestsFromTestCase(
