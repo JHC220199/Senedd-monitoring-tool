@@ -3235,6 +3235,620 @@ class TestForwardEmailSetupGuide(unittest.TestCase):
         self.assertIn("</>", self.GUIDE.read_text(encoding="utf-8"))
 
 
+
+# ---------------------------------------------------------------------------
+# senedd.tv — the diary, now that business.senedd.wales blocks this tool
+# ---------------------------------------------------------------------------
+
+def _tv_card(guid: str, committee_id: str, start: str, name: str, room: str) -> str:
+    """One card on the senedd.tv home page, as served on 23 September 2026."""
+    return (f'<div class="item-meeting com-0 com-{committee_id}"><div class="row">'
+            f'<div class="col-xs-4 col-sm-3"><div class="image-colour">'
+            f'<a href="/Meeting/Index/{guid}"><img src="x.jpg"></a></div></div>'
+            f'<div class="col-xs-12 col-sm-3 time-box"><div>'
+            f'<i class="fa fa-sclock fa-1x"></i>Start time: {start}</div></div>'
+            f'<div class="col-xs-12 col-sm-6">'
+            f'<h4><a href="/Meeting/Index/{guid}">{name}</a></h4>'
+            f'<p>\n{room}                </p></div></div></div>')
+
+
+def _tv_home(days: dict[int, list[str]], latest: list[tuple[str, str]] = ()) -> str:
+    """The home page. Day 1 is nested inside a duplicate of itself, as live."""
+    panes = []
+    for n, cards in sorted(days.items()):
+        inner = "".join(cards) or ('<p>There are no live meetings or events on '
+                                   'this day.</p>')
+        pane = f'<div class="tab-pane fade" id="day{n}">{inner}</div>'
+        if n == 1:
+            pane = (f'<div class="tab-pane fade active in" id="day1">'
+                    f'<div class="tab-pane fade active in" id="day1">{inner}</div></div>')
+        panes.append(pane)
+    slides = "".join(
+        f'<div class="slide com-0 com-908"><a href="/Meeting/Index/x">'
+        f'<h5>{name}</h5><p>{when}</p></a></div>' for name, when in latest)
+    return (f'<ul class="days" id="dayTabs"><li><a href="#day1">Today</a></li></ul>'
+            f'<div class="tab-content">{"".join(panes)}</div>'
+            f'<h2><strong>Latest meetings</strong></h2>'
+            f'<div class="slider-one">{slides}</div>')
+
+
+def _tv_meeting_before(name: str, when: str, cid: str, mid: str,
+                       agenda: list[tuple[str, str]]) -> str:
+    """A meeting page before it sits: /Meeting/Index layout."""
+    rows = "".join(
+        f'<article class="agenda-item "><div class="row">'
+        f'<div class="col-xs-1"><b>{num}</b></div>'
+        f'<div class="col-xs-10"><b>{text}</b></div></div></article>'
+        for num, text in agenda)
+    return (f'<div class="player-title dropdown"><a data-toggle="dropdown" href="#">'
+            f'<h2>{name}</h2><p></p><p>{when}</p></a>'
+            f'<ul class="dropdown-menu"><li><a href="/Meeting/Index/other">'
+            f'<h2>Some Other Committee</h2><p>1 January 2020</p></a></li></ul></div>'
+            f'<div id="agenda"><div class="agenda-items">{rows}</div></div>'
+            f'<div id="agenda"><div class="agenda-items">{rows}</div></div>'
+            f'<a href="http://www.senedd.assembly.wales/ieListDocuments.aspx?CId={cid}&amp;MId={mid}">'
+            f'Meeting information and papers</a>')
+
+
+def _tv_meeting_after(name: str, when: str, cid: str, mid: str,
+                      agenda: list[tuple[str, str]]) -> str:
+    """The same page once the meeting has sat: /Meeting/Archive layout."""
+    rows = "".join(
+        f'<article class="agenda-item"><a class="agenda-item-time" '
+        f'data-item-number="{num}" href="#"><header><h5><b>{num}</b> - {text}</h5>'
+        f'</header><footer><strong>Start time:</strong> 10:42</footer></a></article>'
+        for num, text in agenda)
+    return (f'<div class="player-title"><h2>{name}</h2><p></p><p>{when}</p></div>'
+            f'<div id="agenda"><div class="agenda-items">{rows}</div></div>'
+            f'<a href="http://www.senedd.assembly.wales/ieListDocuments.aspx?CId={cid}&amp;MId={mid}">'
+            f'Meeting information and papers</a>')
+
+
+class TestSeneddTVDiary(unittest.TestCase):
+    """senedd.tv — the diary source that still answers GitHub's runners.
+
+    business.senedd.wales has returned 403 (an Azure Application Gateway WAF)
+    to this tool since August 2026. The "Senedd forward look" failed on every
+    run for seven weeks while the diary it had collected on 4 August sat in the
+    archive looking current. senedd.tv carries the same meetings and agendas for
+    the next five sitting days, and on 23 September agreed with the supplier's
+    morning briefing item for item. These tests pin every part of its markup the
+    parser leans on, including BOTH layouts a meeting page has in one day.
+    """
+
+    HOME = "https://www.senedd.tv/"
+
+    def _collector(self, pages):
+        from monitor.collectors.seneddtv import SeneddTVScheduleCollector
+        return SeneddTVScheduleCollector(_StubFetcher(pages))
+
+    def test_each_meeting_is_listed_once_despite_the_nested_first_tab(self):
+        """The live page nests #day1 inside a copy of itself."""
+        from monitor.collectors.seneddtv import SeneddTVScheduleCollector
+        html = _tv_home({1: [_tv_card("aaa", "978", "09.30", "CCERA Committee", "Room 1")]})
+        meetings = SeneddTVScheduleCollector.parse_schedule(html)
+        self.assertEqual([m.guid for m in meetings], ["aaa"])
+
+    def test_committee_id_start_and_room_are_read_from_the_card(self):
+        from monitor.collectors.seneddtv import SeneddTVScheduleCollector
+        html = _tv_home({1: [_tv_card("aaa", "983", "9.30", "EHRSJ Committee", "Committee Room 3")],
+                         2: [_tv_card("bbb", "985", "09.25", "Health Committee", "Committee Room 3")]})
+        a, b = SeneddTVScheduleCollector.parse_schedule(html)
+        self.assertEqual((a.committee_id, a.start, a.room, a.day_index),
+                         ("983", "09.30", "Committee Room 3", 1))
+        self.assertEqual(b.day_index, 2)
+
+    def test_a_meeting_page_before_it_sits_gives_date_ids_and_agenda(self):
+        """And the dropdown's other meetings do not leak into the title."""
+        from monitor.collectors.seneddtv import Meeting, SeneddTVScheduleCollector
+        m = SeneddTVScheduleCollector.parse_meeting(_tv_meeting_before(
+            "Plenary", "23 September 2026", "908", "16263",
+            [("1", "Questions to the First Minister"), ("2", "Voting Time")]),
+            Meeting(guid="g", name="Plenary"))
+        self.assertEqual(m.when, date(2026, 9, 23))
+        self.assertEqual(m.name, "Plenary")
+        self.assertEqual((m.committee_id, m.meeting_id), ("908", "16263"))
+        self.assertEqual([e.text for e in m.agenda],
+                         ["Questions to the First Minister", "Voting Time"],
+                         "the agenda is rendered twice; it must be read once")
+
+    def test_a_meeting_page_after_it_has_sat_is_still_read(self):
+        """/Meeting/Index redirects to /Meeting/Archive once a meeting ends.
+
+        The first version read only the pre-meeting layout, so a run after
+        11.30 lost the date of every committee that had sat that morning — and
+        an undated meeting is dropped, which made a busy morning look empty.
+        """
+        from monitor.collectors.seneddtv import Meeting, SeneddTVScheduleCollector
+        m = SeneddTVScheduleCollector.parse_meeting(_tv_meeting_after(
+            "Climate Change, Environment, Sustainability and Rural Affairs Committee",
+            "23 September 2026", "978", "16233",
+            [("2", "General scrutiny of the Cabinet Minister for Rural Resilience and Sustainability")]),
+            Meeting(guid="g", name="CCERA"))
+        self.assertEqual(m.when, date(2026, 9, 23))
+        self.assertEqual(m.meeting_id, "16233")
+        self.assertEqual([(e.number, e.text) for e in m.agenda],
+                         [("2", "General scrutiny of the Cabinet Minister for "
+                                "Rural Resilience and Sustainability")])
+
+    def test_the_no_agenda_placeholder_is_not_business(self):
+        from monitor.collectors.seneddtv import Meeting, SeneddTVScheduleCollector
+        m = SeneddTVScheduleCollector.parse_meeting(_tv_meeting_before(
+            "Plenary", "29 September 2026", "908", "16264",
+            [("", "There are no agenda items available for this video")]),
+            Meeting(guid="g", name="Plenary"))
+        self.assertEqual(m.agenda, [])
+
+    def test_machinery_is_dropped_with_its_sub_items(self):
+        from monitor.collectors.seneddtv import AgendaEntry, Meeting
+        m = Meeting(guid="g", name="CCERA", agenda=[
+            AgendaEntry("1", "Introductions, apologies, substitutions and declarations of interest"),
+            AgendaEntry("2", "General scrutiny of the Cabinet Minister"),
+            AgendaEntry("3", "Papers to note"),
+            AgendaEntry("3.1", "Inter-Institutional Relations Agreement"),
+            AgendaEntry("4", "Motion under Standing Order 17.42 (ix) to resolve to exclude the public"),
+        ])
+        self.assertEqual([e.text for e in m.substantive()],
+                         ["General scrutiny of the Cabinet Minister"])
+
+    def test_private_deliberation_after_a_colon_is_machinery(self):
+        """"General scrutiny session: consideration of evidence" reads, to
+        someone scanning for what to watch, like a second evidence session."""
+        from monitor.collectors.seneddtv import AgendaEntry
+        self.assertTrue(AgendaEntry("5", "General scrutiny session: consideration of evidence").is_procedural)
+        self.assertTrue(AgendaEntry("8", "Annual scrutiny session with Sport Wales: Consideration of evidence").is_procedural)
+        self.assertFalse(AgendaEntry("2", "General scrutiny session: Deputy First Minister").is_procedural)
+
+    def test_a_committee_meeting_carries_the_forward_look_url(self):
+        """Same URL as the blocked forward look stored, so the page's
+        one-row-per-URL rule replaces a stale August entry with this one."""
+        from monitor.collectors.seneddtv import Meeting, SeneddTVScheduleCollector, AgendaEntry
+        m = Meeting(guid="g", name="Local Government, Housing and Planning Committee",
+                    committee_id="987", meeting_id="16300", start="09.30",
+                    when=date(2026, 10, 1),
+                    agenda=[AgendaEntry("2", "Evidence session 1")])
+        (item,) = SeneddTVScheduleCollector.to_items(m)
+        self.assertEqual(item.url, "https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16300")
+        self.assertEqual(item.source_kind, "calendar")
+        self.assertEqual(item.title, "Local Government, Housing and Planning Committee — 1 October 2026, 09.30")
+        self.assertIn("Evidence session 1", item.body)
+        self.assertEqual(item.video_url, "https://www.senedd.tv/Meeting/Index/g")
+
+    def test_the_housing_committee_is_stored_and_shown_whatever_its_agenda(self):
+        """Its agenda on 17 September was electoral registration regulations.
+        Its meetings are NRLA business regardless."""
+        from monitor.collectors.seneddtv import Meeting, SeneddTVScheduleCollector, AgendaEntry
+        m = Meeting(guid="g", name="Local Government, Housing and Planning Committee",
+                    committee_id="987", meeting_id="16300", when=date(2026, 10, 1),
+                    agenda=[AgendaEntry("2", "The Representation of the People (Electoral "
+                                             "Registration without Applications) Regulations 2026")])
+        (item,) = SeneddTVScheduleCollector.to_items(m)
+        SCORER.score_item(item)
+        self.assertTrue(SCORER.keep(item))
+        self.assertTrue(TAX.qualifies_for_site(item))
+
+    def test_plenary_becomes_one_item_per_piece_of_business(self):
+        """A sitting is many unrelated things; the statement on non-domestic
+        rates must be scored on its own, and must survive URL de-duplication."""
+        from monitor.collectors.seneddtv import Meeting, SeneddTVScheduleCollector, AgendaEntry
+        m = Meeting(guid="g", name="Plenary", committee_id="908", meeting_id="16264",
+                    start="13.30", when=date(2026, 9, 29), agenda=[
+                        AgendaEntry("1", "Questions to the First Minister"),
+                        AgendaEntry("3", "Statement by the Cabinet Minister for Finance: "
+                                         "Rebalancing the non-domestic rates system"),
+                        AgendaEntry("4", "Welsh Conservatives Debate: Housing supply"),
+                        AgendaEntry("5", "Voting Time"),
+                    ])
+        items = SeneddTVScheduleCollector.to_items(m)
+        self.assertEqual([i.title for i in items], [
+            "Statement by the Cabinet Minister for Finance: Rebalancing the non-domestic rates system",
+            "Welsh Conservatives Debate: Housing supply"])
+        self.assertEqual(len({i.url for i in items}), 2)
+        self.assertTrue(all(i.forum == "Plenary" for i in items))
+
+    def test_an_undated_meeting_is_not_guessed(self):
+        from monitor.collectors.seneddtv import Meeting, SeneddTVScheduleCollector
+        self.assertEqual(SeneddTVScheduleCollector.to_items(Meeting(guid="g", name="X")), [])
+
+    def test_an_unreachable_senedd_tv_is_reported_not_swallowed(self):
+        collector = self._collector({})
+        self.assertEqual(collector.meetings(), [])
+        self.assertTrue(collector.errors)
+        self.assertIn("only source", collector.errors[0])
+
+    def test_recent_sitting_dates_come_from_latest_meetings(self):
+        from monitor.collectors.seneddtv import SeneddTVScheduleCollector
+        html = _tv_home({1: []}, latest=[("Plenary", "22 September 2026"),
+                                         ("PAPA Committee", "21 September 2026"),
+                                         ("Legislation Committee", "21 September 2026")])
+        self.assertEqual(SeneddTVScheduleCollector.parse_recent_dates(html),
+                         [date(2026, 9, 22), date(2026, 9, 21)])
+
+    def test_the_whole_collector_runs_end_to_end(self):
+        home = _tv_home({1: [_tv_card("aaa", "987", "09.30",
+                                      "Local Government, Housing and Planning Committee", "Room 1")]})
+        pages = {self.HOME: home,
+                 "https://www.senedd.tv/Meeting/Index/aaa": _tv_meeting_before(
+                     "Local Government, Housing and Planning Committee", "1 October 2026",
+                     "987", "16300", [("2", "Evidence session: private rented sector")])}
+        collector = self._collector(pages)
+        items = list(collector.collect())
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].item_date, date(2026, 10, 1))
+        self.assertEqual(collector.errors, [])
+
+    def test_it_substitutes_for_the_blocked_forward_look(self):
+        from monitor.pipeline import SUBSTITUTED_BY
+        self.assertIn("Senedd diary (senedd.tv)", SUBSTITUTED_BY["Senedd forward look"])
+
+
+# ---------------------------------------------------------------------------
+class TestStaleDiaryIsNotShown(unittest.TestCase):
+    """A diary that cannot be refreshed is worse than a shorter one.
+
+    The forward look last succeeded on 4 August 2026. Its entries kept
+    appearing on the page and in the Friday email as though current —
+    including a housing committee meeting on 24 September that neither
+    senedd.tv nor the supplier listed. While the forward look is failing, its
+    entries are not shown; if it recovers, they return on their own.
+    """
+
+    def _items(self):
+        stale = Item(source_kind="calendar", source_name="Senedd forward look",
+                     title="Local Government, Housing and Planning Committee — 24 September 2026, 09.30",
+                     body="scheduled", item_date=date(2026, 9, 24),
+                     raw_ref="https://business.senedd.wales/mgWebService.asmx#GetAllMeetingsByDate")
+        fresh = Item(source_kind="calendar", source_name="Senedd diary (senedd.tv)",
+                     title="Health Committee — 24 September 2026, 09.25", body="x",
+                     item_date=date(2026, 9, 24), raw_ref="seneddtv:abc")
+        return stale, fresh
+
+    def test_forward_look_entries_are_dropped_while_it_is_failing(self):
+        from monitor.cli import _without_unverifiable_diary
+        stale, fresh = self._items()
+        runs = [{"errors": ["Senedd forward look: GetAllMeetingsByDate returned HTTP 403"]}]
+        self.assertEqual(_without_unverifiable_diary([stale, fresh], runs), [fresh])
+
+    def test_they_return_when_it_recovers(self):
+        from monitor.cli import _without_unverifiable_diary
+        stale, fresh = self._items()
+        self.assertEqual(_without_unverifiable_diary([stale, fresh], [{"errors": []}]),
+                         [stale, fresh])
+
+    def test_an_empty_diary_does_not_claim_a_recess(self):
+        """The empty message was written in August and still said "in recess
+        until 14 September" on 23 September, with the Senedd sitting."""
+        from monitor.site import _upcoming
+        n, html_text = _upcoming([], TAX, date(2026, 9, 23), [])
+        self.assertEqual(n, 0)
+        self.assertNotIn("recess", html_text)
+
+    def test_the_page_says_the_diary_is_shorter(self):
+        from monitor.cli import _standing_gaps
+        gaps = _standing_gaps([{"errors": ["Senedd forward look: GetCommittees returned HTTP 403"],
+                                "sources": []}])
+        self.assertTrue(any("senedd.tv" in g and "five sitting days" in g for g in gaps))
+
+
+# ---------------------------------------------------------------------------
+class TestMorningBriefing(unittest.TestCase):
+    """The supplier's "Bore da" email, rebuilt — the full day, NRLA items tagged.
+
+    The operator chose the whole day over a filtered one (23 September 2026),
+    so nothing is hidden; the NRLA tag is what makes the two lines that matter
+    findable among the thirty that do not. That morning the supplier listed four
+    Welsh Government announcements and missed a fifth — interim alarm measures
+    for leaseholders facing waking watch costs — which is exactly the kind of
+    item the tag exists for.
+    """
+
+    def _meeting(self, name, when, start="09.30", cid="978", agenda=()):
+        from monitor.collectors.seneddtv import AgendaEntry, Meeting
+        return Meeting(guid=f"g-{name[:4]}-{when}", name=name, committee_id=cid,
+                       meeting_id="16000", start=start, room="Committee Room 1",
+                       when=when, agenda=[AgendaEntry(n, t) for n, t in agenda])
+
+    def _news(self, title, body, at):
+        return (at, Item(source_kind="press_release", source_name="Welsh Government — Announcement",
+                         title=title, body=f"{title}\n{body}",
+                         url="https://media.service.gov.wales/news/x", item_date=at.date(),
+                         forum="Welsh Government"))
+
+    def _day(self, **extra):
+        from monitor.morning import build
+        today = date(2026, 9, 23)
+        meetings = [
+            self._meeting("Climate Change, Environment, Sustainability and Rural Affairs Committee",
+                          today, agenda=[("1", "Introductions, apologies, substitutions and declarations of interest"),
+                                         ("2", "General scrutiny of the Cabinet Minister for Rural Resilience")]),
+            self._meeting("Plenary", today, start="13.30", cid="908", agenda=[
+                ("1", "Questions to the First Minister"),
+                ("6", "Welsh Labour Debate - Further education"),
+                ("8", "Voting Time")]),
+            self._meeting("Petitions Committee", date(2026, 9, 24), start="14.00", cid="988", agenda=[
+                ("2", "New Petitions"), ("2.1", "P-07-1587 Ban the tethering of horses"),
+                ("2.2", "P-07-1593 Red squirrels"), ("2.3", "P-07-1579 A statue"),
+                ("2.4", "P-07-1606 A surgery")]),
+        ]
+        news = [
+            self._news("Welsh Government to fund interim alarm measures for leaseholders facing waking watch costs",
+                       "Leaseholders in buildings with fire safety defects will get support under the "
+                       "Building Safety (Wales) Act 2026.", datetime(2026, 9, 22, 18, 20)),
+            self._news("Welsh Government backs farmers with certainty, flexibility and support",
+                       "Advance payments for farm businesses rise from 70% to 80%.",
+                       datetime(2026, 9, 22, 23, 0)),
+        ]
+        questions = extra.get("questions", [])
+        return build(meetings, news, questions, TAX, today=today,
+                     recent_sittings=[date(2026, 9, 22)])
+
+    def test_the_window_starts_at_0730_london_on_the_last_sitting_day(self):
+        from monitor.morning import window_start
+        # 07.30 BST on Tuesday 22 September is 06.30 UTC.
+        self.assertEqual(window_start(date(2026, 9, 23), [date(2026, 9, 22)]),
+                         datetime(2026, 9, 22, 6, 30))
+
+    def test_in_winter_the_window_is_0730_utc(self):
+        from monitor.morning import window_start
+        self.assertEqual(window_start(date(2026, 11, 18), [date(2026, 11, 17)]),
+                         datetime(2026, 11, 17, 7, 30))
+
+    def test_a_monday_after_a_thursday_sitting_covers_friday_too(self):
+        """Nothing published after Thursday's briefing may be lost."""
+        from monitor.morning import window_start
+        start = window_start(date(2026, 9, 28), [date(2026, 9, 24), date(2026, 9, 23)])
+        self.assertEqual(start.date(), date(2026, 9, 24))
+
+    def test_the_first_briefing_after_recess_does_not_replay_the_summer(self):
+        from monitor.morning import window_start
+        start = window_start(date(2026, 9, 14), [date(2026, 7, 16)])
+        self.assertEqual(start.date(), date(2026, 9, 10))
+
+    def test_with_no_latest_meetings_it_falls_back_to_the_previous_weekday(self):
+        from monitor.morning import window_start
+        self.assertEqual(window_start(date(2026, 9, 28), []).date(), date(2026, 9, 25))
+
+    def test_the_whole_day_is_listed(self):
+        b = self._day()
+        self.assertEqual([bl.meeting.name for bl in b.today_blocks],
+                         ["Climate Change, Environment, Sustainability and Rural Affairs Committee",
+                          "Plenary"])
+        self.assertEqual(len(b.announcements), 2)
+        self.assertEqual(b.next_day, date(2026, 9, 24))
+
+    def test_the_relevant_announcement_is_tagged_and_the_other_is_still_listed(self):
+        b = self._day()
+        tagged = {a.item.title[:30]: a.marked for a in b.announcements}
+        self.assertTrue(tagged["Welsh Government to fund inter"])
+        self.assertFalse(tagged["Welsh Government backs farmers"])
+
+    def test_committee_machinery_is_left_out_but_plenary_is_printed_in_full(self):
+        b = self._day()
+        ccera, plenary = b.today_blocks
+        self.assertEqual([l.text for l in ccera.lines],
+                         ["General scrutiny of the Cabinet Minister for Rural Resilience"])
+        self.assertEqual([l.text for l in plenary.lines],
+                         ["Questions to the First Minister",
+                          "Welsh Labour Debate - Further education"],
+                         "Voting Time is left out, as the supplier leaves it out")
+
+    def test_a_long_list_of_petitions_is_collapsed(self):
+        from monitor.morning import Marker, meeting_block
+        petitions = self._meeting("Petitions Committee", date(2026, 9, 24), agenda=[
+            ("2", "New Petitions"), ("2.1", "Horses"), ("2.2", "Squirrels"),
+            ("2.3", "A statue"), ("2.4", "A surgery")])
+        block = meeting_block(petitions, Marker(TAX))
+        texts = [l.text for l in block.lines]
+        self.assertIn("New Petitions", texts)
+        self.assertNotIn("Squirrels", texts)
+        self.assertTrue(any("4 more items" in t for t in texts))
+
+    def test_a_relevant_petition_is_rescued_from_the_collapsed_list(self):
+        from monitor.morning import Marker, meeting_block
+        petitions = self._meeting("Petitions Committee", date(2026, 9, 24), agenda=[
+            ("2", "New Petitions"), ("2.1", "Horses"), ("2.2", "Squirrels"),
+            ("2.3", "P-07-1600 Introduce rent controls in the private rented sector"),
+            ("2.4", "A surgery")])
+        block = meeting_block(petitions, Marker(TAX))
+        marked = [l.text for l in block.lines if l.marked]
+        self.assertIn("P-07-1600 Introduce rent controls in the private rented sector", marked)
+
+    def test_the_housing_committee_is_always_tagged(self):
+        from monitor.morning import Marker, meeting_block
+        lghp = self._meeting("Local Government, Housing and Planning Committee", date(2026, 9, 23),
+                             agenda=[("2", "Electoral registration regulations: evidence session")])
+        self.assertTrue(meeting_block(lghp, Marker(TAX)).marked)
+
+    def test_a_question_on_renters_tabled_for_today_appears_under_plenary(self):
+        """The 15 September example: David Hughes MS on protecting renters."""
+        q = Item(source_kind="oral_question", source_name="Oral Question (tabled)",
+                 title="OQ64467", body="Will the First Minister set out a timeline for the "
+                 "introduction of new measures to better protect renters?",
+                 speaker="David Hughes", constituency="Pontypridd Cynon Merthyr",
+                 forum="Plenary", agenda_item="To the First Minister",
+                 deadline=date(2026, 9, 23), url="https://record.senedd.wales/x")
+        SCORER.score_item(q)
+        b = self._day(questions=[q])
+        plenary = b.today_blocks[1]
+        self.assertTrue(any(l.marked and "protect renters" in l.text for l in plenary.lines))
+
+    def test_nothing_is_sent_when_the_senedd_is_not_sitting(self):
+        from monitor.morning import build, render_morning
+        b = build([], [], [], TAX, today=date(2026, 9, 25))
+        _, _, count = render_morning(b)
+        self.assertEqual(count, 0)
+        sent, message = alerts_mod.post_to_flow("https://example.invalid/flow", "s", "b", count,
+                                            dry_run=False)
+        self.assertFalse(sent)
+
+    def test_a_midnight_embargo_is_shown_in_london_time(self):
+        """The newsroom prints UTC. 23.00 on Tuesday is midnight on Wednesday
+        in Cardiff, and that is the day a reader saw it."""
+        from monitor.morning import render_morning
+        _, body, _ = render_morning(self._day())
+        self.assertIn("Wed 23 Sep, 00.00", body)
+        self.assertIn("Tue 22 Sep, 19.20", body)
+
+    def test_the_summary_is_the_notices_own_first_sentence(self):
+        """The card summary often has no full stop; splitting on sentences
+        alone ran it into the next paragraph ("…current law Views and…")."""
+        from monitor.morning import Announcement
+        item = Item(source_kind="press_release", source_name="WG", title="Roadside rubbish",
+                    body="Roadside rubbish\nRegistered owners could be fined for litter\n\n"
+                         "Views and evidence sought. More text.")
+        self.assertEqual(Announcement(item=item, published_utc=None, marked=False).summary,
+                         "Registered owners could be fined for litter")
+
+    def test_the_subject_says_how_many_are_tagged(self):
+        from monitor.morning import render_morning
+        subject, _, count = render_morning(self._day())
+        self.assertEqual(count, 2)
+        self.assertTrue(subject.startswith("Bore da: Senedd morning briefing — Wed 23 September"))
+        self.assertIn("marked NRLA", subject)
+
+    def test_it_is_built_for_outlook_on_windows(self):
+        """Tables and fixed widths — the Friday email learned this the hard way."""
+        from monitor.morning import render_morning
+        _, body, _ = render_morning(self._day())
+        self.assertIn('role="presentation"', body)
+        self.assertIn('width="680"', body)
+        self.assertNotIn("display:flex", body)
+        self.assertNotIn("<script", body)
+
+    def test_a_missing_newsroom_is_said_in_the_email(self):
+        from monitor.morning import render_morning
+        b = self._day()
+        b.notes.append("The Welsh Government newsroom could not be read this morning.")
+        _, body, _ = render_morning(b)
+        self.assertIn("could not be read this morning", body)
+
+
+# ---------------------------------------------------------------------------
+class TestNewsroomRecentIsTimeAware(unittest.TestCase):
+    """"Since the last briefing" is a moment, not a date."""
+
+    LIST_URL = "https://media.service.gov.wales/news"
+
+    def test_only_stories_after_the_moment_are_read(self):
+        from monitor.collectors.govwales import GovWalesNewsroomCollector
+        pages = {self.LIST_URL:
+                 _card("/news/new", "Tuesday 22 Sep 2026, 18:20", "Waking watch", "s")
+                 + _card("/news/old", "Tuesday 22 Sep 2026, 06:00", "Earlier", "s"),
+                 "https://media.service.gov.wales/news/new": _story(
+                     "2026-09-22 18:20", "x", "Waking watch", "s", "b")}
+        found = GovWalesNewsroomCollector(_StubFetcher(pages)).recent(datetime(2026, 9, 22, 6, 30))
+        self.assertEqual([item.title for _, item, _ in found], ["Waking watch"])
+        self.assertEqual(found[0][0], datetime(2026, 9, 22, 18, 20))
+
+    def test_the_lead_is_the_first_summary_point_not_all_of_them_run_together(self):
+        """Live, 22 September: "…fined for litter thrown from their car
+        Roadside rubbish blights communities…" — three bullet points with no
+        full stops, joined into one line."""
+        from monitor.collectors.govwales import GovWalesNewsroomCollector
+        card = ('<div class="card"><div class="card__body">'
+                '<time class="card__date">Tuesday 22 Sep 2026, 14:55</time>'
+                '<h2 class="card__title"><a class="card__link" href="/news/rubbish">'
+                'Roadside rubbish</a></h2><div class="card__summary"><ul>'
+                '<li>Registered vehicle owners could be fined for litter</li>'
+                '<li>Roadside rubbish blights communities</li></ul></div></div></div>')
+        pages = {self.LIST_URL: card,
+                 "https://media.service.gov.wales/news/rubbish": _story(
+                     "2026-09-22 14:55", "x", "Roadside rubbish", "s", "b")}
+        (_, _, lead), = GovWalesNewsroomCollector(_StubFetcher(pages)).recent(
+            datetime(2026, 9, 22, 6, 30))
+        self.assertEqual(lead, "Registered vehicle owners could be fined for litter")
+
+
+# ---------------------------------------------------------------------------
+class TestMorningWorkflowGuards(unittest.TestCase):
+    """The morning workflow has no schedule, on purpose.
+
+    GitHub began the 06.30 UTC daily run between 11.29 and 13.07 UTC on every
+    day of September 2026. The clock is a Power Automate recurrence instead.
+    If someone "helpfully" adds a cron line, the briefing would start arriving
+    after lunch — and, with the flow also running, twice.
+    """
+
+    ROOT = Path(__file__).resolve().parent.parent
+    WORKFLOW = ROOT / ".github/workflows/morning.yml"
+
+    def test_it_is_started_by_hand_or_by_the_flow_only(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("workflow_dispatch:", text)
+        self.assertNotIn("schedule:", text)
+        self.assertNotIn("cron:", text)
+
+    def test_tests_run_before_anything_is_sent(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertLess(text.index("python -m tests.test_monitor"),
+                        text.index("monitor.cli morning --send"))
+
+    def test_it_delivers_through_the_same_flow_as_the_friday_email(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}", text)
+
+    def test_it_cannot_email_by_opening_issues_or_commit_the_archive(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertNotIn("issues: write", text)
+        self.assertIn("contents: read", text)
+        self.assertNotIn("cli export", text)
+
+    def test_the_readable_copy_has_not_drifted(self):
+        real = self.WORKFLOW.read_text(encoding="utf-8")
+        copy = (self.ROOT / "deploy/morning-workflow.yml").read_text(encoding="utf-8")
+        self.assertEqual(real, copy,
+                         "deploy/morning-workflow.yml has drifted from "
+                         ".github/workflows/morning.yml — re-copy it.")
+
+
+# ---------------------------------------------------------------------------
+class TestMorningBriefingSetupGuide(unittest.TestCase):
+    """The instructions are part of the deliverable.
+
+    The operator is not a developer and set up the Friday email from a guide.
+    If the guide names a secret the code does not read, or a workflow file
+    that does not exist, the setup fails at the one step nobody can debug.
+    """
+
+    GUIDE = Path(__file__).resolve().parent.parent / "MORNING-BRIEFING-SETUP.md"
+
+    def test_the_guide_exists(self):
+        self.assertTrue(self.GUIDE.exists())
+
+    def test_it_calls_the_right_workflow_on_the_right_repository(self):
+        text = self.GUIDE.read_text(encoding="utf-8")
+        self.assertIn("https://api.github.com/repos/JHC220199/Senedd-monitoring-tool/"
+                      "actions/workflows/morning.yml/dispatches", text)
+        self.assertIn('{"ref":"main"}', text)
+
+    def test_it_sets_the_recurrence_in_london_time(self):
+        text = self.GUIDE.read_text(encoding="utf-8")
+        self.assertIn("Recurrence", text)
+        self.assertIn("London", text)
+
+    def test_the_token_is_limited_to_this_repository_and_to_actions(self):
+        text = self.GUIDE.read_text(encoding="utf-8")
+        self.assertIn("Only select repositories", text)
+        self.assertIn("Actions", text)
+        self.assertIn("Read and write", text)
+
+    def test_it_reuses_the_friday_flow_rather_than_asking_for_another(self):
+        text = self.GUIDE.read_text(encoding="utf-8")
+        self.assertIn("MONITOR_FLOW_URL", text)
+
+    def test_it_also_fixes_the_friday_email(self):
+        """GitHub started the 15.00 Friday run at 18.22 and 19.16 on
+        18 September, so its London-clock check stopped it both times and no
+        Friday email has gone out on its own. A dispatched run is always let
+        through, so the same Power Automate start fixes it."""
+        text = self.GUIDE.read_text(encoding="utf-8")
+        self.assertIn("actions/workflows/forward.yml/dispatches", text)
+        workflow = (Path(__file__).resolve().parent.parent
+                    / ".github/workflows/forward.yml").read_text(encoding="utf-8")
+        self.assertIn('if [ "${{ github.event_name }}" != "schedule" ]', workflow,
+                      "forward.yml must let a dispatched run through the clock "
+                      "check, or the Power Automate start cannot work")
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
