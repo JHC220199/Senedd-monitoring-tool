@@ -572,10 +572,18 @@ class GovWalesNewsroomCollector(Collector):
 
             summary_node = node.select_one(".card__summary")
             summary = _clean(summary_node.get_text(" ", strip=True)) if summary_node else ""
+            # The summary is usually two or three bullet points with no full
+            # stops, so joined into one string it runs on: "…from their car
+            # Roadside rubbish blights communities…". The first point on its
+            # own is the notice's own headline sentence.
+            lead = ""
+            if summary_node:
+                first = summary_node.find(["li", "p"])
+                lead = _clean(first.get_text(" ", strip=True)) if first else ""
 
             date_node = node.select_one(".card__date") or node.select_one("time")
-            card_date = self._parse_card_date(
-                date_node.get_text(" ", strip=True) if date_node else "")
+            date_text = date_node.get_text(" ", strip=True) if date_node else ""
+            card_date = self._parse_card_date(date_text)
 
             cards.append({
                 "slug": href.rsplit("/", 1)[-1],
@@ -583,6 +591,8 @@ class GovWalesNewsroomCollector(Collector):
                 "title": title,
                 "summary": summary,
                 "date": card_date,
+                "at": self._parse_card_time(date_text),
+                "lead": lead or summary,
             })
         return cards
 
@@ -601,6 +611,69 @@ class GovWalesNewsroomCollector(Collector):
             except ValueError:
                 continue
         return None
+
+    def _parse_card_time(self, text: str) -> datetime | None:
+        """The card's full timestamp, in UTC, or None if it carries no time.
+
+        The newsroom prints times in UTC. "Monday 21 Sep 2026, 23:00" is the
+        Programme for Government, embargoed to one minute past midnight on
+        Tuesday 22 September British Summer Time. A reader in Cardiff saw it on
+        the Tuesday, and the morning briefing has to agree with them — which it
+        cannot do from a date alone.
+        """
+        try:
+            return datetime.strptime((text or "").strip(), self.CARD_DATE_FORMAT)
+        except ValueError:
+            return None
+
+    def recent(self, since_utc: datetime,
+               max_articles: int = 30) -> list[tuple[datetime | None, Item, str]]:
+        """Stories published at or after ``since_utc``, newest first.
+
+        For the morning briefing, which needs "since the last briefing went
+        out" rather than "since a date". Returns ``(published_utc, item,
+        lead)`` — the lead being the card's first summary point, verbatim. A
+        card with no time is judged on its date alone, generously. Loud on
+        failure in exactly the same two ways as `collect`.
+        """
+        found: list[tuple[datetime | None, Item, str]] = []
+        budget = max_articles
+        for page in range(1, self.MAX_PAGES + 1):
+            url = NEWSROOM_NEWS if page == 1 else f"{NEWSROOM_NEWS}?page={page}"
+            html = self.fetcher.get_text(url)
+            if html is None:
+                if page == 1:
+                    self.note_error(
+                        f"The Welsh Government newsroom at {NEWSROOM_NEWS} could "
+                        "not be fetched, so the briefing has no Welsh "
+                        "Government section today.")
+                return found
+            cards = self._parse_cards(html)
+            if page == 1 and not cards:
+                self.note_error(
+                    "The Welsh Government newsroom returned a page but no "
+                    "stories could be read from it — the markup has probably "
+                    "changed.")
+                return found
+
+            def in_window(card: dict) -> bool:
+                if card.get("at") is not None:
+                    return card["at"] >= since_utc
+                return bool(card["date"]) and card["date"] >= since_utc.date()
+
+            fresh = [c for c in cards if in_window(c)]
+            for card in fresh:
+                if budget <= 0:
+                    return found
+                budget -= 1
+                item = self._story_to_item(card)
+                if item:
+                    found.append((card.get("at"), item, card.get("lead", "")))
+            if not fresh or len(fresh) < len(cards):
+                # Newest first: once a card falls outside the window, every
+                # card after it does too.
+                return found
+        return found
 
     def _story_to_item(self, card: dict) -> Item | None:
         html = self.fetcher.get_text(card["url"])
