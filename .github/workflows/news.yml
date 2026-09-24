@@ -1,11 +1,16 @@
-# Political news alerts — an email when something big happens in the Senedd.
+# Political news alerts and Welsh Government press release alerts.
 #
 # WHAT IT IS
 #   Camlas's "breaking news" emails, rebuilt: a defection, a leader standing
 #   down, a new shadow cabinet, a reshuffle. Reads the politics feeds of BBC
 #   News Wales, Nation.Cymru and WalesOnline, and the Welsh Government's list
 #   of ministers, and emails only what is new. Headlines and links only —
-#   nothing is copied or summarised. See NEWS-ALERTS-SETUP.md.
+#   nothing is copied or summarised.
+#
+#   The same run reads the Welsh Government's newsroom and announcements
+#   feed, and emails any press release or written statement that matches the
+#   NRLA's relevance rules, with the notice's own summary points (Camlas's
+#   "Alert - Press Release"). A separate email. See NEWS-ALERTS-SETUP.md.
 #
 # WHEN IT RUNS
 #   Every hour, 08.00 to 18.00 on weekdays, started by a Power Automate
@@ -25,7 +30,7 @@ on:
   workflow_dispatch:
     inputs:
       test:
-        description: "Send a TEST alert of the latest political news, to check the email arrives"
+        description: "Send TEST alerts (latest political news, latest relevant press release) to check the emails arrive"
         type: boolean
         default: false
 
@@ -83,6 +88,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: senedd-news-alert-${{ github.run_number }}
-          path: out/news.html
+          path: |
+            out/news.html
+            out/press.html
           retention-days: 30
           if-no-files-found: ignore
