@@ -313,6 +313,7 @@ class GovWalesRSSCollector(Collector):
                     item.speaker = minister
                 if lead:
                     item.body = f"{item.title}\n{lead}"
+            item.points = [lead] if lead else []
             found.append((at, item, lead))
         found.sort(key=lambda t: t[0], reverse=True)
         return found
@@ -672,9 +673,13 @@ class GovWalesNewsroomCollector(Collector):
             # Roadside rubbish blights communities…". The first point on its
             # own is the notice's own headline sentence.
             lead = ""
+            points: list[str] = []
             if summary_node:
                 first = summary_node.find(["li", "p"])
                 lead = _clean(first.get_text(" ", strip=True)) if first else ""
+                points = [_clean(x.get_text(" ", strip=True))
+                          for x in summary_node.find_all(["li", "p"])]
+                points = [x for x in points if x]
 
             date_node = node.select_one(".card__date") or node.select_one("time")
             date_text = date_node.get_text(" ", strip=True) if date_node else ""
@@ -688,6 +693,7 @@ class GovWalesNewsroomCollector(Collector):
                 "date": card_date,
                 "at": self._parse_card_time(date_text),
                 "lead": lead or summary,
+                "points": points or ([summary] if summary else []),
             })
         return cards
 
@@ -763,6 +769,10 @@ class GovWalesNewsroomCollector(Collector):
                 budget -= 1
                 item = self._story_to_item(card)
                 if item:
+                    # The card's bullet points, verbatim, for the press
+                    # release alert. An attribute rather than an Item field,
+                    # so the archive's schema is untouched.
+                    item.points = card.get("points", [])
                     found.append((card.get("at"), item, card.get("lead", "")))
             if not fresh or len(fresh) < len(cards):
                 # Newest first: once a card falls outside the window, every
