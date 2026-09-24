@@ -4308,6 +4308,80 @@ class TestDebatesWorkflowGuards(unittest.TestCase):
         self.assertIn('os.environ.get("ANTHROPIC_API_KEY"', code)
 
 
+
+class TestMorningBriefingHasWrittenStatements(unittest.TestCase):
+    """24 September 2026, the first side-by-side day: the supplier listed two
+    written statements and the tool listed neither, because it read only
+    the newsroom, which carries press notices and not statements."""
+
+    FEED = "https://www.gov.wales/announcements/rss"
+    WS = "https://www.gov.wales/written-statement-learning-disability"
+
+    def _feed(self):
+        def item(title, link, when):
+            return (f"<item><title>{title}</title><link>{link}?utm_source=rss-announcements"
+                    f"&amp;utm_medium=rss-feed</link><description/><pubDate>{when}</pubDate></item>")
+        return ('<?xml version="1.0" encoding="utf-8"?><rss version="2.0"><channel>'
+                + item("Written Statement: Learning Disability Transformation Programme",
+                       self.WS, "Wed, 23 Sep 2026 09:00:55 +0000")
+                + item("Oral Statement: Building Safety Programme Update",
+                       "https://www.gov.wales/oral-statement-building-safety",
+                       "Wed, 23 Sep 2026 10:51:38 +0000")
+                + item("Have your say on new powers to tackle roadside rubbish",
+                       "https://www.gov.wales/roadside-rubbish",
+                       "Tue, 22 Sep 2026 13:43:38 +0000")
+                + "</channel></rss>")
+
+    def _page(self):
+        return ('<html><head><meta name="description" content="Delyth Jewell MS, Deputy Minister"></head>'
+                '<body><div class="page-content"><p>Delyth Jewell MS, Deputy Minister for '
+                'Social Care, Mental Health and Women’s Health</p><p>People with learning '
+                'disabilities have the right to live lives that are happy.</p><p>More.</p>'
+                '</div></body></html>')
+
+    def test_written_statements_come_from_the_feed(self):
+        from monitor.collectors.govwales import GovWalesRSSCollector
+        fetcher = _StubFetcher({self.FEED: self._feed(), self.WS: self._page()})
+        found = GovWalesRSSCollector(fetcher).recent(datetime(2026, 9, 23, 6, 30))
+        self.assertEqual(len(found), 1,
+                         "the oral statement is a record of Plenary, and the "
+                         "roadside-rubbish notice is before the window")
+        at, item, lead = found[0]
+        self.assertEqual(at, datetime(2026, 9, 23, 9, 0, 55))
+        self.assertEqual(item.source_kind, "written_statement")
+        self.assertEqual(item.url, self.WS, "tracking parameters are stripped")
+        self.assertTrue(lead.startswith("People with learning disabilities"))
+        self.assertTrue(item.speaker.startswith("Delyth Jewell MS, Deputy Minister"))
+
+    def test_an_unreadable_feed_says_so(self):
+        from monitor.collectors.govwales import GovWalesRSSCollector
+        c = GovWalesRSSCollector(_StubFetcher({}))
+        self.assertEqual(c.recent(datetime(2026, 9, 23, 6, 30)), [])
+        self.assertIn("written statements are missing", c.errors[0])
+
+    def test_the_same_notice_from_both_sources_is_listed_once(self):
+        from monitor.morning import merge_announcements
+        a = Item(source_kind="announcement", source_name="x",
+                 title="Making waves: swimming lessons begin", body="", url="https://www.gov.wales/a")
+        b = Item(source_kind="announcement", source_name="y",
+                 title="Making waves - swimming lessons begin", body="", url="https://media.service.gov.wales/a")
+        merged = merge_announcements([(datetime(2026, 9, 23, 22), a, "")],
+                                     [(None, b, "From this month, pupils...")])
+        self.assertEqual(len(merged), 1)
+        at, item, lead = merged[0]
+        self.assertIs(item, a)
+        self.assertEqual(lead, "From this month, pupils...")
+
+    def test_the_minister_is_shown_under_a_statement(self):
+        from monitor.morning import Announcement, _announcement_row
+        item = Item(source_kind="written_statement", source_name="x",
+                    title="Written Statement: X", body="", url="https://www.gov.wales/x",
+                    speaker="Mabon ap Gwynfor MS, Cabinet Minister for Health and Care")
+        row = _announcement_row(Announcement(item=item, published_utc=datetime(2026, 9, 24, 8, 30),
+                                             marked=False, lead="Today, I am launching."))
+        self.assertIn("Thu 24 Sep, 09.30 · Mabon ap Gwynfor MS", row)
+
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
