@@ -2,7 +2,7 @@
 
 *As at Thursday 24 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
-**15** open consultations · **3** closing within three weeks · **29** developments to review
+**16** open consultations · **3** closing within three weeks · **29** developments to review
 
 ## Respond — things with a deadline
 
@@ -20,7 +20,7 @@
 | **Closes tomorrow** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 16 October | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 19 October | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| … | _3 more — see the full dashboard_ | |
+| … | _4 more — see the full dashboard_ | |
 
 <details><summary>Open, but no closing date published yet (14)</summary>
 
@@ -134,10 +134,10 @@ _14 further items in the full dashboard._
 - **28 September 2026** — [Culture, Communications, Cymraeg and Sport Committee — 28 September 2026, 12.15](https://business.senedd.wales/ieListDocuments.aspx?CId=980&MId=16239)
 - **30 September 2026** — [Equality, Human Rights and Social Justice Committee — 30 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16248)
 - **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
-- **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
 - **30 September 2026** — [Equality, Human Rights and Social Justice Committee — 30 September 2026, 09.45](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16248)
+- **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
 - **01 October 2026** — [Local Government, Housing and Planning Committee — 01 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16305)
 
 ---
 
-<sub>145 items scored from 636 collected records, 24 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>146 items scored from 637 collected records, 24 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
