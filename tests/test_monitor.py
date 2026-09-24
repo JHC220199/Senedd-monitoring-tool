@@ -4382,6 +4382,231 @@ class TestMorningBriefingHasWrittenStatements(unittest.TestCase):
         self.assertIn("Thu 24 Sep, 09.30 · Mabon ap Gwynfor MS", row)
 
 
+
+# ---------------------------------------------------------------------------
+# Political news alerts (monitor/news.py, collectors/news.py)
+# ---------------------------------------------------------------------------
+
+def _hl(title, at=None, outlet="BBC News Wales", url=None, standfirst=""):
+    from monitor.collectors.news import Headline
+    return Headline(outlet=outlet, title=title, url=url or "https://x/" + str(abs(hash(title))),
+                    at=at, standfirst=standfirst)
+
+
+class TestNewsAlertTriggers(unittest.TestCase):
+    """Political changes only — the directorate's choice, 24 September 2026.
+    Every headline here is real, from the feeds on 15–24 September."""
+
+    ALERTS = {
+        "Sarah Cooper-Lesadd MS defects to Plaid Cymru from Reform UK": "defection",
+        "Dan Thomas MS stands down as Reform UK in Wales leader": "resignation",
+        "Reform UK unveils new Senedd shadow cabinet": "shadow_cabinet",
+        "Laura Anne Jones elected Reform's deputy Welsh leader": "leadership",
+        "Helen Jenner unveiled by Nigel Farage as new leader of Reform in Wales": "leadership",
+        "Reform UK name new deputy leader in Wales": "leadership",
+        "First Minister announces Cabinet reshuffle": "reshuffle",
+        "Reform MS suspended after comments": "suspension",
+    }
+    NOT_ALERTS = [
+        "Welsh Green Party leader Anthony Slaughter diagnosed with cancer",
+        "Senedd member Anthony Slaughter announces cancer diagnosis",
+        "Drunk council leader accused of drinking bottle of gin and vowing to 'wipe out' Plaid Cymru quits",
+        "Council leader steps down after getting drunk and falling over at political event",
+        "Welsh Labour MP resigns from shadow cabinet",
+        "Wales manager Craig Bellamy steps down",
+        "From punk to politics - the making of new Reform Wales leader Helen Jenner",
+        "Who is Helen Jenner, Reform UK's new leader in Wales?",
+        "Nigel Farage Q&A in full as Reform UK boss announces new Wales leader",
+        "Nigel Farage and Helen Jenner savage Reform UK defector Sarah Cooper-Lesadd",
+        "No suspect identified in death threat against Reform Senedd member",
+        "Reform Senedd motion declaring Wales should stay in UK voted down",
+        "Reform Wales leader Dan Thomas arrested",
+    ]
+
+    def test_political_changes_alert(self):
+        from monitor.news import classify
+        for title, kind in self.ALERTS.items():
+            m = classify(_hl(title))
+            self.assertIsNotNone(m, title)
+            self.assertEqual(m.kind, kind, title)
+
+    def test_everything_else_does_not(self):
+        from monitor.news import classify
+        for title in self.NOT_ALERTS:
+            self.assertIsNone(classify(_hl(title)), title)
+
+    def test_hyphenated_names_are_kept_whole(self):
+        from monitor.news import names_in
+        self.assertIn("sarah cooper-lesadd", names_in("Sarah Cooper-Lesadd MS defects"))
+
+
+class TestNewsAlertGrouping(unittest.TestCase):
+
+    def test_outlets_reporting_one_event_make_one_story(self):
+        """21 September: BBC named Helen Jenner; WalesOnline named no one."""
+        from monitor.news import classify, group
+        t = datetime(2026, 9, 21, 13, 0)
+        ms = [classify(_hl("Helen Jenner unveiled by Nigel Farage as new leader of Reform in Wales", t)),
+              classify(_hl("Nigel Farage in Wales as Reform UK announces new leader at the Senedd",
+                           t + timedelta(minutes=10), "WalesOnline")),
+              classify(_hl("Laura Anne Jones elected Reform's deputy Welsh leader", t + timedelta(days=1))),
+              classify(_hl("Reform UK name new deputy leader in Wales", t + timedelta(days=1, hours=-3),
+                           "WalesOnline"))]
+        stories = group(ms)
+        self.assertEqual(len(stories), 2)
+        self.assertEqual([len(s.matches) for s in stories], [2, 2])
+
+    def test_seen_headlines_and_repeat_events_are_not_alerted_again(self):
+        from monitor.news import new_stories, remember
+        now = datetime(2026, 9, 15, 16, 0)
+        h = _hl("Sarah Cooper-Lesadd MS defects to Plaid Cymru from Reform UK", now)
+        state = {"initialised": "x"}
+        first = new_stories([h], state, now)
+        self.assertEqual(len(first), 1)
+        remember(state, [h], first, None, now)
+        self.assertEqual(new_stories([h], state, now + timedelta(hours=1)), [])
+        follow_up = _hl("Sarah Cooper-Lesadd MS defects: Plaid welcomes new member",
+                        now + timedelta(hours=2), "Nation.Cymru")
+        self.assertEqual(new_stories([follow_up], state, now + timedelta(hours=2)), [],
+                         "another outlet's version of the same defection")
+        other = _hl("Sarah Cooper-Lesadd MS appointed Plaid spokesperson for children",
+                    now + timedelta(hours=3))
+        self.assertEqual(len(new_stories([other], state, now + timedelta(hours=3))), 1,
+                         "a new kind of change about the same person is news")
+
+    def test_old_headlines_are_not_news(self):
+        from monitor.news import new_stories
+        now = datetime(2026, 9, 24, 10, 0)
+        h = _hl("Dan Thomas MS stands down as Reform UK in Wales leader", now - timedelta(days=9))
+        self.assertEqual(new_stories([h], {"initialised": "x"}, now), [])
+
+
+class TestNewsAlertMinisters(unittest.TestCase):
+
+    PAGE = ('<div class="key-person"><a href="/x"><div class="key-person__details">'
+            '<span><span>{n}</span></span><span class="subtitle"> {r} </span></div></a></div>')
+
+    def _page(self, people):
+        return "".join(self.PAGE.format(n=n, r=r) for n, r in people.items())
+
+    def test_the_page_is_read(self):
+        from monitor.collectors.news import parse_ministers
+        got = parse_ministers(self._page({"Siân Gwenllian MS":
+                                          "Cabinet Minister for Local Government, Housing and Planning"}))
+        self.assertEqual(got, {"Siân Gwenllian MS":
+                               "Cabinet Minister for Local Government, Housing and Planning"})
+
+    def test_a_change_is_an_alert_and_housing_is_marked(self):
+        from monitor.news import minister_change, render_news
+        before = {"Siân Gwenllian MS": "Cabinet Minister for Local Government, Housing and Planning",
+                  "Adam Price MS": "Cabinet Minister for Enterprise"}
+        after = {"Adam Price MS": "Cabinet Minister for Local Government, Housing and Planning"}
+        change = minister_change({"ministers": before}, after)
+        self.assertTrue(change.housing)
+        self.assertEqual(len(change.lines), 2)
+        subject, body, count = render_news([], change)
+        self.assertEqual(count, 1)
+        self.assertIn("ministers have changed", subject)
+        self.assertIn("no longer listed", body)
+        self.assertIn("NRLA", body)
+        self.assertIsNone(minister_change({"ministers": before}, before))
+        self.assertIsNone(minister_change({}, after), "the first run only learns")
+
+    def test_a_broken_page_is_not_a_mass_resignation(self):
+        from monitor.collectors.news import NewsCollector, MINISTERS_URL
+        c = NewsCollector(_StubFetcher({MINISTERS_URL: "<html>redesigned</html>"}))
+        self.assertIsNone(c.ministers())
+        self.assertIn("layout has probably changed", c.errors[0])
+
+
+class TestNewsAlertEmail(unittest.TestCase):
+
+    def test_headlines_and_links_only(self):
+        from monitor.news import classify, group, render_news
+        t = datetime(2026, 9, 15, 15, 45)
+        story = group([classify(_hl("Sarah Cooper-Lesadd MS defects to Plaid Cymru from Reform UK",
+                                    t, url="https://www.bbc.co.uk/news/articles/abc"))])
+        subject, body, count = render_news(story, None)
+        self.assertEqual(subject, "Senedd news: Sarah Cooper-Lesadd MS defects to Plaid Cymru from Reform UK")
+        self.assertIn('href="https://www.bbc.co.uk/news/articles/abc"', body)
+        self.assertIn("Tue 15 Sep, 16.45", body)
+        self.assertIn("nothing is copied", body)
+        self.assertEqual(render_news([], None), ("", "", 0))
+
+    def test_feed_parsing(self):
+        from monitor.collectors.news import parse_feed
+        xml = ('<?xml version="1.0"?><rss><channel><item><title><![CDATA[Reform names shadow cabinet]]></title>'
+               '<link>https://www.bbc.co.uk/news/articles/x?at_medium=RSS&amp;at_campaign=rss</link>'
+               '<pubDate>Thu, 24 Sep 2026 09:01:00 GMT</pubDate><description>d</description></item></channel></rss>')
+        (h,) = parse_feed("BBC News Wales", xml)
+        self.assertEqual(h.url, "https://www.bbc.co.uk/news/articles/x")
+        self.assertEqual(h.at, datetime(2026, 9, 24, 9, 1))
+
+
+class TestNewsCommand(unittest.TestCase):
+
+    def _run(self, state_text, headlines, send_result=(True, "sent")):
+        from monitor import cli
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        state = os.path.join(tmp, "news.json")
+        if state_text is not None:
+            Path(state).write_text(state_text)
+        args = SimpleNamespace(interval=0, state=state, out=os.path.join(tmp, "n.html"),
+                               remember=False, send=True)
+        with mock.patch("monitor.collectors.news.NewsCollector.headlines", return_value=headlines), \
+             mock.patch("monitor.collectors.news.NewsCollector.ministers", return_value={"A MS": "Minister"}), \
+             mock.patch.object(cli.alerts_mod, "post_to_flow", return_value=send_result) as post, \
+             mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x"}), \
+             contextlib.redirect_stdout(io.StringIO()):
+            code = cli.cmd_news(args)
+        import json as _json
+        return code, _json.loads(Path(state).read_text()) if Path(state).exists() else None, post
+
+    def test_the_first_run_learns_and_sends_nothing(self):
+        h = _hl("Dan Thomas MS stands down as Reform UK in Wales leader", datetime.utcnow())
+        code, state, post = self._run(None, [h])
+        self.assertEqual(code, 0)
+        post.assert_not_called()
+        self.assertIn(h.url, state["seen"])
+
+    def test_a_failed_send_is_retried(self):
+        h = _hl("Dan Thomas MS stands down as Reform UK in Wales leader", datetime.utcnow())
+        code, state, _ = self._run('{"initialised": "x", "seen": {}}', [h], (False, "HTTP 500"))
+        self.assertEqual(code, 2)
+        self.assertNotIn(h.url, state["seen"])
+
+
+class TestNewsWorkflowGuards(unittest.TestCase):
+
+    ROOT = Path(__file__).resolve().parent.parent
+    WORKFLOW = ROOT / ".github/workflows/news.yml"
+
+    def test_started_by_the_flow_only(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("workflow_dispatch:", text)
+        self.assertNotIn("schedule:", text)
+
+    def test_it_commits_nothing(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("contents: read", text)
+        self.assertNotIn("git push", text)
+        self.assertNotIn("issues: write", text)
+        self.assertIn("actions/cache/restore@v4", text)
+        self.assertIn("MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}", text)
+        self.assertLess(text.index("python -m tests.test_monitor"),
+                        text.index("monitor.cli news --send"))
+
+    def test_the_readable_copy_has_not_drifted(self):
+        self.assertEqual(self.WORKFLOW.read_text(encoding="utf-8"),
+                         (self.ROOT / "deploy/news-workflow.yml").read_text(encoding="utf-8"))
+
+    def test_the_guide_calls_the_right_workflow(self):
+        guide = (self.ROOT / "NEWS-ALERTS-SETUP.md").read_text(encoding="utf-8")
+        self.assertIn("https://api.github.com/repos/JHC220199/Senedd-monitoring-tool/"
+                      "actions/workflows/news.yml/dispatches", guide)
+
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
