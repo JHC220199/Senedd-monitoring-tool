@@ -1,0 +1,103 @@
+# Debate summaries — what was said in the Senedd, the morning after.
+#
+# WHAT IT IS
+#   The supplier's post-debate notes, rebuilt, in the body of one email: every
+#   relevant debate or exchange from the Senedd's draft Record, a sentence or
+#   two per speaker, each line linked to the Record. See DEBATE-SUMMARIES.md.
+#
+# WHEN IT RUNS
+#   Straight after the morning briefing finishes — whether or not the briefing
+#   sent anything, because the Senedd may have sat yesterday and not today.
+#   The briefing is started by Power Automate at 07.30 London time, so this
+#   needs no flow, no token and no timer of its own. It can also be run by
+#   hand from the Actions tab.
+#
+#   No schedule, deliberately: GitHub's timer ran five to six hours late every
+#   day in September 2026 (see morning.yml).
+#
+# HOW IT IS SUMMARISED
+#   With the ANTHROPIC_API_KEY secret: AI summaries (Claude), figures checked
+#   against the speaker's words. Without it: each speaker's most relevant
+#   sentences, verbatim. The secret is optional; everything works without it.
+#
+# WHY IT CAN WRITE TO THE REPOSITORY
+#   To remember which meetings it has done (data/debates-sent.json), so a
+#   committee whose Record appears two days late is summarised once, on the
+#   morning it appears. That file is the only thing it commits.
+
+name: Senedd debate summaries
+
+on:
+  workflow_run:
+    workflows: ["Senedd morning briefing"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: senedd-debates
+  cancel-in-progress: false
+
+permissions:
+  contents: write             # commits data/debates-sent.json, nothing else
+  # Issue-writing permission is deliberately withheld, as in every workflow in
+  # this repository: the run must not be able to start emailing by opening
+  # issues.
+
+jobs:
+  debates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the tests first
+        # The email goes to a person, so a broken build must not reach them.
+        run: python -m tests.test_monitor
+
+      - name: Build and send the debate summaries
+        env:
+          MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DEBATE_SUMMARY_MODEL: ${{ vars.DEBATE_SUMMARY_MODEL }}
+        run: python -m monitor.cli debates --send --out out/debates.html
+
+      - name: Remember which meetings are done
+        run: |
+          git config user.name  "senedd-monitor"
+          git config user.email "joshua.helm-cowley@nrla.org.uk"
+          git add data/debates-sent.json
+          if git diff --staged --quiet; then
+            echo "Nothing new to remember."
+            exit 0
+          fi
+          git commit -m "Debate summaries: meetings done $(date -u +'%Y-%m-%d')"
+          # The daily collection may be pushing at the same moment; it touches
+          # different files, so a rebase always applies cleanly.
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            sleep $((attempt * 10))
+          done
+          echo "Could not push data/debates-sent.json after five attempts."
+          exit 1
+
+      - name: Keep a copy of what was sent
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: senedd-debate-summaries-${{ github.run_number }}
+          path: out/debates.html
+          retention-days: 30
+          if-no-files-found: ignore
