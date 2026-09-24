@@ -4545,7 +4545,8 @@ class TestNewsAlertEmail(unittest.TestCase):
 
 class TestNewsCommand(unittest.TestCase):
 
-    def _run(self, state_text, headlines, send_result=(True, "sent"), test=False):
+    def _run(self, state_text, headlines, send_result=(True, "sent"), test=False,
+             notices=None):
         from monitor import cli
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
@@ -4553,9 +4554,13 @@ class TestNewsCommand(unittest.TestCase):
         if state_text is not None:
             Path(state).write_text(state_text)
         args = SimpleNamespace(interval=0, state=state, out=os.path.join(tmp, "n.html"),
+                               press_out=os.path.join(tmp, "p.html"), taxonomy=None,
                                remember=False, send=True, test=test)
         with mock.patch("monitor.collectors.news.NewsCollector.headlines", return_value=headlines), \
              mock.patch("monitor.collectors.news.NewsCollector.ministers", return_value={"A MS": "Minister"}), \
+             mock.patch("monitor.collectors.govwales.GovWalesNewsroomCollector.recent",
+                        return_value=notices or []), \
+             mock.patch("monitor.collectors.govwales.GovWalesRSSCollector.recent", return_value=[]), \
              mock.patch.object(cli.alerts_mod, "post_to_flow", return_value=send_result) as post, \
              mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x"}), \
              contextlib.redirect_stdout(io.StringIO()):
@@ -4617,6 +4622,106 @@ class TestNewsWorkflowGuards(unittest.TestCase):
         guide = (self.ROOT / "NEWS-ALERTS-SETUP.md").read_text(encoding="utf-8")
         self.assertIn("https://api.github.com/repos/JHC220199/Senedd-monitoring-tool/"
                       "actions/workflows/news.yml/dispatches", guide)
+
+
+
+# ---------------------------------------------------------------------------
+# Press release alerts (monitor/press.py)
+# ---------------------------------------------------------------------------
+
+def _notice(title, body="", kind="announcement", points=None, url=None, at=None):
+    item = Item(source_kind=kind, source_name="Welsh Government", title=title,
+                body=f"{title}\n{body}", url=url or "https://media.service.gov.wales/news/" +
+                re.sub(r"\W+", "-", title.lower()))
+    item.points = points or []
+    return (at or datetime(2026, 9, 22, 17, 0), item, (points or [""])[0])
+
+
+WAKING_WATCH = _notice(
+    "Welsh Government to fund interim alarm measures for leaseholders facing waking watch costs",
+    "The Wales Interim Measures Alarm Grant for leaseholders in buildings with fire safety defects.",
+    points=["Welsh Government announces the creation of the Wales Interim Measures Alarm Grant.",
+            "From 1 October 2026, the fund will ease the burden of expensive interim measures costs.",
+            "Some leaseholders may also be entitled to refunds."])
+SWIMMING = _notice("Making waves: swimming lessons for school children begin in Wales",
+                   "Pupils in years 4 and 5 will receive swimming lessons.")
+ORAL = _notice("Oral Statement: Building Safety Programme Update",
+               "leaseholders building safety remediation", kind="oral_statement")
+
+
+class TestPressReleaseAlerts(unittest.TestCase):
+    """The supplier's example, 23 September 2026: the waking watch notice,
+    with its own three bullet points and a link."""
+
+    def setUp(self):
+        from monitor.morning import Marker
+        self.marker = Marker(TAX)
+
+    def test_only_new_relevant_notices_are_alerted(self):
+        from monitor.press import select
+        got = select([WAKING_WATCH, SWIMMING, ORAL], self.marker, {"press_seen": {}})
+        self.assertEqual([r.item.title for r in got], [WAKING_WATCH[1].title])
+        self.assertEqual(len(got[0].points), 3)
+        seen = {"press_seen": {WAKING_WATCH[1].url: "2026-09-22T18:00:00"}}
+        self.assertEqual(select([WAKING_WATCH], self.marker, seen), [])
+        self.assertEqual(len(select([WAKING_WATCH], self.marker, seen, test=True)), 1,
+                         "a test shows it anyway")
+
+    def test_each_run_starts_where_the_last_finished(self):
+        from monitor.press import look_since
+        now = datetime(2026, 9, 24, 10, 0)
+        self.assertEqual(look_since({}, now), now - timedelta(days=3))
+        self.assertEqual(look_since({"press_checked": "2026-09-24T09:00:00"}, now),
+                         datetime(2026, 9, 24, 7, 0))
+        self.assertEqual(look_since({"press_checked": "2026-09-01T09:00:00"}, now),
+                         now - timedelta(days=4))
+
+    def test_the_email_quotes_the_notice(self):
+        from monitor.press import render_press, select
+        got = select([WAKING_WATCH], self.marker, {})
+        subject, body, count = render_press(got)
+        self.assertEqual(subject, "Welsh Government press release: " + WAKING_WATCH[1].title)
+        self.assertIn("Some leaseholders may also be entitled to refunds.", body)
+        self.assertIn("Open Government", body)
+        self.assertIn(WAKING_WATCH[1].url, body)
+        self.assertNotIn("This is a test", body)
+        subject, body, _ = render_press(got, test=True)
+        self.assertTrue(subject.startswith("TEST — "))
+        self.assertIn("This is a test.", body)
+        self.assertEqual(render_press([]), ("", "", 0))
+
+    def test_a_written_statement_says_so(self):
+        from monitor.press import render_press, select
+        ws = _notice("Written Statement: Renting Homes (Wales) Act review",
+                     "private rented sector landlords occupation contracts",
+                     kind="written_statement")
+        subject, body, _ = render_press(select([ws], self.marker, {}))
+        self.assertTrue(subject.startswith("Welsh Government written statement:"))
+        self.assertIn(">Written statement<", body)
+
+
+class TestPressReleaseCommand(TestNewsCommand):
+    """Runs through cmd_news, as the hourly workflow does."""
+
+    def test_the_first_press_run_learns(self):
+        code, state, post = self._run('{"initialised": "x"}', [], notices=[WAKING_WATCH])
+        self.assertEqual(code, 0)
+        post.assert_not_called()
+        self.assertIn(WAKING_WATCH[1].url, state["press_seen"])
+
+    def test_a_relevant_notice_is_sent_once(self):
+        code, state, post = self._run('{"initialised": "x", "press_checked": "2026-09-22T10:00:00"}',
+                                      [], notices=[WAKING_WATCH, SWIMMING])
+        self.assertEqual(code, 0)
+        self.assertEqual(post.call_count, 1)
+        self.assertIn("interim alarm measures", post.call_args[0][1])
+        self.assertIn(WAKING_WATCH[1].url, state["press_seen"])
+
+    def test_a_failed_press_send_is_retried(self):
+        code, state, _ = self._run('{"initialised": "x", "press_checked": "2026-09-22T10:00:00"}',
+                                   [], (False, "HTTP 500"), notices=[WAKING_WATCH])
+        self.assertEqual(code, 2)
+        self.assertNotIn(WAKING_WATCH[1].url, state.get("press_seen", {}))
 
 
 def main() -> int:
