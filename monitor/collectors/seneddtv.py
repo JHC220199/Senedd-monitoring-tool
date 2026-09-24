@@ -317,6 +317,42 @@ class SeneddTVScheduleCollector(Collector):
                         pass
         return sorted(dates, reverse=True)
 
+    @staticmethod
+    def parse_recent_meetings(html: str) -> list[Meeting]:
+        """The meetings in the home page's "Latest meetings" strip — the ones
+        that have already happened — with the date the strip gives them.
+
+        The debate summaries start here: these are the meetings whose Record
+        may now be published. Each still needs its page read (``fill``) for
+        the ModernGov meeting id, which is also the Record's meeting id.
+        """
+        soup = BeautifulSoup(html or "", "html.parser")
+        out: list[Meeting] = []
+        seen: set[str] = set()
+        for slide in soup.select(".slider-one .slide"):
+            link = slide.select_one("a[href*='/Meeting/']")
+            if link is None:
+                continue
+            guid = (link.get("href") or "").rstrip("/").rsplit("/", 1)[-1]
+            if not guid or guid in seen:
+                continue
+            seen.add(guid)
+            when = None
+            name = ""
+            for para in slide.select("p"):
+                text = para.get_text(" ", strip=True)
+                if m := _LONG_DATE.search(text):
+                    try:
+                        when = datetime.strptime(m.group(1), "%d %B %Y").date()
+                    except ValueError:
+                        pass
+                elif text and not name:
+                    name = _clean(text)
+            if not name:
+                name = _clean(_LONG_DATE.sub("", slide.get_text(" ", strip=True)))
+            out.append(Meeting(guid=guid, name=name, when=when))
+        return out
+
     # -- one meeting --------------------------------------------------------
 
     def fill(self, meeting: Meeting) -> Meeting:
