@@ -848,21 +848,59 @@ def cmd_debates(args) -> int:
 
 
 def cmd_news(args) -> int:
-    """Political news alerts — an email when something big happens.
+    """Political news and press release alerts — an email when something big
+    happens, or the Welsh Government publishes something relevant.
 
-    Started every hour in office hours by Power Automate (news.yml). Reads
-    three Welsh news feeds and the Welsh Government's ministers page, and
-    emails only what is new: see NEWS-ALERTS-SETUP.md.
+    Started every hour in office hours by Power Automate (news.yml). The two
+    parts are independent: if the news feeds are down, press releases still
+    go out, and the reverse. See NEWS-ALERTS-SETUP.md.
     """
     from datetime import datetime as _dt
-    from pathlib import Path
-    from .collectors.news import FEEDS, NewsCollector
-    from .news import (load_state, minister_change, new_stories, remember,
-                       render_news, save_state, test_stories)
+    from .news import load_state, save_state
 
     now = _dt.utcnow().replace(microsecond=0)
     state = load_state(args.state)
-    source = NewsCollector(Fetcher(min_interval=args.interval))
+    fetcher = Fetcher(min_interval=args.interval)
+    codes = [_news_part(args, state, now, fetcher),
+             _press_part(args, state, now, fetcher)]
+    if not args.test:
+        save_state(state, args.state)
+    return max(codes)
+
+
+def _write_out(path: str, html_body: str) -> None:
+    from pathlib import Path
+    if path:
+        out = Path(path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html_body, encoding="utf-8")
+
+
+def _send(args, subject: str, html_body: str, count: int, what: str) -> tuple[bool, int]:
+    """Post one email; returns (sent, exit code)."""
+    if count == 0:
+        print(f"{what}: nothing new — no email sent, deliberately.")
+        return False, 0
+    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
+    sent, message = alerts_mod.post_to_flow(flow_url, subject, html_body, count,
+                                            dry_run=not args.send)
+    print(message)
+    if sent or not args.send:
+        return sent, 0
+    if not flow_url:
+        _summary_note("NOTE", f"**{what} are not switched on yet.** They use the "
+                      "same Power Automate flow as the Friday email.")
+        return False, 0
+    _summary_note("WARNING", f"**The {what.lower()} email was not sent.** {message}")
+    return False, 2
+
+
+def _news_part(args, state: dict, now, fetcher) -> int:
+    from .collectors.news import FEEDS, NewsCollector
+    from .news import (minister_change, new_stories, remember, render_news,
+                       test_stories)
+
+    source = NewsCollector(fetcher)
     headlines = source.headlines()
     ministers = source.ministers()
     for err in source.errors:
@@ -870,7 +908,7 @@ def cmd_news(args) -> int:
 
     if not headlines and len(source.errors) >= len(FEEDS):
         print("None of the news feeds could be read, so nothing can be said "
-              "about today's news. Nothing sent.")
+              "about today's news.")
         _summary_note("WARNING", "**News alerts: none of the news feeds could "
                       "be read.** " + " ".join(source.errors))
         return 2
@@ -881,25 +919,18 @@ def cmd_news(args) -> int:
         stories = test_stories(headlines, now)
         subject, html_body, count = render_news(stories, None, test=True)
         if not count:
-            print("Test: there are no political changes in the feeds from the "
-                  "last fortnight to show, so no test email can be built.")
+            print("Test: no political changes in the feeds from the last "
+                  "fortnight, so no test news alert can be built.")
             return 0
-        if args.out:
-            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-            Path(args.out).write_text(html_body, encoding="utf-8")
-        sent, message = alerts_mod.post_to_flow(
-            os.environ.get("MONITOR_FLOW_URL", ""), subject, html_body, count,
-            dry_run=not args.send)
+        _write_out(args.out, html_body)
         print(f"Test subject: {subject}")
-        print(message)
-        return 0 if sent or not args.send else 2
+        return _send(args, subject, html_body, count, "News alerts")[1]
 
     if not state.get("initialised"):
         # The first run learns what is already out there, so it does not send
         # an alert about every story of the past week.
         remember(state, headlines, [], ministers, now)
-        save_state(state, args.state)
-        print(f"First run: noted {len(headlines)} current headlines and "
+        print(f"News, first run: noted {len(headlines)} current headlines and "
               f"{len(ministers or {})} ministers. Nothing sent — alerts start "
               "from the next run.")
         return 0
@@ -912,33 +943,70 @@ def cmd_news(args) -> int:
         print(f"  {story.label}: {story.first.title} ({len(story.matches)} outlet(s))")
 
     subject, html_body, count = render_news(stories, change)
-    if count and args.out:
-        out = Path(args.out)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(html_body, encoding="utf-8")
+    if count:
+        _write_out(args.out, html_body)
         print(f"Subject: {subject}")
-
-    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
-    sent, message = alerts_mod.post_to_flow(flow_url, subject, html_body, count,
-                                            dry_run=not args.send)
-    if count == 0:
-        message = "Nothing new — no email sent, deliberately."
-    print(message)
+    sent, code = _send(args, subject, html_body, count, "News alerts")
 
     # Remember what was read only once any alert about it has gone, so a
     # failed send is retried on the next run rather than lost.
     if (args.send and (sent or count == 0)) or args.remember:
         remember(state, headlines, stories, ministers, now)
-        save_state(state, args.state)
+    return code
 
-    if sent or not args.send or count == 0:
+
+def _press_part(args, state: dict, now, fetcher) -> int:
+    from .collectors.govwales import GovWalesNewsroomCollector, GovWalesRSSCollector
+    from .morning import Marker, merge_announcements
+    from .press import look_since, remember, render_press, select
+
+    since = now - timedelta(days=14) if args.test else look_since(state, now)
+    room = GovWalesNewsroomCollector(fetcher)
+    feed = GovWalesRSSCollector(fetcher)
+    # Newsroom first: its notices carry the bullet-point summary Camlas quote.
+    # The feed adds written statements, which the newsroom does not publish.
+    announcements = merge_announcements(room.recent(since, max_articles=20),
+                                        feed.recent(since, max_articles=20))
+    errors = room.errors + feed.errors
+    for err in errors:
+        print(f"  note: {err}")
+    if room.errors and feed.errors:
+        _summary_note("WARNING", "**Press release alerts: the Welsh Government "
+                      "could not be read.** " + " ".join(errors))
+        return 2
+
+    marker = Marker(Taxonomy.load(args.taxonomy))
+    if args.test:
+        releases = select(announcements, marker, state, test=True)
+        subject, html_body, count = render_press(releases, test=True)
+        if not count:
+            print("Test: no relevant Welsh Government notices in the last "
+                  "fortnight, so no test press alert can be built.")
+            return 0
+        _write_out(args.press_out, html_body)
+        print(f"Test subject: {subject}")
+        return _send(args, subject, html_body, count, "Press release alerts")[1]
+
+    if not state.get("press_checked"):
+        remember(state, announcements, now)
+        print(f"Press releases, first run: noted {len(announcements)} recent "
+              "Welsh Government notices. Nothing sent — alerts start from the "
+              "next run.")
         return 0
-    if not flow_url:
-        _summary_note("NOTE", "**News alerts are not switched on yet.** They use "
-                      "the same Power Automate flow as the Friday email.")
-        return 0
-    _summary_note("WARNING", f"**The news alert was not sent.** {message}")
-    return 2
+
+    releases = select(announcements, marker, state)
+    print(f"{len(announcements)} Welsh Government notices since "
+          f"{since:%a %d %b %H:%M} UTC, {len(releases)} new and relevant.")
+    for r in releases:
+        print(f"  {r.label}: {r.item.title}")
+    subject, html_body, count = render_press(releases)
+    if count:
+        _write_out(args.press_out, html_body)
+        print(f"Subject: {subject}")
+    sent, code = _send(args, subject, html_body, count, "Press release alerts")
+    if (args.send and (sent or count == 0)) or args.remember:
+        remember(state, announcements, now)
+    return code
 
 
 def _summary_note(kind: str, text: str) -> None:
@@ -1314,8 +1382,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="actually POST to the Power Automate flow")
     p.set_defaults(func=cmd_debates)
 
-    p = sub.add_parser("news", help="political news alerts")
+    p = sub.add_parser("news", help="political news and press release alerts")
     p.add_argument("--out", default="out/news.html")
+    p.add_argument("--press-out", default="out/press.html")
     p.add_argument("--state", default="data/news-state.json")
     p.add_argument("--remember", action="store_true",
                    help="record what was read even without --send")
