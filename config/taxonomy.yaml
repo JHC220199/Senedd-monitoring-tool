@@ -199,6 +199,13 @@ themes:
       - rent stopping order
       - rent repayment order
       - rent repayment orders
+    exclude_if:
+      # A licensing scheme for builders is not landlord licensing (Business
+      # Statement, 22 September 2026: "a mandatory licensing scheme for
+      # building companies").
+      - licensing scheme for building companies
+      - licensing scheme for builders
+      - rogue builders
 
   tenancy_law:
     label: "Tenancy law (Renting Homes)"
@@ -231,6 +238,9 @@ themes:
       - house in multiple occupation
       - houses in multiple occupation
       - multiple occupation
+      - house in multiple occupancy
+      - houses in multiple occupancy
+      - multiple occupancy
       - overcrowding
       - housing health and safety rating
       - HHSRS
@@ -245,6 +255,17 @@ themes:
       - property standards
       - housing standards
       - decent homes
+    exclude_if:
+      # "Overcrowding" is an HHSRS hazard, but in the Chamber it is as often
+      # about trains or prisons (Business Statement, 22 September 2026:
+      # "local train overcrowding").
+      - train overcrowding
+      - overcrowded trains
+      - overcrowding on trains
+      - overcrowding on Welsh trains
+      - overcrowded service
+      - prison overcrowding
+      - overcrowded prisons
 
   # ---- TIER 2: adjacent regulation with direct landlord cost ---------------
 
@@ -540,6 +561,17 @@ themes:
       - banning order
       - interim management order
       - compulsory purchase
+    exclude_if:
+      # Fly-tipping enforcement is not housing enforcement. This is the
+      # "roadside rubbish" false positive (First Minister's Questions,
+      # 22 September 2026: "Illegally Dumped Waste").
+      - fly-tipping
+      - fly tipping
+      - illegally dumped
+      - dumped waste
+      - roadside rubbish
+      - litter
+      - waste crime
 
   # ---- TIER 4: context -----------------------------------------------------
 
