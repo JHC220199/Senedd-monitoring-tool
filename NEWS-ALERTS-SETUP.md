@@ -98,6 +98,15 @@ run.
 headlines it read and any political changes it found. A run that finds
 nothing is green and short. That is normal.
 
+### Sending yourself a test
+
+To check that alerts reach your inbox, without waiting for real news:
+**GitHub → Actions → Senedd news alerts → Run workflow**, tick **Send a TEST
+alert**, then **Run workflow**. About a minute later you get an email whose
+subject starts **TEST —**. It shows the most recent political changes in the
+feeds (which may already be old news) under a "This is a test" banner. A test
+remembers nothing, so it can never stop a real alert from being sent.
+
 ## When it goes wrong
 
 | What you see | What it means |
