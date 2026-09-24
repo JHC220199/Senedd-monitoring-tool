@@ -732,6 +732,105 @@ def cmd_morning(args) -> int:
     return 2
 
 
+def cmd_debates(args) -> int:
+    """Debate summaries — what was said in the Senedd, the morning after.
+
+    Replaces the supplier's post-debate notes. Runs straight after the
+    morning briefing (debates.yml is started by it finishing), reads the
+    draft Record of every meeting that has happened and not yet been done,
+    and sends one email of the relevant debates. See DEBATE-SUMMARIES.md.
+    """
+    from pathlib import Path
+    from .collectors.record_html import RecordPageCollector
+    from .collectors.record_transcripts import RecordTranscriptCollector
+    from .collectors.seneddtv import SeneddTVScheduleCollector
+    from .debates import (Relevance, candidates, load_state, render_debates,
+                          save_state, select, state_baseline, summarise)
+    from .morning import london_today
+
+    tax = Taxonomy.load(args.taxonomy)
+    today = date.fromisoformat(args.date) if args.date else london_today()
+    fetcher = Fetcher(min_interval=args.interval)
+    state = load_state(args.state)
+    done = set(state["meetings"])
+
+    tv = SeneddTVScheduleCollector(fetcher)
+    tv.schedule()
+    recent = SeneddTVScheduleCollector.parse_recent_meetings(tv.home_html)
+    recent = [tv.fill(m) for m in recent
+              if m.when and m.when < today and (today - m.when).days <= args.lookback]
+    listing = RecordTranscriptCollector(fetcher, taxonomy=tax).list_meetings()
+    todo = candidates(recent, listing, today, done, state_baseline(state),
+                      lookback=args.lookback)
+    if not todo:
+        print("No meetings waiting to be summarised — nothing to do.")
+        return 0
+
+    pages = RecordPageCollector(fetcher)
+    rel = Relevance(tax)
+    found, pending, finished = [], [], {}
+    for cand in todo:
+        record = pages.record(cand.meeting_id, cand.forum)
+        if record is None or not record.published:
+            print(f"  waiting   {cand.label} — Record not published yet")
+            pending.append(cand.label)
+            continue
+        chosen = select(record, rel, cand.when)
+        for d in chosen:
+            d.papers_url = cand.papers_url
+        print(f"  read      {cand.label} — {len(record.items)} items, "
+              f"{len(chosen)} relevant")
+        found.extend(chosen)
+        finished[cand.meeting_id] = {
+            "date": cand.when.isoformat() if cand.when else "",
+            "forum": cand.forum, "done": today.isoformat(),
+            "relevant": len(chosen)}
+    for err in tv.errors + pages.errors:
+        print(f"  note: {err}")
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    print(f"Summarising {len(found)} item(s) with "
+          f"{'AI summaries (Claude)' if api_key else 'key sentences (no API key set)'}")
+    debates = summarise(found, tax, api_key=api_key)
+
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    page_url = (f"https://{repo.split('/')[0].lower()}.github.io/"
+                f"{repo.split('/')[1]}/") if "/" in repo else ""
+    subject, html_body, count = render_debates(debates, pending, page_url=page_url)
+    if count:
+        print(f"Subject: {subject}")
+        if args.out:
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(html_body, encoding="utf-8")
+            print(f"Written to {out}")
+
+    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
+    sent, message = alerts_mod.post_to_flow(
+        flow_url, subject, html_body, count, dry_run=not args.send)
+    if count == 0:
+        message = ("Nothing relevant in the meetings read — no email sent, "
+                   "deliberately.")
+    print(message)
+
+    # Remember a meeting only once its summary has gone (or there was nothing
+    # to send). If the email failed, tomorrow's run tries the same meetings.
+    if args.send and (sent or count == 0) or args.remember:
+        state["meetings"].update(finished)
+        save_state(state, today, args.state)
+        print(f"Recorded {len(finished)} meeting(s) as done in {args.state}")
+
+    if sent or not args.send or count == 0:
+        return 0
+    if not flow_url:
+        _summary_note("NOTE", "**Debate summaries are not switched on yet.** "
+                      "They use the same Power Automate flow as the Friday "
+                      "email: see `FORWARD-EMAIL-SETUP.md`.")
+        return 0
+    _summary_note("WARNING", f"**The debate summaries were not sent.** {message}")
+    return 2
+
+
 def _summary_note(kind: str, text: str) -> None:
     """Annotate the Actions run page, where 'did it go?' gets asked."""
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -1088,6 +1187,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--send", action="store_true",
                    help="actually POST to the Power Automate flow")
     p.set_defaults(func=cmd_morning)
+
+    p = sub.add_parser("debates",
+                       help="summaries of relevant debates, the morning after")
+    p.add_argument("--out", default="out/debates.html")
+    p.add_argument("--date", default="",
+                   help="ISO date to run as, for testing. Defaults to today "
+                        "in London.")
+    p.add_argument("--state", default="data/debates-sent.json",
+                   help="which meetings have already been summarised")
+    p.add_argument("--lookback", type=int, default=10,
+                   help="days back to look for meetings")
+    p.add_argument("--remember", action="store_true",
+                   help="record the meetings as done even without --send")
+    p.add_argument("--send", action="store_true",
+                   help="actually POST to the Power Automate flow")
+    p.set_defaults(func=cmd_debates)
 
     p = sub.add_parser("search", help="full-text search the archive")
     p.add_argument("expression")
