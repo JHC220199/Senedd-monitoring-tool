@@ -23,6 +23,11 @@ name: Senedd news alerts
 
 on:
   workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a TEST alert of the latest political news, to check the email arrives"
+        type: boolean
+        default: false
 
 concurrency:
   group: senedd-news
@@ -64,7 +69,7 @@ jobs:
       - name: Check the news and send any alert
         env:
           MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}
-        run: python -m monitor.cli news --send --out out/news.html
+        run: python -m monitor.cli news --send --out out/news.html ${{ inputs.test && '--test' || '' }}
 
       - name: Remember what this run saw
         if: always() && hashFiles('data/news-state.json') != ''
