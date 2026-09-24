@@ -1,8 +1,8 @@
 # NRLA Senedd policy briefing
 
-*As at Wednesday 23 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Thursday 24 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
-**15** open consultations · **4** closing within three weeks · **29** developments to review
+**15** open consultations · **3** closing within three weeks · **29** developments to review
 
 ## Respond — things with a deadline
 
@@ -14,10 +14,10 @@
 | **Closed** | [Priorities for the Local Government, Housing and Planning Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=626)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes today** | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| **2 days left** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **2 days left** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **2 days left** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closed** | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closes tomorrow** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closes tomorrow** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closes tomorrow** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 16 October | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 19 October | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _3 more — see the full dashboard_ | |
@@ -127,17 +127,17 @@ _14 further items in the full dashboard._
 
 ## Coming up
 
-- **23 September 2026** — [Equality, Human Rights and Social Justice Committee — 23 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16247)
-- **23 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 23 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16233)
-- **23 September 2026** — [Equality, Human Rights and Social Justice Committee — 23 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16247)
-- **23 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 23 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16233)
 - **24 September 2026** — [Finance Committee — 24 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16250)
 - **24 September 2026** — [Local Government, Housing and Planning Committee — 24 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16257)
 - **28 September 2026** — [Legislation Committee — 28 September 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16255)
 - **28 September 2026** — [Legislation Committee — 28 September 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16255)
+- **28 September 2026** — [Culture, Communications, Cymraeg and Sport Committee — 28 September 2026, 12.15](https://business.senedd.wales/ieListDocuments.aspx?CId=980&MId=16239)
 - **30 September 2026** — [Equality, Human Rights and Social Justice Committee — 30 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16248)
 - **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
+- **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
+- **30 September 2026** — [Equality, Human Rights and Social Justice Committee — 30 September 2026, 09.45](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16248)
+- **01 October 2026** — [Local Government, Housing and Planning Committee — 01 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16305)
 
 ---
 
-<sub>144 items scored from 635 collected records, 23 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>145 items scored from 636 collected records, 24 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
