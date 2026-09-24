@@ -4545,7 +4545,7 @@ class TestNewsAlertEmail(unittest.TestCase):
 
 class TestNewsCommand(unittest.TestCase):
 
-    def _run(self, state_text, headlines, send_result=(True, "sent")):
+    def _run(self, state_text, headlines, send_result=(True, "sent"), test=False):
         from monitor import cli
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
@@ -4553,7 +4553,7 @@ class TestNewsCommand(unittest.TestCase):
         if state_text is not None:
             Path(state).write_text(state_text)
         args = SimpleNamespace(interval=0, state=state, out=os.path.join(tmp, "n.html"),
-                               remember=False, send=True)
+                               remember=False, send=True, test=test)
         with mock.patch("monitor.collectors.news.NewsCollector.headlines", return_value=headlines), \
              mock.patch("monitor.collectors.news.NewsCollector.ministers", return_value={"A MS": "Minister"}), \
              mock.patch.object(cli.alerts_mod, "post_to_flow", return_value=send_result) as post, \
@@ -4569,6 +4569,18 @@ class TestNewsCommand(unittest.TestCase):
         self.assertEqual(code, 0)
         post.assert_not_called()
         self.assertIn(h.url, state["seen"])
+
+    def test_a_test_alert_is_labelled_and_remembers_nothing(self):
+        """So the operator can prove the email arrives without waiting for a
+        defection — and without the test swallowing the next real alert."""
+        h = _hl("Dan Thomas MS stands down as Reform UK in Wales leader", datetime.utcnow())
+        before = '{"initialised": "x", "seen": {"%s": "2026-09-24T09:00:00"}}' % h.url
+        code, state, post = self._run(before, [h], test=True)
+        self.assertEqual(code, 0)
+        subject, body = post.call_args[0][1], post.call_args[0][2]
+        self.assertTrue(subject.startswith("TEST — Senedd news: Dan Thomas MS stands down"))
+        self.assertIn("This is a test.", body)
+        self.assertEqual(state["seen"], {h.url: "2026-09-24T09:00:00"}, "memory untouched")
 
     def test_a_failed_send_is_retried(self):
         h = _hl("Dan Thomas MS stands down as Reform UK in Wales leader", datetime.utcnow())
