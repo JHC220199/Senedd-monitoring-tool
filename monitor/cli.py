@@ -649,9 +649,10 @@ def cmd_morning(args) -> int:
     Power Automate HTTP flow as the Friday email. See MORNING-BRIEFING-SETUP.md.
     """
     from pathlib import Path
-    from .collectors.govwales import GovWalesNewsroomCollector
+    from .collectors.govwales import GovWalesNewsroomCollector, GovWalesRSSCollector
     from .collectors.seneddtv import SeneddTVScheduleCollector
-    from .morning import build, london_today, render_morning, window_start
+    from .morning import (build, london_today, merge_announcements,
+                          render_morning, window_start)
 
     tax = Taxonomy.load(args.taxonomy)
     today = date.fromisoformat(args.date) if args.date else london_today()
@@ -680,8 +681,14 @@ def cmd_morning(args) -> int:
 
     recent = SeneddTVScheduleCollector.parse_recent_dates(tv.home_html)
     since = window_start(today, recent)
+    # Two sources, because neither is complete. The gov.wales feed is the only
+    # one with written statements; the newsroom has press notices the feed
+    # sometimes lacks, and a short summary line. Merged by title.
+    feed = GovWalesRSSCollector(fetcher)
     newsroom = GovWalesNewsroomCollector(fetcher)
-    news = newsroom.recent(since, max_articles=args.max_articles)
+    news = merge_announcements(
+        feed.recent(since, max_articles=args.max_articles),
+        newsroom.recent(since, max_articles=args.max_articles))
 
     store = Store(args.db)
     try:
@@ -692,7 +699,16 @@ def cmd_morning(args) -> int:
 
     briefing = build(meetings, news, questions, tax, today=today,
                      recent_sittings=recent)
-    if newsroom.errors:
+    if feed.errors and newsroom.errors:
+        briefing.notes.append(
+            "Neither the gov.wales feed nor the Welsh Government newsroom could "
+            "be read this morning, so the Welsh Government section is empty.")
+    elif feed.errors:
+        briefing.notes.append(
+            "The gov.wales announcements feed could not be read this morning, "
+            "so written statements may be missing from the Welsh Government "
+            "section.")
+    elif newsroom.errors:
         briefing.notes.append(
             "The Welsh Government newsroom could not be read this morning, so "
             "the Welsh Government section may be incomplete.")

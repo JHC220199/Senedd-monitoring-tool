@@ -280,6 +280,32 @@ def meeting_block(meeting: Meeting, marker: Marker,
     return block
 
 
+def _title_key(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
+
+
+def merge_announcements(*sources: list[tuple]) -> list[tuple]:
+    """One list from several ``(published_utc, item, lead)`` sources.
+
+    The same notice can appear in the gov.wales feed and in the newsroom. It
+    is listed once, under whichever source came first, and a missing lead or
+    time is filled in from the other.
+    """
+    out: dict[str, list] = {}
+    for source in sources:
+        for at, item, lead in source:
+            key = _title_key(item.title)
+            if key not in out:
+                out[key] = [at, item, lead]
+                continue
+            kept = out[key]
+            if kept[0] is None and at is not None:
+                kept[0] = at
+            if not kept[2] and lead:
+                kept[2] = lead
+    return [tuple(v) for v in out.values()]
+
+
 def build(meetings: list[Meeting], announcements: list[tuple],
           questions: list[Item], tax: Taxonomy, today: date,
           recent_sittings: list[date] | None = None,
@@ -417,8 +443,9 @@ def _announcement_row(a: Announcement) -> str:
         f'{_tag() if a.marked else ""}{_link(a.item.title, a.item.url, DARK_BLUE, 600)}</div>'
         + (f'<div style="font-size:13px;line-height:1.5;color:{OFF_BLACK};'
            f'padding-top:4px">{_e(a.summary)}</div>' if a.summary else "")
-        + f'<div style="font-size:11.5px;color:{MUTED};padding-top:4px">{_e(when)}</div>'
-        f'</td></tr>')
+        + f'<div style="font-size:11.5px;color:{MUTED};padding-top:4px">'
+        + " · ".join(_e(x) for x in (when, a.item.speaker) if x)
+        + '</div></td></tr>')
 
 
 def _day_label(day: date, today: date) -> str:
