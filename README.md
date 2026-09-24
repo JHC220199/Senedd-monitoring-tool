@@ -124,6 +124,15 @@ With an optional `ANTHROPIC_API_KEY` secret they are summarised by Claude, and
 every figure is checked against what was said. See
 [`DEBATE-SUMMARIES.md`](DEBATE-SUMMARIES.md).
 
+### And when something big happens: news alerts
+
+A short email when there is a defection, a leadership change, a resignation,
+a shadow cabinet or a reshuffle. It checks the BBC News Wales, Nation.Cymru and
+WalesOnline politics feeds, and the Welsh Government's own list of ministers,
+every hour in office hours. The alert gives the headlines and links only;
+nothing is copied or summarised. It is started by one more Power Automate flow:
+[`NEWS-ALERTS-SETUP.md`](NEWS-ALERTS-SETUP.md).
+
 **If a run went green and something looks wrong, read `TROUBLESHOOTING.md`.**
 
 ---
@@ -168,6 +177,7 @@ python -m monitor.cli export --out data/archive.sql
 | `digest --days N [--send]` | Build the periodic digest. **Dry run by default.** |
 | `alert [--send]` | Email unnotified Critical items only. **Dry run by default.** |
 | `debates [--send] [--date YYYY-MM-DD]` | Summaries of yesterday's relevant debates from the draft Record, for every meeting not yet done (`data/debates-sent.json`). AI summaries if `ANTHROPIC_API_KEY` is set, verbatim key sentences if not. **Dry run by default.** See [`DEBATE-SUMMARIES.md`](DEBATE-SUMMARIES.md). |
+| `news [--send]` | Political news alerts: new political changes in the news feeds, and any change to the Welsh Government's list of ministers, since the last run. The first run only learns. **Dry run by default.** See [`NEWS-ALERTS-SETUP.md`](NEWS-ALERTS-SETUP.md). |
 | `morning [--send] [--date YYYY-MM-DD]` | The morning briefing for a sitting day — today's agenda from senedd.tv, Welsh Government announcements since the last briefing, and the next sitting day. NRLA-relevant items tagged. Sends nothing if the Senedd is not sitting. **Dry run by default.** See [`MORNING-BRIEFING-SETUP.md`](MORNING-BRIEFING-SETUP.md). |
 | `forward [--send]` | The Friday future-business email — consultations closing soonest, committee meetings in the next three weeks, Plenary business, and oral questions tabled for forthcoming sittings. Sent through a Power Automate flow, so there are no SMTP credentials anywhere. **Dry run by default.** See [`FORWARD-EMAIL-SETUP.md`](FORWARD-EMAIL-SETUP.md). |
 | `search "rent control"` | Full-text search the whole archive. |
