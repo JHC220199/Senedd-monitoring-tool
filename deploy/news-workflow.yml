@@ -1,0 +1,83 @@
+# Political news alerts — an email when something big happens in the Senedd.
+#
+# WHAT IT IS
+#   Camlas's "breaking news" emails, rebuilt: a defection, a leader standing
+#   down, a new shadow cabinet, a reshuffle. Reads the politics feeds of BBC
+#   News Wales, Nation.Cymru and WalesOnline, and the Welsh Government's list
+#   of ministers, and emails only what is new. Headlines and links only —
+#   nothing is copied or summarised. See NEWS-ALERTS-SETUP.md.
+#
+# WHEN IT RUNS
+#   Every hour, 08.00 to 18.00 on weekdays, started by a Power Automate
+#   recurrence. No schedule here, deliberately: GitHub's own timer ran five
+#   to six hours late every day in September 2026, which is no use for news.
+#
+# WHERE IT KEEPS ITS MEMORY
+#   In the Actions cache, not in the repository. It must remember which
+#   headlines it has already seen, and that changes every hour; committing it
+#   would add ten commits a day to the history and rebuild the live page each
+#   time. If the cache is ever lost, the next run simply re-learns what is
+#   out there and sends nothing, and alerts resume from the run after.
+
+name: Senedd news alerts
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: senedd-news
+  cancel-in-progress: false
+
+permissions:
+  contents: read              # commits nothing
+  # Issue-writing permission is deliberately withheld, as in every workflow in
+  # this repository.
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the tests first
+        run: python -m tests.test_monitor
+
+      - name: Recall what earlier runs saw
+        uses: actions/cache/restore@v4
+        with:
+          path: data/news-state.json
+          key: news-state-${{ github.run_id }}
+          restore-keys: news-state-
+
+      - name: Check the news and send any alert
+        env:
+          MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}
+        run: python -m monitor.cli news --send --out out/news.html
+
+      - name: Remember what this run saw
+        if: always() && hashFiles('data/news-state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: data/news-state.json
+          key: news-state-${{ github.run_id }}
+
+      - name: Keep a copy of any alert sent
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: senedd-news-alert-${{ github.run_number }}
+          path: out/news.html
+          retention-days: 30
+          if-no-files-found: ignore
