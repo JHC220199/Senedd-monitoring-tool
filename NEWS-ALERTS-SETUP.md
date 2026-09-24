@@ -9,6 +9,14 @@ Thomas MS standing down (15 September 2026), and Reform UK's shadow cabinet
 
 They will be rare, and most weeks there will be none.
 
+**The same hourly check also sends press release alerts.** Whenever the
+Welsh Government publishes a press release or written statement that matches
+the NRLA's relevance rules (the same rules as the live page), you get a
+separate email. It has the notice's title, its own summary points word for
+word, and a link, like Camlas's "Alert - Press Release". Camlas sent their
+waking watch alert the afternoon after the notice was published. This one
+arrives within the hour. There is nothing extra to set up.
+
 ---
 
 ## What an alert looks like
@@ -98,14 +106,31 @@ run.
 headlines it read and any political changes it found. A run that finds
 nothing is green and short. That is normal.
 
+### Press release alerts: what is included
+
+- Press notices from the Welsh Government newsroom, and written statements
+  and announcements from gov.wales. The newsroom does not publish written
+  statements.
+- Only those that match the relevance rules. On 22–24 September 2026 that
+  was one notice out of eleven: the waking watch alarm grant, the same one
+  Camlas alerted.
+- Not "Oral Statement:" items. These are the text of statements already made
+  in the Chamber, which the debate summaries cover.
+- They also still appear, tagged NRLA, in the next morning's Bore da
+  briefing.
+
+The summary points are the Welsh Government's own words, reproduced under
+the Open Government Licence. Nothing is paraphrased.
+
 ### Sending yourself a test
 
 To check that alerts reach your inbox, without waiting for real news:
-**GitHub → Actions → Senedd news alerts → Run workflow**, tick **Send a TEST
-alert**, then **Run workflow**. About a minute later you get an email whose
-subject starts **TEST —**. It shows the most recent political changes in the
-feeds (which may already be old news) under a "This is a test" banner. A test
-remembers nothing, so it can never stop a real alert from being sent.
+**GitHub → Actions → Senedd news alerts → Run workflow**, tick **Send TEST
+alerts**, then **Run workflow**. About a minute later you get two emails whose
+subjects start **TEST —**: one with the most recent political changes in the
+news, and one with the most recent relevant Welsh Government notice. Either may
+already be old news, and each has a "This is a test" banner. A test remembers
+nothing, so it can never stop a real alert from being sent.
 
 ## When it goes wrong
 

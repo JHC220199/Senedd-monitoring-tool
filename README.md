@@ -130,8 +130,10 @@ A short email when there is a defection, a leadership change, a resignation,
 a shadow cabinet or a reshuffle. It checks the BBC News Wales, Nation.Cymru and
 WalesOnline politics feeds, and the Welsh Government's own list of ministers,
 every hour in office hours. The alert gives the headlines and links only;
-nothing is copied or summarised. It is started by one more Power Automate flow:
-[`NEWS-ALERTS-SETUP.md`](NEWS-ALERTS-SETUP.md).
+nothing is copied or summarised. The same hourly check emails any Welsh
+Government press release or written statement that matches the relevance
+rules, with the notice's own summary points. It is started by one more
+Power Automate flow: [`NEWS-ALERTS-SETUP.md`](NEWS-ALERTS-SETUP.md).
 
 **If a run went green and something looks wrong, read `TROUBLESHOOTING.md`.**
 
