@@ -113,6 +113,17 @@ late on every day of September 2026. It sends through the same flow as the
 Friday email. Fifteen minutes of setup, including one GitHub token:
 [`MORNING-BRIEFING-SETUP.md`](MORNING-BRIEFING-SETUP.md).
 
+### And the morning after: debate summaries
+
+The supplier's post-debate notes, rebuilt, in the body of one email instead
+of a Word attachment per debate: every relevant debate or exchange from the
+Senedd's draft Record, a sentence or two per speaker, each line linked to the
+Record. It runs straight after the morning briefing and needs no setup of its
+own. By default each speaker's most relevant sentences are quoted verbatim.
+With an optional `ANTHROPIC_API_KEY` secret they are summarised by Claude, and
+every figure is checked against what was said. See
+[`DEBATE-SUMMARIES.md`](DEBATE-SUMMARIES.md).
+
 **If a run went green and something looks wrong, read `TROUBLESHOOTING.md`.**
 
 ---
@@ -156,6 +167,7 @@ python -m monitor.cli export --out data/archive.sql
 | `publish` | Writes `BRIEFING.md` and `briefings/YYYY-Wnn.md`. The workflow passes `--no-issue`, so no GitHub issue is opened and nothing is emailed. `--dry-run` to see what it would do. |
 | `digest --days N [--send]` | Build the periodic digest. **Dry run by default.** |
 | `alert [--send]` | Email unnotified Critical items only. **Dry run by default.** |
+| `debates [--send] [--date YYYY-MM-DD]` | Summaries of yesterday's relevant debates from the draft Record, for every meeting not yet done (`data/debates-sent.json`). AI summaries if `ANTHROPIC_API_KEY` is set, verbatim key sentences if not. **Dry run by default.** See [`DEBATE-SUMMARIES.md`](DEBATE-SUMMARIES.md). |
 | `morning [--send] [--date YYYY-MM-DD]` | The morning briefing for a sitting day — today's agenda from senedd.tv, Welsh Government announcements since the last briefing, and the next sitting day. NRLA-relevant items tagged. Sends nothing if the Senedd is not sitting. **Dry run by default.** See [`MORNING-BRIEFING-SETUP.md`](MORNING-BRIEFING-SETUP.md). |
 | `forward [--send]` | The Friday future-business email — consultations closing soonest, committee meetings in the next three weeks, Plenary business, and oral questions tabled for forthcoming sittings. Sent through a Power Automate flow, so there are no SMTP credentials anywhere. **Dry run by default.** See [`FORWARD-EMAIL-SETUP.md`](FORWARD-EMAIL-SETUP.md). |
 | `search "rent control"` | Full-text search the whole archive. |
@@ -363,7 +375,7 @@ was produced" if you are tuning the taxonomy.
 ## Tests
 
 ```bash
-python -m tests.test_monitor        # 109 tests, no pytest needed
+python -m tests.test_monitor        # 300+ tests, no pytest needed
 python -m pytest tests/ -q          # if you prefer pytest
 ```
 
@@ -388,11 +400,12 @@ that silently produced *wrong* results rather than errors:
 Full list in `SPECIFICATION.md` sections 5.6 and 11. The ones that will bite an
 operator first:
 
-1. **Only gov.wales is genuinely blocked.** It returns 403 from cloud hosts
-   regardless of User-Agent (tested with clean, minimal and default UAs, and on
-   `llyw.cymru`). Run from the NRLA network, or use the mailbox route. Every
-   Senedd host — `record.senedd.wales`, `business.senedd.wales`, `senedd.wales`,
-   `senedd.cymru` — works fine.
+1. **gov.wales, and since September 2026 business.senedd.wales, block cloud
+   hosts.** gov.wales returns 403 regardless of User-Agent (tested with clean,
+   minimal and default UAs, and on `llyw.cymru`); use the mailbox route or the
+   newsroom listing. business.senedd.wales now sits behind a firewall that
+   refuses data-centre addresses, which is why the diary comes from senedd.tv.
+   `record.senedd.wales`, `senedd.tv`, `senedd.wales` and `senedd.cymru` work.
 2. **Never put a library token in the User-Agent.** `python-requests` in the UA
    triggers CloudFront bot rules and returns 403 on senedd.wales and
    senedd.cymru. This masqueraded as an external WAF block for a whole revision.
@@ -407,8 +420,11 @@ operator first:
 5. **Legislation is scored largely on title**, so terse Act names need to be in
    the `named_welsh_legislation` theme. Adding a newly introduced Bill to that
    list is the single highest-value maintenance task in the taxonomy.
-6. **Nothing is summarised by a language model.** Every word presented is the
-   verbatim published record. This is deliberate, not a limitation to fix.
+6. **Only the debate summaries can use a language model, and only if you
+   switch it on.** The page, the Friday email and the morning briefing present
+   the published record verbatim. The debate summaries quote verbatim too,
+   unless an `ANTHROPIC_API_KEY` secret is added. Then they are AI-written,
+   labelled as such, figure-checked, and linked line by line to the Record.
 
 ---
 
