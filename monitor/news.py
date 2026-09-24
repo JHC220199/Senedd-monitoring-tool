@@ -397,7 +397,17 @@ def _card(body: str) -> str:
             f'<div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>')
 
 
-def render_news(stories: list[Story], change: MinisterChange | None) -> tuple[str, str, int]:
+def test_stories(headlines: list[Headline], now: datetime, limit: int = 3) -> list[Story]:
+    """For a test email: the latest political changes in the feeds, whether
+    or not they have been alerted on already. Nothing is remembered."""
+    recent = [h for h in headlines if h.at is None or now - h.at <= timedelta(days=14)]
+    stories = group([m for m in (classify(h) for h in recent) if m])
+    stories.sort(key=lambda s: s.first.at or datetime.min, reverse=True)
+    return stories[:limit]
+
+
+def render_news(stories: list[Story], change: MinisterChange | None,
+                test: bool = False) -> tuple[str, str, int]:
     count = len(stories) + (1 if change else 0)
     if not count:
         return "", "", 0
@@ -406,8 +416,19 @@ def render_news(stories: list[Story], change: MinisterChange | None) -> tuple[st
     else:
         lead = "Welsh Government ministers have changed"
     more = count - 1
-    subject = (f"Senedd news: {lead}" + (f" (+{more} more)" if more else ""))
-    cards = "".join(_story_card(s) for s in stories) + (_ministers_card(change) if change else "")
+    subject = (("TEST — " if test else "") + f"Senedd news: {lead}"
+               + (f" (+{more} more)" if more else ""))
+    banner = (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+              f'border="0" style="border-collapse:collapse;background:#FFF4E5;'
+              f'border:1px solid #F3C98B"><tr><td style="padding:12px 16px;font-family:{FONT};'
+              f'font-size:13px;line-height:1.5;color:#8A3B06"><b>This is a test.</b> '
+              f'It shows the most recent political changes in the news feeds, to '
+              f'prove the alert reaches you; they may already be old news. Real '
+              f'alerts carry no banner and only ever contain something new.</td></tr>'
+              f'</table><div style="height:16px;line-height:16px;font-size:0">&nbsp;</div>'
+              ) if test else ""
+    cards = banner + "".join(_story_card(s) for s in stories) + (
+        _ministers_card(change) if change else "")
     body = f"""<table role="presentation" width="100%" cellpadding="0" \
 cellspacing="0" border="0" style="border-collapse:collapse;background:{OFF_WHITE}">
 <tr><td align="center" style="padding:0">

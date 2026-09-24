@@ -858,7 +858,7 @@ def cmd_news(args) -> int:
     from pathlib import Path
     from .collectors.news import FEEDS, NewsCollector
     from .news import (load_state, minister_change, new_stories, remember,
-                       render_news, save_state)
+                       render_news, save_state, test_stories)
 
     now = _dt.utcnow().replace(microsecond=0)
     state = load_state(args.state)
@@ -874,6 +874,25 @@ def cmd_news(args) -> int:
         _summary_note("WARNING", "**News alerts: none of the news feeds could "
                       "be read.** " + " ".join(source.errors))
         return 2
+
+    if args.test:
+        # Proves the whole path — feeds, Power Automate, the mailbox — without
+        # touching the memory, so a test can never swallow a real alert.
+        stories = test_stories(headlines, now)
+        subject, html_body, count = render_news(stories, None, test=True)
+        if not count:
+            print("Test: there are no political changes in the feeds from the "
+                  "last fortnight to show, so no test email can be built.")
+            return 0
+        if args.out:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(html_body, encoding="utf-8")
+        sent, message = alerts_mod.post_to_flow(
+            os.environ.get("MONITOR_FLOW_URL", ""), subject, html_body, count,
+            dry_run=not args.send)
+        print(f"Test subject: {subject}")
+        print(message)
+        return 0 if sent or not args.send else 2
 
     if not state.get("initialised"):
         # The first run learns what is already out there, so it does not send
@@ -1300,6 +1319,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--state", default="data/news-state.json")
     p.add_argument("--remember", action="store_true",
                    help="record what was read even without --send")
+    p.add_argument("--test", action="store_true",
+                   help="send a labelled test alert of the latest political "
+                        "changes; remembers nothing")
     p.add_argument("--send", action="store_true",
                    help="actually POST to the Power Automate flow")
     p.set_defaults(func=cmd_news)
