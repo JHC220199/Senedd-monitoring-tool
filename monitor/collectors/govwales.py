@@ -70,7 +70,7 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 from bs4 import BeautifulSoup
@@ -250,6 +250,101 @@ class GovWalesRSSCollector(Collector):
             deadline=parse_deadline(combined) if kind == "consultation" else None,
             raw_ref=ANNOUNCEMENTS_RSS,
         )
+
+
+    # -- for the morning briefing ---------------------------------------------
+
+    # A statement given in the Chamber is published afterwards as "Oral
+    # Statement: ...". It is a record of Plenary, which the debate summaries
+    # cover, not an announcement — Camlas leave them out too.
+    _NOT_ANNOUNCEMENTS = re.compile(r"^\s*oral statement\s*[:\-]", re.I)
+
+    def recent(self, since_utc: datetime, max_articles: int = 20,
+               feed_url: str = ANNOUNCEMENTS_RSS
+               ) -> list[tuple[datetime | None, Item, str]]:
+        """Announcements published at or after ``since_utc`` (naive UTC).
+
+        Returns ``(published_utc, item, lead)`` like the newsroom's
+        ``recent``. The feed is the ONLY source of written statements: the
+        newsroom carries press notices only. On 24 September 2026 the
+        supplier's briefing listed "Written Statement: Learning Disability
+        Transformation Programme 2026-2029" and this one did not, because it
+        read the newsroom alone.
+
+        The lead is read from the page itself — the feed has no description.
+        For a written statement it is the statement's first paragraph, and the
+        minister's name line goes on ``item.speaker``.
+        """
+        text = self.fetcher.get_text(feed_url)
+        if not text:
+            self.note_error(
+                "The gov.wales announcements feed could not be read, so written "
+                "statements are missing from this briefing. (gov.wales has at "
+                "times refused requests from cloud servers.)")
+            return []
+        try:
+            root = ET.fromstring(text.encode("utf-8") if isinstance(text, str) else text)
+        except ET.ParseError as exc:
+            self.note_error(f"The gov.wales announcements feed was not valid XML: {exc}")
+            return []
+
+        found: list[tuple[datetime | None, Item, str]] = []
+        budget = max_articles
+        for entry in root.iter("item"):
+            title = (entry.findtext("title") or "").strip()
+            if not title or self._NOT_ANNOUNCEMENTS.search(title):
+                continue
+            try:
+                at = parsedate_to_datetime(entry.findtext("pubDate") or "")
+                at = at.astimezone(timezone.utc).replace(tzinfo=None)
+            except (TypeError, ValueError):
+                continue
+            if at < since_utc:
+                continue
+            item = next(self._entry_to_items(entry), None)
+            if item is None:
+                continue
+            item.url = _strip_tracking(item.url)
+            lead = ""
+            if budget > 0:
+                budget -= 1
+                lead, minister = self._lead_from_page(item.url)
+                if minister:
+                    item.speaker = minister
+                if lead:
+                    item.body = f"{item.title}\n{lead}"
+            found.append((at, item, lead))
+        found.sort(key=lambda t: t[0], reverse=True)
+        return found
+
+    def _lead_from_page(self, url: str) -> tuple[str, str]:
+        """``(first paragraph, minister line)`` from a gov.wales page."""
+        html = self.fetcher.get_text(url) if url else None
+        if not html:
+            return "", ""
+        soup = BeautifulSoup(html, "html.parser")
+        paras = [_clean(p.get_text(" ", strip=True))
+                 for p in soup.select(".page-content p") or soup.select("article p")]
+        paras = [p for p in paras if p]
+        minister = ""
+        if paras and _MINISTER_LINE.match(paras[0]):
+            minister, paras = paras[0], paras[1:]
+        if paras:
+            return paras[0], minister
+        meta = soup.select_one('meta[name="description"]')
+        return (_clean(meta.get("content", "")) if meta else ""), minister
+
+
+# "Mabon ap Gwynfor MS, Cabinet Minister for Health and Care"
+_MINISTER_LINE = re.compile(
+    r"^[^.]{3,80}\b(MS|AS)\b,\s*(First Minister|Deputy First Minister|"
+    r"(Cabinet |Deputy )?(Minister|Secretary)|Counsel General|Trefnydd)\b[^.]{0,120}$")
+
+
+def _strip_tracking(url: str) -> str:
+    """gov.wales feed links carry utm_* parameters; the page is the same
+    without them, and a clean link is what should be in an email."""
+    return re.sub(r"\?utm_[^#]*", "", url or "")
 
 
 # ---------------------------------------------------------------------------
