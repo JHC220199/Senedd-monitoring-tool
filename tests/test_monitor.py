@@ -3867,6 +3867,447 @@ class TestMorningBriefingSetupGuide(unittest.TestCase):
                       "forward.yml must let a dispatched run through the clock "
                       "check, or the Power Automate start cannot work")
 
+
+# ---------------------------------------------------------------------------
+# Debate summaries (monitor/debates.py, collectors/record_html.py)
+# ---------------------------------------------------------------------------
+
+def _rec_agenda(cid, title):
+    return (f'<div class="itemContent agendaItem" id="{cid}"><div class="contributionText">'
+            f'<div class="verbatim">Cymraeg</div><div class="translation">{title}</div>'
+            f'</div></div>')
+
+
+def _rec_heading(cid, title):
+    return (f'<div class="itemContent subHeading" id="{cid}"><div class="contributionText">'
+            f'<div class="verbatim ">Cymraeg</div><div class="translation">{title}</div>'
+            f'</div></div>')
+
+
+def _rec_speech(cid, name, text, role="", member=True, kind="contribution",
+                welsh_first=False):
+    link = ("https://business.senedd.wales/mgUserInfo.aspx?UID=1" if member
+            else "#")
+    title = f'<div class="memberTitle"><span>{role}</span></div>' if role else ""
+    chunks = []
+    if welsh_first:
+        chunks.append('<div class="contributionText"><div class="verbatim ">'
+                      '<p>Diolch yn fawr.</p></div><div class="translation">'
+                      '<p>Thank you very much.</p></div></div>')
+    chunks.append(f'<div class="contributionText"><div class="verbatim fullWidth">'
+                  + "".join(f"<p>{para}</p>" for para in text.split("\n")) +
+                  '</div></div>')
+    return (f'<div class="itemContent {kind}" id="{cid}"><div class="detailBar">'
+            f'<div class="memberInfo"><div class="memberBar"><a href="{link}">'
+            f'<div class="memberDetail"><span class="name"> {name} </span>'
+            f'<span class="time">14:00:00</span></div></a>{title}</div></div>'
+            f'<div class="meetingShareContainer"><a class="seneddTV" '
+            f'href="http://www.senedd.tv/en/1?startPos=1">Video</a></div></div>'
+            + "".join(chunks) + '</div>')
+
+
+def _rec_page(*blocks):
+    return "<html><body>" + "".join(blocks) + "</body></html>"
+
+
+TREFNYDD = "Trefnydd, Chief Whip and Cabinet Minister for Culture and Sport"
+HOUSING_MINISTER = "Cabinet Minister for Local Government, Housing and Planning"
+CHAIR = "Deputy Presiding Officer"
+
+PLENARY_FIXTURE = _rec_page(
+    '<div class="itemContent proceduralText">The Senedd met at 13:30.</div>',
+    _rec_agenda("A1", "1. Questions to the First Minister"),
+    _rec_heading("H1", "Protecting Renters"),
+    _rec_speech("C1", "David Hughes", "Will the First Minister set out new measures to protect renters?", kind="oralQuestion"),
+    _rec_speech("C2", "Rhun ap Iorwerth", "We will legislate to improve protections for renters in the private rented sector.", role="First Minister of Wales"),
+    _rec_heading("H2", "Rail Services"),
+    _rec_speech("C3", "Andrew Davies", "What is the Government doing about rail services in the valleys?", kind="oralQuestion"),
+    _rec_speech("C4", "Rhun ap Iorwerth", "We are investing in the trains."),
+    _rec_agenda("A3", "3. Business Statement and Announcement"),
+    _rec_speech("C10", "Kerry Ferguson", "The business statement. I call the Trefnydd.", role=CHAIR),
+    _rec_speech("C11", "Heledd Fychan", "There are no changes to this week's business.", role=TREFNYDD),
+    _rec_speech("C12", "Llyr Powell", "Trefnydd, can I have a statement on local train overcrowding? The service is the third most overcrowded in the UK."),
+    _rec_speech("C13", "Heledd Fychan", "The transport secretary will have heard."),
+    _rec_speech("C14", "John Clark", "Trefnydd, can I request a statement on houses in multiple occupancy in Bangor being used for Home Office schemes?"),
+    _rec_speech("C15", "Heledd Fychan", "That issue is not devolved."),
+    _rec_agenda("A7", "7. Statement by the Cabinet Minister for Local Government, Housing and Planning: Building Safety Programme Update"),
+    _rec_speech("C20", "Kerry Ferguson", "I call the Cabinet Minister.", role=CHAIR),
+    _rec_speech("C21", "Sian Gwenllian", "Thank you, Dirprwy Lywydd.\nRemediation has not moved quickly enough for leaseholders. Of 161 buildings, 11 are complete.", role=HOUSING_MINISTER, welsh_first=True),
+    _rec_speech("C22", "Francesca O'Brien", "Only four of 161 private buildings have been remediated. Will leaseholders paying £500 a month for alarms be reimbursed?"),
+    _rec_speech("C23", "Sian Gwenllian", "The alarm grant will open very soon for leaseholders."),
+    _rec_agenda("A8", "8. Voting Time"),
+    _rec_speech("C30", "Kerry Ferguson", "We move to voting time.", role=CHAIR),
+)
+
+
+def _plenary():
+    from monitor.collectors.record_html import parse_record
+    return parse_record(PLENARY_FIXTURE, "16262", "Plenary")
+
+
+class TestDraftRecordPage(unittest.TestCase):
+    """The web page, because the XML export lagged by days in September
+    2026: Plenary 22 September's XML still held only First Minister's
+    Questions 27 hours after the sitting."""
+
+    def test_agenda_items_and_questions_are_read(self):
+        rec = _plenary()
+        self.assertTrue(rec.published)
+        self.assertEqual([i.number for i in rec.items], ["1", "3", "7", "8"])
+        self.assertEqual(rec.items[2].heading_text,
+                         "Statement by the Cabinet Minister for Local Government, "
+                         "Housing and Planning: Building Safety Programme Update")
+        self.assertEqual([b.heading for b in rec.items[0].blocks],
+                         ["Protecting Renters", "Rail Services"])
+
+    def test_every_language_run_of_a_contribution_is_read(self):
+        """A contribution has one .contributionText per run of language.
+        Reading only the first lost most of the Building Safety statement."""
+        minister = _plenary().items[2].contributions[1]
+        self.assertTrue(minister.text.startswith("Thank you very much."))
+        self.assertIn("Of 161 buildings, 11 are complete.", minister.text)
+
+    def test_role_is_carried_to_later_contributions(self):
+        items = _plenary().items
+        self.assertEqual(items[2].contributions[-1].role, HOUSING_MINISTER)
+        self.assertEqual(items[0].contributions[-1].role, "First Minister of Wales")
+
+    def test_members_chairs_anchors_and_video(self):
+        c = _plenary().items[1].contributions[0]
+        self.assertTrue(c.is_chair)
+        self.assertTrue(c.member)
+        self.assertEqual(c.anchor, "C10")
+        self.assertTrue(c.video_url.startswith("https://www.senedd.tv/"))
+
+    def test_an_unpublished_committee_page_is_not_published(self):
+        from monitor.collectors.record_html import parse_record
+        rec = parse_record("<html><body><h1>Committee</h1></body></html>",
+                           "16247", "Equality Committee")
+        self.assertFalse(rec.published)
+        self.assertEqual(rec.url, "https://record.senedd.wales/Committee/16247")
+
+
+class TestDebateSelection(unittest.TestCase):
+
+    def setUp(self):
+        from monitor.debates import Relevance, select
+        self.rel = Relevance(TAX)
+        self.debates = select(_plenary(), self.rel, date(2026, 9, 22))
+        self.by_number = {d.item.number: d for d in self.debates}
+
+    def test_a_housing_statement_is_summarised_whole(self):
+        d = self.by_number["7"]
+        self.assertTrue(d.whole)
+        self.assertEqual([c.speaker for c in d.exchanges[0].contributions],
+                         ["Sian Gwenllian", "Francesca O'Brien", "Sian Gwenllian"],
+                         "the chair calling speakers is left out")
+
+    def test_business_statement_keeps_only_the_relevant_request_and_its_answer(self):
+        """As Camlas did on 22 September: the HMO request and the Trefnydd's
+        reply; not train overcrowding."""
+        d = self.by_number["3"]
+        self.assertFalse(d.whole)
+        self.assertEqual([[c.speaker for c in ex.contributions] for ex in d.exchanges],
+                         [["John Clark", "Heledd Fychan"]])
+
+    def test_question_sessions_are_cut_to_relevant_questions(self):
+        d = self.by_number["1"]
+        self.assertFalse(d.whole)
+        self.assertEqual([ex.heading for ex in d.exchanges], ["Protecting Renters"])
+
+    def test_voting_time_is_never_summarised(self):
+        self.assertNotIn("8", self.by_number)
+
+    def test_a_contribution_is_judged_on_its_own_words(self):
+        """Under 'Questions to the Cabinet Minister for ... Housing ...' a
+        question about buses must not qualify because of the heading."""
+        self.assertFalse(self.rel.text("What is the Government doing about bus services?"))
+        self.assertTrue(self.rel.text("What is the Government doing about landlord licensing in the private rented sector?"))
+
+    def test_committee_sessions_are_whole_or_nothing(self):
+        from monitor.collectors.record_html import parse_record
+        from monitor.debates import select
+        page = _rec_page(
+            _rec_agenda("A1", "1. Introductions, apologies, substitutions and declarations of interest"),
+            _rec_speech("C1", "Committee Chair", "Welcome to the meeting."),
+            _rec_agenda("A2", "2. Electoral registration regulations: evidence session"),
+            _rec_speech("C2", "Committee Chair", "Welcome to our witnesses."),
+            _rec_speech("C3", "A Witness", "Automatic registration will add voters.", member=False),
+            _rec_speech("C4", "Peter Fox", "How many voters? Unlike the private rented sector, this is simple."),
+            _rec_agenda("A3", "3. Homelessness and social housing allocation: evidence session"),
+            _rec_speech("C5", "Committee Chair", "Our next session."),
+            _rec_speech("C6", "A Witness", "Social housing waiting lists are at a record high and homelessness is rising.", member=False),
+            _rec_speech("C7", "Peter Fox", "What would help the private rented sector house homeless families?"),
+        )
+        rec = parse_record(page, "16256", "Local Government, Housing and Planning Committee")
+        chosen = select(rec, self.rel)
+        self.assertEqual([d.item.number for d in chosen], ["3"])
+        self.assertTrue(chosen[0].whole)
+        self.assertNotIn("Committee Chair",
+                         [c.speaker for c in chosen[0].exchanges[0].contributions],
+                         "a committee chair has no role on the page; the first "
+                         "speaker of the meeting is treated as the chair")
+
+
+class TestDebateTaxonomyFixes(unittest.TestCase):
+    """Tuned against the 22 September 2026 Business Statement."""
+
+    def _qualifies(self, text):
+        item = Item(source_kind="plenary_transcript", source_name="t", title="", body=text)
+        SCORER.score_item(item)
+        return TAX.qualifies_for_site(item)
+
+    def test_houses_in_multiple_occupancy_is_an_hmo(self):
+        self.assertTrue(self._qualifies("the extent of houses in multiple occupancy in Bangor"))
+
+    def test_train_overcrowding_is_not_housing(self):
+        self.assertFalse(self._qualifies("a statement on local train overcrowding"))
+        self.assertTrue(self._qualifies("overcrowding and damp in private rented homes"))
+
+    def test_builder_licensing_is_not_landlord_licensing(self):
+        self.assertFalse(self._qualifies(
+            "a mandatory licensing scheme for building companies to stop rogue builders"))
+
+    def test_fly_tipping_enforcement_is_not_housing(self):
+        self.assertFalse(self._qualifies(
+            "Illegally dumped waste: co-ordinating enforcement action against waste crime"))
+
+
+class TestDebateSummaries(unittest.TestCase):
+
+    def setUp(self):
+        from monitor.debates import Relevance, select
+        self.debates = select(_plenary(), Relevance(TAX), date(2026, 9, 22))
+        self.statement = [d for d in self.debates if d.item.number == "7"][0]
+
+    def test_key_sentences_skip_courtesies_and_keep_the_point(self):
+        from monitor.debates import key_sentences
+        c = self.statement.exchanges[0].contributions[0]
+        text = key_sentences(c, TAX)
+        self.assertNotIn("Thank you", text)
+        self.assertIn("leaseholders", text)
+
+    def test_key_sentences_are_capped(self):
+        from monitor.collectors.record_html import Contribution
+        from monitor.debates import KEY_WORDS_MAX, key_sentences
+        long = Contribution(anchor="C1", speaker="X",
+                            text=" ".join(["Landlords matter."] * 200))
+        self.assertLessEqual(len(key_sentences(long, TAX).split()), KEY_WORDS_MAX + 1)
+
+    def test_figures_check(self):
+        from monitor.debates import figures_check
+        src = "Of 161 buildings, 11 are complete, and alarms cost £1,500 a month."
+        self.assertTrue(figures_check("11 of 161 complete; alarms £1500 a month", src))
+        self.assertFalse(figures_check("12 of 161 complete", src))
+        self.assertTrue(figures_check("progress was slow", src))
+
+    def _fake_post(self, payload, status=200):
+        import json as _json
+
+        class Resp:
+            status_code = status
+            text = _json.dumps(payload)
+
+            def json(self):
+                return {"content": [{"type": "text", "text": _json.dumps(payload)}]}
+        calls = []
+
+        def post(url, **kw):
+            calls.append((url, kw))
+            return Resp()
+        return post, calls
+
+    def test_ai_summary_is_used_and_a_wrong_figure_is_replaced(self):
+        from monitor.debates import summarise_ai
+        post, calls = self._fake_post({"overview": "An update on building safety.",
+            "points": [
+                {"n": 1, "summary": "The Cabinet Minister said 11 of 161 buildings were complete."},
+                {"n": 2, "summary": "Francesca O'Brien said only 40 buildings had been remediated."},
+                {"n": 3, "summary": ""},
+                {"n": 99, "summary": "Invented speaker."}]})
+        d = summarise_ai(self.statement, TAX, "key", post=post)
+        self.assertEqual(d.mode, "ai")
+        points = d.points[0]
+        self.assertEqual(len(points), 2, "empty summaries are skipped, out-of-range refs ignored")
+        self.assertFalse(points[0].verbatim)
+        self.assertTrue(points[1].verbatim, "40 is not in her words, so her own sentences are shown")
+        self.assertTrue(d.notes)
+        _, kw = calls[0]
+        self.assertEqual(kw["headers"]["x-api-key"], "key")
+        self.assertIn("Do not name private individuals", kw["json"]["system"])
+
+    def test_a_failed_call_falls_back_to_key_sentences(self):
+        from monitor.debates import summarise_ai
+        post, _ = self._fake_post({"error": "overloaded"}, status=529)
+        d = summarise_ai(self.statement, TAX, "key", post=post)
+        self.assertEqual(d.mode, "verbatim")
+        self.assertTrue(all(p.verbatim for row in d.points for p in row))
+        self.assertIn("unavailable", d.notes[0])
+
+    def test_without_a_key_nothing_leaves_the_runner(self):
+        from monitor import debates as mod
+        with mock.patch.object(mod, "summarise_ai", side_effect=AssertionError("called")):
+            out = mod.summarise(self.debates, TAX, api_key="")
+        self.assertTrue(out)
+        self.assertTrue(all(d.mode == "verbatim" for d in out))
+
+    def test_render(self):
+        from monitor.debates import render_debates, summarise
+        out = summarise(self.debates, TAX, api_key="")
+        subject, body, count = render_debates(out, ["Finance Committee, Thu 17 September"],
+                                              page_url="https://example.invalid/")
+        self.assertEqual(count, 3)
+        self.assertIn("Senedd debate summaries — Plenary, Tue 22 September (3 items)", subject)
+        self.assertIn("John Clark MS", body)
+        self.assertIn("record.senedd.wales/Plenary/16262#C14", body)
+        self.assertIn("verbatim", body)
+        self.assertNotIn("written by AI", body)
+        self.assertIn("Still awaited:", body)
+        self.assertNotIn("Kerry Ferguson", body)
+        self.assertEqual(render_debates([], []), ("", "", 0))
+
+    def test_ai_emails_say_they_are_ai(self):
+        from monitor.debates import render_debates
+        d = self.statement
+        from monitor.debates import summarise_verbatim
+        summarise_verbatim(d, TAX)
+        d.mode = "ai"
+        _, body, _ = render_debates([d])
+        self.assertIn("written by AI (Claude)", body)
+        self.assertIn("Check the Record", body)
+
+
+class TestDebateCandidatesAndState(unittest.TestCase):
+
+    def _tv(self, mid, name, when, cid="987"):
+        from monitor.collectors.seneddtv import Meeting
+        return Meeting(guid=mid, name=name, committee_id=cid, when=when, meeting_id=mid)
+
+    def test_candidates(self):
+        from monitor.debates import candidates
+        today = date(2026, 9, 24)
+        tv = [self._tv("16263", "Plenary", date(2026, 9, 23), "908"),
+              self._tv("16247", "Equality Committee", date(2026, 9, 23), "983"),
+              self._tv("16300", "Petitions Committee", date(2026, 9, 24), "988"),
+              self._tv("16100", "Old Committee", date(2026, 9, 1)),
+              self._tv("16262", "Plenary", date(2026, 9, 22), "908")]
+        listing = [{"meeting_id": "16267", "date": date(2026, 9, 21),
+                    "forum": "Public Accounts and Public Administration Committee"},
+                   {"meeting_id": "16263", "date": date(2026, 9, 23), "forum": "Plenary"}]
+        got = candidates(tv, listing, today, done={"16262"}, baseline=date(2026, 9, 20))
+        self.assertEqual([c.meeting_id for c in got], ["16267", "16263", "16247"],
+                         "today's meeting, done ones and old ones are left out; "
+                         "Plenary before committees on the same day")
+        self.assertIn("CId=908&MId=16263", got[1].papers_url)
+        got = candidates(tv, listing, today, done=set(), baseline=date(2026, 9, 21))
+        self.assertNotIn("16267", [c.meeting_id for c in got], "on or before the baseline")
+
+    def test_state_round_trip_and_pruning(self):
+        from monitor.debates import load_state, save_state
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "data", "sent.json")
+            state = load_state(path)
+            self.assertEqual(state["meetings"], {})
+            state["baseline"] = "2026-09-21"
+            state["meetings"] = {"1": {"date": "2026-09-22"}, "2": {"date": "2026-06-01"}}
+            save_state(state, date(2026, 9, 24), path)
+            again = load_state(path)
+            self.assertEqual(list(again["meetings"]), ["1"])
+            self.assertEqual(again["baseline"], "2026-09-21")
+
+    def test_the_committed_state_file_has_a_baseline(self):
+        from monitor.debates import load_state, state_baseline
+        state = load_state(str(Path(__file__).resolve().parent.parent
+                               / "data/debates-sent.json"))
+        self.assertIsNotNone(state_baseline(state),
+                             "without a baseline the first run sends ten days of back numbers")
+
+
+class TestDebatesCommand(unittest.TestCase):
+    """A meeting is remembered only once its summary has gone."""
+
+    def _run(self, send_result):
+        from monitor import cli
+        from monitor.collectors.record_html import parse_record
+        from monitor.collectors.seneddtv import Meeting
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        state = os.path.join(tmp, "sent.json")
+        Path(state).write_text('{"baseline": "2026-09-20", "meetings": {}}')
+        plenary = Meeting(guid="g", name="Plenary", committee_id="908",
+                          when=date(2026, 9, 22), meeting_id="16262")
+        args = SimpleNamespace(taxonomy=None, date="2026-09-23", interval=0,
+                               state=state, lookback=10, remember=False,
+                               send=True, out=os.path.join(tmp, "d.html"))
+        with mock.patch("monitor.collectors.seneddtv.SeneddTVScheduleCollector.schedule",
+                        return_value=[]), \
+             mock.patch("monitor.collectors.seneddtv.SeneddTVScheduleCollector.parse_recent_meetings",
+                        return_value=[plenary]), \
+             mock.patch("monitor.collectors.seneddtv.SeneddTVScheduleCollector.fill",
+                        side_effect=lambda m: m), \
+             mock.patch("monitor.collectors.record_transcripts.RecordTranscriptCollector.list_meetings",
+                        return_value=[]), \
+             mock.patch("monitor.collectors.record_html.RecordPageCollector.record",
+                        return_value=parse_record(PLENARY_FIXTURE, "16262", "Plenary")), \
+             mock.patch.object(cli.alerts_mod, "post_to_flow",
+                               return_value=send_result), \
+             mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x",
+                                          "ANTHROPIC_API_KEY": ""}), \
+             contextlib.redirect_stdout(io.StringIO()):
+            code = cli.cmd_debates(args)
+        import json as _json
+        return code, _json.loads(Path(state).read_text())["meetings"]
+
+    def test_sent_means_remembered(self):
+        code, meetings = self._run((True, "sent"))
+        self.assertEqual(code, 0)
+        self.assertIn("16262", meetings)
+
+    def test_not_sent_means_tried_again_tomorrow(self):
+        code, meetings = self._run((False, "HTTP 500"))
+        self.assertEqual(code, 2)
+        self.assertEqual(meetings, {})
+
+
+class TestDebatesWorkflowGuards(unittest.TestCase):
+
+    ROOT = Path(__file__).resolve().parent.parent
+    WORKFLOW = ROOT / ".github/workflows/debates.yml"
+
+    def test_it_follows_the_morning_briefing_and_has_no_timer(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        morning = (self.ROOT / ".github/workflows/morning.yml").read_text(encoding="utf-8")
+        name = re.search(r"^name:\s*(.+)$", morning, re.M).group(1).strip()
+        self.assertIn(f'workflows: ["{name}"]', text,
+                      "workflow_run must name the morning workflow exactly, or it never fires")
+        self.assertIn("workflow_dispatch:", text)
+        self.assertNotIn("schedule:", text)
+        self.assertNotIn("cron:", text)
+
+    def test_tests_run_before_anything_is_sent(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertLess(text.index("python -m tests.test_monitor"),
+                        text.index("monitor.cli debates --send"))
+
+    def test_it_commits_only_its_own_memory(self):
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        adds = re.findall(r"git add (.+)", text)
+        self.assertEqual(adds, ["data/debates-sent.json"])
+        self.assertNotIn("issues: write", text)
+        self.assertIn("MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}", text)
+        self.assertIn("ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}", text)
+
+    def test_the_readable_copy_has_not_drifted(self):
+        self.assertEqual(self.WORKFLOW.read_text(encoding="utf-8"),
+                         (self.ROOT / "deploy/debates-workflow.yml").read_text(encoding="utf-8"))
+
+    def test_the_guide_names_the_secret_the_code_reads(self):
+        guide = (self.ROOT / "DEBATE-SUMMARIES.md").read_text(encoding="utf-8")
+        self.assertIn("ANTHROPIC_API_KEY", guide)
+        code = (self.ROOT / "monitor/cli.py").read_text(encoding="utf-8")
+        self.assertIn('os.environ.get("ANTHROPIC_API_KEY"', code)
+
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
