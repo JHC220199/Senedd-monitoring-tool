@@ -847,6 +847,81 @@ def cmd_debates(args) -> int:
     return 2
 
 
+def cmd_news(args) -> int:
+    """Political news alerts — an email when something big happens.
+
+    Started every hour in office hours by Power Automate (news.yml). Reads
+    three Welsh news feeds and the Welsh Government's ministers page, and
+    emails only what is new: see NEWS-ALERTS-SETUP.md.
+    """
+    from datetime import datetime as _dt
+    from pathlib import Path
+    from .collectors.news import FEEDS, NewsCollector
+    from .news import (load_state, minister_change, new_stories, remember,
+                       render_news, save_state)
+
+    now = _dt.utcnow().replace(microsecond=0)
+    state = load_state(args.state)
+    source = NewsCollector(Fetcher(min_interval=args.interval))
+    headlines = source.headlines()
+    ministers = source.ministers()
+    for err in source.errors:
+        print(f"  note: {err}")
+
+    if not headlines and len(source.errors) >= len(FEEDS):
+        print("None of the news feeds could be read, so nothing can be said "
+              "about today's news. Nothing sent.")
+        _summary_note("WARNING", "**News alerts: none of the news feeds could "
+                      "be read.** " + " ".join(source.errors))
+        return 2
+
+    if not state.get("initialised"):
+        # The first run learns what is already out there, so it does not send
+        # an alert about every story of the past week.
+        remember(state, headlines, [], ministers, now)
+        save_state(state, args.state)
+        print(f"First run: noted {len(headlines)} current headlines and "
+              f"{len(ministers or {})} ministers. Nothing sent — alerts start "
+              "from the next run.")
+        return 0
+
+    stories = new_stories(headlines, state, now)
+    change = minister_change(state, ministers)
+    print(f"{len(headlines)} headlines read, {len(stories)} new political "
+          f"change(s){', ministers changed' if change else ''}.")
+    for story in stories:
+        print(f"  {story.label}: {story.first.title} ({len(story.matches)} outlet(s))")
+
+    subject, html_body, count = render_news(stories, change)
+    if count and args.out:
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html_body, encoding="utf-8")
+        print(f"Subject: {subject}")
+
+    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
+    sent, message = alerts_mod.post_to_flow(flow_url, subject, html_body, count,
+                                            dry_run=not args.send)
+    if count == 0:
+        message = "Nothing new — no email sent, deliberately."
+    print(message)
+
+    # Remember what was read only once any alert about it has gone, so a
+    # failed send is retried on the next run rather than lost.
+    if (args.send and (sent or count == 0)) or args.remember:
+        remember(state, headlines, stories, ministers, now)
+        save_state(state, args.state)
+
+    if sent or not args.send or count == 0:
+        return 0
+    if not flow_url:
+        _summary_note("NOTE", "**News alerts are not switched on yet.** They use "
+                      "the same Power Automate flow as the Friday email.")
+        return 0
+    _summary_note("WARNING", f"**The news alert was not sent.** {message}")
+    return 2
+
+
 def _summary_note(kind: str, text: str) -> None:
     """Annotate the Actions run page, where 'did it go?' gets asked."""
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
@@ -1219,6 +1294,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--send", action="store_true",
                    help="actually POST to the Power Automate flow")
     p.set_defaults(func=cmd_debates)
+
+    p = sub.add_parser("news", help="political news alerts")
+    p.add_argument("--out", default="out/news.html")
+    p.add_argument("--state", default="data/news-state.json")
+    p.add_argument("--remember", action="store_true",
+                   help="record what was read even without --send")
+    p.add_argument("--send", action="store_true",
+                   help="actually POST to the Power Automate flow")
+    p.set_defaults(func=cmd_news)
 
     p = sub.add_parser("search", help="full-text search the archive")
     p.add_argument("expression")
