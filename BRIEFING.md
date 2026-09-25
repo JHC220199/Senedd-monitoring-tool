@@ -1,8 +1,11 @@
 # NRLA Senedd policy briefing
 
-*As at Thursday 24 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Friday 25 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
-**16** open consultations · **3** closing within three weeks · **29** developments to review
+> [!NOTE]
+> Collected another way (nothing missing): `Senedd forward look`
+
+**16** open consultations · **4** closing within three weeks · **31** developments to review
 
 ## Respond — things with a deadline
 
@@ -15,10 +18,10 @@
 | **Closed** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes tomorrow** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes tomorrow** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes tomorrow** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| Closes 16 October | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closes today** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closes today** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closes today** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| 21 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 19 October | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _4 more — see the full dashboard_ | |
 
@@ -36,6 +39,18 @@
 </details>
 
 ## Review — what has happened
+
+**[2. General scrutiny of the Cabinet Minister for Rural Resilience and Sustainability](https://record.senedd.wales/Committee/16233)**  
+<sub>23 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, Llyr Gruffydd, James Evans and 10 others</sub>  
+Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
+> Just picking up on the question that James asked just now, actually, I've got constituents who are very concerned that, say, data centres are being considered to be essential national infrastructure. But I think that, actually, biodiversity habitats also should be considered as essential national infrastructure. But,…
+<sub>[Watch this moment](http://www.senedd.tv/en/16233?startPos=3607&l=en)</sub>
+
+**[2. General scrutiny session: Deputy First Minister and Cabinet Minister for Equality and Social Justice](https://record.senedd.wales/Committee/16247)**  
+<sub>23 September 2026 · Equality, Human Rights and Social Justice Committee · Sioned Williams, Zaynub Akbar, Jayne Bryant and 11 others</sub>  
+Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
+> I think I responded to that question earlier, in response to Jane Dodds. Early next year is when we’ll be taking the strategy out for consultation.
+<sub>[Watch this moment](http://www.senedd.tv/en/16247?startPos=1328&l=en)</sub>
 
 **[Welsh Government to fund interim alarm measures for leaseholders facing waking watch costs](https://media.service.gov.wales/news/welsh-government-to-fund-interim-alarm-measures-for-leaseholders-facing-waking-watch-costs)**  
 <sub>22 September 2026 · Welsh Government</sub>  
@@ -112,23 +127,10 @@ Touches building safety & leasehold, energy efficiency & retrofit and budget & l
 Touches property taxation and planning system. Watch for the answer — it will set out the Government's position.  
 > The town-centre taskforce will address the structural challenges facing town centres, including business rates and planning reform, by working collaboratively with partners and maintaining a strong focus on delivery to help town centres adapt, attract investment and activity, and thrive in the years ahead.
 
-**[A “first phase of legislation”: the Welsh Government’s legislative priorities](https://research.senedd.wales/research-articles/a-first-phase-of-legislation-the-welsh-government-s-legislative-priorities/)**  
-<sub>14 July 2026 · Senedd Research</sub>  
-Touches private rented sector, rent controls & rent data and evictions & possession. Read for context before briefing or responding.  
-> A “first phase of legislation”: the Welsh Government’s legislative priorities  Published 28/07/2026 | Reading Time minutes  On 14 July 2026, the First Minister, Rhun ap Iorwerth MS, set out the “first phase of legislation” that the Welsh Government will introduce to the Senedd. This covers areas including the right to…
-
-**[4. Statement by the First Minister: Legislation](https://record.senedd.wales/Plenary/16085)**  
-<sub>14 July 2026 · Plenary · Rhun ap Iorwerth, Dan Thomas, Ken Skates and 4 others</sub>  
-Touches committee scrutiny, evictions & possession and budget & legislative programme. Read and decide whether a line to take is needed.  
-> Today I'll talk about our first phase of legislation. This recognises the dual importance of bringing early momentum to this legislature's work whilst allowing space to build agreement and develop genuinely impactful legislation across a full four-year term. There are several areas where action can be taken swiftly.  …
-<sub>[Watch this moment](http://www.senedd.tv/en/16085?startPos=8319&l=en)</sub>
-
-_14 further items in the full dashboard._
+_16 further items in the full dashboard._
 
 ## Coming up
 
-- **24 September 2026** — [Finance Committee — 24 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16250)
-- **24 September 2026** — [Local Government, Housing and Planning Committee — 24 September 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16257)
 - **28 September 2026** — [Legislation Committee — 28 September 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16255)
 - **28 September 2026** — [Legislation Committee — 28 September 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16255)
 - **28 September 2026** — [Culture, Communications, Cymraeg and Sport Committee — 28 September 2026, 12.15](https://business.senedd.wales/ieListDocuments.aspx?CId=980&MId=16239)
@@ -137,7 +139,9 @@ _14 further items in the full dashboard._
 - **30 September 2026** — [Equality, Human Rights and Social Justice Committee — 30 September 2026, 09.45](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16248)
 - **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
 - **01 October 2026** — [Local Government, Housing and Planning Committee — 01 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16305)
+- **01 October 2026** — [Finance Committee — 01 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16294)
+- **05 October 2026** — [Legislation Committee — 05 October 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16302)
 
 ---
 
-<sub>146 items scored from 637 collected records, 24 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>149 items scored from 1024 collected records, 25 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
