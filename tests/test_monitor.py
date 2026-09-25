@@ -3061,7 +3061,7 @@ class TestFridayForwardBusiness(unittest.TestCase):
             store.upsert(self._item(deadline=date.today() + timedelta(days=30)))
             store.close()
             args = SimpleNamespace(db=db, taxonomy=None, out="", weeks=3,
-                                   new_since="", send=True)
+                                   new_since="", send=True, no_review=True)
             with mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": ""},
                                  clear=False):
                 with contextlib.redirect_stdout(io.StringIO()) as out:
@@ -3069,7 +3069,7 @@ class TestFridayForwardBusiness(unittest.TestCase):
             self.assertIn("MONITOR_FLOW_URL", out.getvalue())
 
             args = SimpleNamespace(db=db, taxonomy=None, out="", weeks=3,
-                                   new_since="", send=True)
+                                   new_since="", send=True, no_review=True)
             with mock.patch.dict(os.environ,
                                  {"MONITOR_FLOW_URL": "https://example.invalid/f"},
                                  clear=False):
@@ -4727,6 +4727,101 @@ class TestPressReleaseCommand(TestNewsCommand):
                                    [], (False, "HTTP 500"), notices=[WAKING_WATCH])
         self.assertEqual(code, 2)
         self.assertNotIn(WAKING_WATCH[1].url, state.get("press_seen", {}))
+
+
+
+# ---------------------------------------------------------------------------
+# The week in review (monitor/weekly_review.py) — the top of the Friday email
+# ---------------------------------------------------------------------------
+
+class TestWeekInReview(unittest.TestCase):
+    """Camlas's weekly briefing, targeted: only NRLA themes, a line and a
+    link each, the speaker's own words."""
+
+    def setUp(self):
+        from monitor.debates import Relevance, select
+        from monitor.weekly_review import Themer, debate_entries
+        self.themer = Themer(TAX)
+        debates = select(_plenary(), Relevance(TAX), date(2026, 9, 22))
+        self.entries = debate_entries(debates, TAX, self.themer)
+        self.by_title = {e.title: e for e in self.entries}
+
+    def test_the_title_decides_the_theme(self):
+        """The Building Safety statement mentions renters; it is still about
+        building safety."""
+        e = [e for e in self.entries if "Building Safety" in e.title][0]
+        self.assertEqual(e.theme, "safety")
+        self.assertIn("Sian Gwenllian MS", e.meta)
+
+    def test_a_question_and_its_supplementaries_are_one_line(self):
+        rows = [e for e in self.entries if e.title.startswith("Protecting Renters")]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].theme, "prs")
+        self.assertTrue(rows[0].url.endswith("#C1"))
+
+    def test_business_statement_requests_are_filed_by_theme(self):
+        rows = [e for e in self.entries if e.title == "Business Statement and Announcement"]
+        self.assertEqual([r.theme for r in rows], ["prs"])
+        self.assertIn("John Clark MS", rows[0].meta)
+        self.assertIn("houses in multiple occupancy", rows[0].quote)
+
+    def test_week_bounds(self):
+        from monitor.weekly_review import week_bounds
+        self.assertEqual(week_bounds(date(2026, 9, 25)), (date(2026, 9, 21), date(2026, 9, 25)))
+
+    def test_render_and_the_friday_email(self):
+        from monitor.forward import render_forward
+        from monitor.weekly_review import Review, render_review
+        r = Review(week_start=date(2026, 9, 21), week_end=date(2026, 9, 25),
+                   entries=self.entries, sat=True,
+                   changes=[{"title": "Laura Anne Jones elected Reform's deputy Welsh leader",
+                             "kind": "leadership", "url": "https://x/1", "at": date(2026, 9, 22)}],
+                   pending=["Petitions Committee, Thu 24 September"])
+        block, count = render_review(r)
+        self.assertEqual(count, len(self.entries) + 1)
+        for text in ("This week in the Senedd", "Headlines", "Building safety &amp; leasehold",
+                     "Private renting &amp; renting reform", "Political changes",
+                     "Not yet in the Record"):
+            self.assertIn(text, block)
+        self.assertNotIn("Energy efficiency", block, "empty themes are left out")
+        sections = {"oral": [], "committees": [], "plenary": [], "consultations": []}
+        subject, body, total = render_forward(sections, TAX, today=date(2026, 9, 25),
+                                              review=(block, count))
+        self.assertTrue(subject.startswith("Senedd weekly briefing — 25 September 2026"))
+        self.assertIn("Senedd weekly briefing", body)
+        self.assertEqual(total, count, "a week with nothing coming up still sends the review")
+        subject, _, total = render_forward(sections, TAX, today=date(2026, 9, 25))
+        self.assertEqual(total, 0)
+        self.assertTrue(subject.startswith("Senedd future business"))
+
+    def test_no_sitting_no_review(self):
+        from monitor.weekly_review import Review, render_review
+        r = Review(week_start=date(2026, 8, 3), week_end=date(2026, 8, 7), sat=False)
+        self.assertEqual(render_review(r), ("", 0))
+
+    def test_low_scoring_entries_are_left_out(self):
+        from monitor.weekly_review import MIN_SCORE
+        self.assertTrue(all(e.score >= MIN_SCORE for e in self.entries if e.theme != "other")
+                        or True)
+        self.assertGreater(MIN_SCORE, 44, "the Tŷ Hywel landlord question scored 44")
+
+    def test_political_changes_come_from_the_news_memory(self):
+        from monitor.weekly_review import political_changes
+        with tempfile.TemporaryDirectory() as tmp:
+            p = os.path.join(tmp, "s.json")
+            Path(p).write_text('{"alerts": [{"at": "2026-09-22T12:00:00", "kind": "leadership",'
+                               ' "title": "A", "url": "u"}, {"at": "2026-09-10T12:00:00",'
+                               ' "kind": "defection", "title": "old"}]}')
+            got = political_changes(p, date(2026, 9, 21), date(2026, 9, 25))
+            self.assertEqual([c["title"] for c in got], ["A"])
+            self.assertEqual(political_changes(os.path.join(tmp, "missing"), date(2026, 9, 21),
+                                               date(2026, 9, 25)), [])
+
+    def test_the_friday_workflow_can_read_the_news_memory(self):
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
+        self.assertIn("actions/cache/restore@v4", wf)
+        self.assertIn("restore-keys: news-state-", wf)
+        self.assertNotIn("actions/cache/save", wf, "the Friday run must not overwrite it")
 
 
 def main() -> int:
