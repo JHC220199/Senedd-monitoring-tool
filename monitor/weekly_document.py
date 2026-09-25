@@ -145,7 +145,11 @@ def _rgb(hex_):
 def _hyperlink(paragraph, url: str, text: str, colour: str = DARK_BLUE,
                bold: bool = False, size: float | None = None, underline: bool = True):
     """A clickable link. python-docx has no API for this, so it is built from
-    the underlying XML, as its own documentation suggests."""
+    the underlying XML, as its own documentation suggests.
+
+    The run properties must be in the order the schema lays down — b, color,
+    sz, u. Word refuses a file with them in any other order ("Word found
+    unreadable content", 25 September 2026), though LibreOffice opens it."""
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
@@ -159,19 +163,19 @@ def _hyperlink(paragraph, url: str, text: str, colour: str = DARK_BLUE,
     link.set(qn("r:id"), r_id)
     run = OxmlElement("w:r")
     props = OxmlElement("w:rPr")
+    if bold:
+        props.append(OxmlElement("w:b"))
     col = OxmlElement("w:color")
     col.set(qn("w:val"), colour)
     props.append(col)
-    if underline:
-        u = OxmlElement("w:u")
-        u.set(qn("w:val"), "single")
-        props.append(u)
-    if bold:
-        props.append(OxmlElement("w:b"))
     if size:
         sz = OxmlElement("w:sz")
         sz.set(qn("w:val"), str(int(size * 2)))
         props.append(sz)
+    if underline:
+        u = OxmlElement("w:u")
+        u.set(qn("w:val"), "single")
+        props.append(u)
     run.append(props)
     t = OxmlElement("w:t")
     t.text = text
@@ -182,32 +186,57 @@ def _hyperlink(paragraph, url: str, text: str, colour: str = DARK_BLUE,
     return link
 
 
-def _border_bottom(paragraph, colour: str = ORANGE, size: int = 12, space: int = 4):
+# Everything that may follow <w:pBdr> inside <w:pPr>, in schema order. The
+# border has to go before the first of these that is present: appended at the
+# end, after <w:spacing> and <w:ind>, it made Word refuse the whole file.
+_AFTER_PBDR = ("w:shd", "w:tabs", "w:suppressAutoHyphens", "w:kinsoku",
+               "w:wordWrap", "w:overflowPunct", "w:topLinePunct", "w:autoSpaceDE",
+               "w:autoSpaceDN", "w:bidi", "w:adjustRightInd", "w:snapToGrid",
+               "w:spacing", "w:ind", "w:contextualSpacing", "w:mirrorIndents",
+               "w:suppressOverlap", "w:jc", "w:textDirection", "w:textAlignment",
+               "w:textboxTightWrap", "w:outlineLvl", "w:divId", "w:cnfStyle",
+               "w:rPr", "w:sectPr", "w:pPrChange")
+_BORDER_SIDES = ("top", "left", "bottom", "right", "between", "bar")
+
+
+def _insert_before(parent, child, successors) -> None:
+    """Put ``child`` before the first of ``successors`` present in
+    ``parent``, or at the end — the schema's order, whatever is there."""
+    from docx.oxml.ns import qn
+    tags = {qn(t) for t in successors}
+    for i, existing in enumerate(parent):
+        if existing.tag in tags:
+            parent.insert(i, child)
+            return
+    parent.append(child)
+
+
+def _border(paragraph, side: str, colour: str, size: int, space: int):
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     ppr = paragraph._p.get_or_add_pPr()
-    bdr = OxmlElement("w:pBdr")
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), str(size))
-    bottom.set(qn("w:space"), str(space))
-    bottom.set(qn("w:color"), colour)
-    bdr.append(bottom)
-    ppr.append(bdr)
+    bdr = ppr.find(qn("w:pBdr"))
+    if bdr is None:
+        bdr = OxmlElement("w:pBdr")
+        _insert_before(ppr, bdr, _AFTER_PBDR)
+    edge = OxmlElement(f"w:{side}")
+    edge.set(qn("w:val"), "single")
+    edge.set(qn("w:sz"), str(size))
+    edge.set(qn("w:space"), str(space))
+    edge.set(qn("w:color"), colour)
+    later = [f"w:{s}" for s in _BORDER_SIDES[_BORDER_SIDES.index(side) + 1:]]
+    old = bdr.find(qn(f"w:{side}"))
+    if old is not None:
+        bdr.remove(old)
+    _insert_before(bdr, edge, later)
+
+
+def _border_bottom(paragraph, colour: str = ORANGE, size: int = 12, space: int = 4):
+    _border(paragraph, "bottom", colour, size, space)
 
 
 def _border_left(paragraph, colour: str = "D9E2E8", size: int = 12, space: int = 8):
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
-    ppr = paragraph._p.get_or_add_pPr()
-    bdr = OxmlElement("w:pBdr")
-    left = OxmlElement("w:left")
-    left.set(qn("w:val"), "single")
-    left.set(qn("w:sz"), str(size))
-    left.set(qn("w:space"), str(space))
-    left.set(qn("w:color"), colour)
-    bdr.append(left)
-    ppr.append(bdr)
+    _border(paragraph, "left", colour, size, space)
 
 
 def _page_number(paragraph):
@@ -570,6 +599,16 @@ def build_document(review, tax: Taxonomy, sections: dict | None = None,
         _hyperlink(p, page_url, "live page", size=8.5)
         d.muted(p, ".", size=8.5)
 
+    _fix_settings(d.doc)
     buf = io.BytesIO()
     d.doc.save(buf)
     return buf.getvalue()
+
+
+def _fix_settings(doc) -> None:
+    """python-docx's template has <w:zoom> without the percent the schema
+    requires. Word tolerates it; there is no reason to rely on that."""
+    from docx.oxml.ns import qn
+    zoom = doc.settings.element.find(qn("w:zoom"))
+    if zoom is not None and zoom.get(qn("w:percent")) is None:
+        zoom.set(qn("w:percent"), "100")
