@@ -55,6 +55,46 @@ week's additions are findable in ten seconds.
 rather than receiving six identical "nothing this week" emails and learning to
 delete the seventh unread.
 
+### The Word document attached
+
+In a week the Senedd sat, the email also carries a Word document, *NRLA
+Senedd weekly briefing 25 September 2026.docx*. It has the same items under
+the same themes, with **who said what**, as Camlas's weekly briefing does:
+
+- **Questions and requests** (oral questions, the Business Statement, the
+  questions after a statement): every contribution, the question and the
+  reply, in full.
+- **Statements and debates**: each speaker in turn. A short contribution is in
+  full. A long one is cut to its passages on NRLA issues, and its opening is
+  always kept. **[…]** marks each cut, and every heading links to the full
+  Record.
+- **Welsh Government press releases and written statements**: the notice's
+  own summary points and opening paragraphs.
+- Then the week's political changes and everything coming up, so the
+  document can be forwarded on its own.
+
+Nothing is summarised or paraphrased. Every word is the speaker's own, from
+the Senedd's Record of Proceedings, in English as spoken or in the official
+interpretation where the words were spoken in Welsh. The run also keeps a
+copy of the document with the email (see "Keep a copy of what was sent").
+
+**The flow change that makes the attachment work (done 25 September 2026).**
+The tool sends the document as an extra `attachments` field. In the flow's
+**Send an email (V2)** step:
+
+1. Open **Advanced parameters** and tick **Attachments**.
+2. Click the **switch to input entire array** icon next to Attachments.
+3. Put this in as an **expression** (the *fx* button), then **Save**:
+
+   ```
+   coalesce(triggerBody()?['attachments'], json('[]'))
+   ```
+
+The morning, debate and news emails send no `attachments` field, so for them
+this expression gives an empty list and nothing changes. If the attachment
+ever stops arriving while the email still comes, this step is the one to
+check.
+
 ---
 
 ## Stage 1 — make the flow (5 minutes)
