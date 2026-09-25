@@ -19,8 +19,8 @@
 | **Closed** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closes today** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes today** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closes today** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closes today** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | 21 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 19 October | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _4 more — see the full dashboard_ | |
@@ -40,17 +40,17 @@
 
 ## Review — what has happened
 
-**[2. General scrutiny of the Cabinet Minister for Rural Resilience and Sustainability](https://record.senedd.wales/Committee/16233)**  
-<sub>23 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, Llyr Gruffydd, James Evans and 10 others</sub>  
-Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
-> Just picking up on the question that James asked just now, actually, I've got constituents who are very concerned that, say, data centres are being considered to be essential national infrastructure. But I think that, actually, biodiversity habitats also should be considered as essential national infrastructure. But,…
-<sub>[Watch this moment](http://www.senedd.tv/en/16233?startPos=3607&l=en)</sub>
-
 **[2. General scrutiny session: Deputy First Minister and Cabinet Minister for Equality and Social Justice](https://record.senedd.wales/Committee/16247)**  
 <sub>23 September 2026 · Equality, Human Rights and Social Justice Committee · Sioned Williams, Zaynub Akbar, Jayne Bryant and 11 others</sub>  
 Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
 > I think I responded to that question earlier, in response to Jane Dodds. Early next year is when we’ll be taking the strategy out for consultation.
 <sub>[Watch this moment](http://www.senedd.tv/en/16247?startPos=1328&l=en)</sub>
+
+**[2. General scrutiny of the Cabinet Minister for Rural Resilience and Sustainability](https://record.senedd.wales/Committee/16233)**  
+<sub>23 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, James Evans, Llyr Gruffydd and 10 others</sub>  
+Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
+> Just picking up on the question that James asked just now, actually, I've got constituents who are very concerned that, say, data centres are being considered to be essential national infrastructure. But I think that, actually, biodiversity habitats also should be considered as essential national infrastructure. But,…
+<sub>[Watch this moment](http://www.senedd.tv/en/16233?startPos=3607&l=en)</sub>
 
 **[Welsh Government to fund interim alarm measures for leaseholders facing waking watch costs](https://media.service.gov.wales/news/welsh-government-to-fund-interim-alarm-measures-for-leaseholders-facing-waking-watch-costs)**  
 <sub>22 September 2026 · Welsh Government</sub>  
@@ -144,4 +144,4 @@ _16 further items in the full dashboard._
 
 ---
 
-<sub>149 items scored from 1024 collected records, 25 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>152 items scored from 1031 collected records, 25 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
