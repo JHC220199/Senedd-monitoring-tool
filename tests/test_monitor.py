@@ -4421,6 +4421,11 @@ class TestNewsAlertTriggers(unittest.TestCase):
         "No suspect identified in death threat against Reform Senedd member",
         "Reform Senedd motion declaring Wales should stay in UK voted down",
         "Reform Wales leader Dan Thomas arrested",
+        # 25 September 2026: alerted as a "Defection", wrongly. The defection
+        # was ten days earlier; this is an accusation about the person.
+        "Reform UK politician accuses Senedd member who defected of 'fraud'",
+        "Plaid Cymru defends decision to accept Reform UK defector",
+        "Reform leader criticises MS who quit the party",
     ]
 
     def test_political_changes_alert(self):
