@@ -11,7 +11,30 @@ whatever the Westminster flow is wired to. Make a second one.
 
 ## What the email is
 
-Every Friday afternoon, one message:
+**In a week the Senedd sat, it opens with the week in review.** This is
+Camlas's weekly briefing, cut down to the NRLA's areas. First come the week's
+five most important items as **Headlines**. Then everything said and
+published on NRLA issues this week, filed under the NRLA's own themes:
+
+- private renting and renting reform;
+- Rent Smart Wales, licensing and enforcement;
+- building safety and leasehold;
+- energy efficiency and retrofit;
+- property tax and second homes;
+- housing supply, planning and social housing;
+- homelessness and tenants' finances.
+
+Each entry is a line and a link: what it was, where and who, and the most
+relevant sentence the speaker actually said. The entries come from the
+Senedd's draft Record and the Welsh Government's own notices. They are chosen
+by the same rules as the live page, the debate summaries and the press
+release alerts. Themes with nothing in them are left out. Political changes
+reported by the week's news alerts are listed at the end. Committee meetings
+whose Record is not yet published are named, so you know what is not
+covered. In recess the review is left out, and the email is future business
+alone.
+
+The email then has what is coming up, every Friday afternoon:
 
 1. **Consultations closing soonest** — Senedd and Welsh Government, soonest
    first. A missed deadline cannot be recovered, so it goes first.

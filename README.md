@@ -86,6 +86,11 @@ A *per-run* notification is noise. A weekly forward look is not, and it is the
 half of the supplier's service that a page cannot replace — a page has to be
 opened, and a deadline you did not know about is one you do not go looking for.
 
+In a week the Senedd sat, it opens with the **week in review**: what was
+said and published on NRLA issues that week, by NRLA theme, a line and a link
+each. This is the supplier's weekly briefing, targeted
+(`monitor/weekly_review.py`).
+
 Every Friday afternoon, one email: consultations closing soonest, committee
 meetings in the next three weeks, Plenary business, and oral questions tabled
 for forthcoming sittings — filtered by exactly the same strict rule as the live
