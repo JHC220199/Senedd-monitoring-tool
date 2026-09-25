@@ -108,6 +108,15 @@ def select_business(items: list[Item], tax: Taxonomy,
     """
     today = today or date.today()
     horizon = today + timedelta(weeks=weeks_ahead)
+    # Judged by today's taxonomy, not the one in force when each item was
+    # collected. The archive keeps the score from collection time, so a
+    # notice collected before a rule was tightened — "Have your say on new
+    # powers to tackle roadside rubbish", 22 September 2026 — kept its old
+    # verdict and went on appearing after the rule said otherwise.
+    from .relevance import Scorer
+    scorer = Scorer(tax)
+    for item in items:
+        scorer.score_item(item)
     # Same strict rule AND the same de-duplication as the page. A consultation
     # whose wording changes between runs is stored again under a new uid — by
     # design, so the archive keeps the history — and without this the committee

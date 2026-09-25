@@ -219,7 +219,42 @@ class Taxonomy:
         if (item.band or "") == "Noise":
             return False
         generic = set(self.site_config.get("non_qualifying_themes", []) or [])
-        return any(t not in generic for t in (item.themes or []))
+        if not any(t not in generic for t in (item.themes or [])):
+            return False
+        if item.source_kind == "consultation":
+            return self.headline_qualifies(item)
+        return True
+
+    # How much of a consultation's text counts as its headline: the title and
+    # the one-line summary the publisher puts under it ("We want your views
+    # on ..."). About the first 400 characters of the stored body.
+    HEADLINE_CHARS = 400
+
+    def headline_qualifies(self, item: Item) -> bool:
+        """Is a consultation ABOUT an NRLA theme, not merely mentioning one?
+
+        A consultation is judged on its own headline, because its full notice
+        wanders. On 25 September 2026 the Friday email listed "Shape plans for
+        a new clean energy company" (the notice mentions the Nest scheme and
+        "cold, damp conditions" in passing) and "Stationary vehicle engine
+        idling: local authority guidance" ("enforcement powers", generically).
+        The directorate's verdict: not relevant. Neither names an NRLA theme
+        in its title or summary, and a relevant consultation always does.
+        """
+        generic = set(self.site_config.get("non_qualifying_themes", []) or [])
+        headline = f"{item.title or ''}\n{(item.body or '')[:self.HEADLINE_CHARS]}"
+        full = f"{item.title or ''}\n{item.body or ''}"
+        for key, spec in self.themes.items():
+            if key in generic or float(spec.get("weight", 0)) <= 0:
+                continue
+            hits = find_terms(headline, spec.get("terms", []))
+            if not hits:
+                continue
+            vetoes = find_terms(full, spec.get("exclude_if", []) or [])
+            if vetoes and not Scorer._veto_overridden(hits, vetoes):
+                continue
+            return True
+        return False
 
 
 # ---------------------------------------------------------------------------
