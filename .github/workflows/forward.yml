@@ -133,8 +133,9 @@ jobs:
           {
             echo "### Friday future business"
             echo ""
-            echo "The email built by this run is the \`senedd-future-business\`"
-            echo "artifact at the foot of this page. If nothing was sent, the"
+            echo "The email built by this run, and the Word document attached"
+            echo "to it, are the \`senedd-future-business\` artifact at the foot"
+            echo "of this page. If nothing was sent, the"
             echo "step above says why in plain English — the most likely"
             echo "reasons are an empty week (deliberate) and a missing or"
             echo "regenerated \`MONITOR_FLOW_URL\` secret."
@@ -145,6 +146,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: senedd-future-business-${{ github.run_number }}
-          path: out/forward.html
+          path: |
+            out/forward.html
+            out/weekly-briefing.docx
           retention-days: 90
           if-no-files-found: ignore
