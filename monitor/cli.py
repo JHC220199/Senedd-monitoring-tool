@@ -567,6 +567,33 @@ def cmd_alert(args) -> int:
     return _report_not_sent(args, recipients, config)
 
 
+def _weekly_document(args, review, tax, sections, today, page_url):
+    """The Word document with who said what (monitor/weekly_document.py),
+    as ``[(file name, bytes)]`` for the email, and saved beside --out so the
+    run keeps a copy. Empty when there is nothing to detail or it failed —
+    a failure costs the attachment, never the email."""
+    if review is None or getattr(args, "no_document", False):
+        return []
+    try:
+        from .weekly_document import build_document, filename
+        data = build_document(review, tax, sections, today=today, page_url=page_url)
+    except Exception as exc:        # noqa: BLE001
+        print(f"The Word document could not be built: {exc}")
+        _summary_note("WARNING", f"**The Word document could not be built**, "
+                      f"so this Friday email has no attachment. {exc}")
+        return []
+    if not data:
+        return []
+    name = filename(today)
+    if args.out:
+        from pathlib import Path
+        out = Path(args.out).parent / "weekly-briefing.docx"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(data)
+        print(f"Word document written to {out} ({len(data):,} bytes)")
+    return [(name, data)]
+
+
 def cmd_forward(args) -> int:
     """The Friday future-business email — what is scheduled, not what happened.
 
@@ -595,6 +622,7 @@ def cmd_forward(args) -> int:
         page_url = (f"https://{repo.split('/')[0].lower()}.github.io/"
                     f"{repo.split('/')[1]}/") if "/" in repo else ""
         review = None
+        wr = None
         if not getattr(args, "no_review", False):
             # The week in review: this week's Records and Welsh Government
             # notices, read live. A failure here must not cost the team the
@@ -617,6 +645,7 @@ def cmd_forward(args) -> int:
         subject, html_body, count = render_forward(
             sections, tax, today=today, new_since=since, page_url=page_url,
             review=review)
+        attachments = _weekly_document(args, wr, tax, sections, today, page_url)
     finally:
         store.close()
 
@@ -632,7 +661,8 @@ def cmd_forward(args) -> int:
 
     flow_url = os.environ.get("MONITOR_FLOW_URL", "")
     sent, message = alerts_mod.post_to_flow(
-        flow_url, subject, html_body, count, dry_run=not args.send)
+        flow_url, subject, html_body, count, dry_run=not args.send,
+        attachments=attachments)
     print(message)
 
     if sent or count == 0 or not args.send:
@@ -1375,6 +1405,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="actually POST to the Power Automate flow")
     p.add_argument("--no-review", action="store_true",
                    help="future business only, without the week in review")
+    p.add_argument("--no-document", action="store_true",
+                   help="send the email without the Word document attached")
     p.add_argument("--news-state", default="data/news-state.json",
                    help="the news alerts' memory, for this week's political changes")
     p.set_defaults(func=cmd_forward)

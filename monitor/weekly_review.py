@@ -90,6 +90,15 @@ class Entry:
     score: float = 0.0
     theme: str = OTHER[0]
     when: date | None = None
+    # For the Word document (monitor/weekly_document.py), which gives who
+    # said what in full rather than one line:
+    kind: str = "debate"         # or "notice"
+    whole: bool = False          # a whole debate, not selected exchanges
+    exchanges: list = field(default_factory=list)   # [(heading, [Contribution])]
+    paragraphs: list = field(default_factory=list)  # a notice's own words
+    points: list = field(default_factory=list)      # a notice's summary points
+    label: str = ""              # "Press release", "Written statement"
+    video_url: str = ""
 
 
 @dataclass
@@ -185,7 +194,9 @@ def debate_entries(debates: list, tax: Taxonomy, themer: Themer) -> list[Entry]:
             out.append(Entry(title=d.title, url=d.url, meta=meta,
                              quote=_one_sentence(key_sentences(lead, tax)),
                              quote_by=lead.role or _label(lead),
-                             score=score, theme=theme, when=when))
+                             score=score, theme=theme, when=when,
+                             whole=True, exchanges=[("", list(speakers))],
+                             video_url=d.video_url))
             continue
 
         # Exchange mode. A question's supplementaries go with it, so
@@ -221,7 +232,9 @@ def debate_entries(debates: list, tax: Taxonomy, themer: Themer) -> list[Entry]:
             out.append(Entry(title=title, url=url, meta=meta,
                              quote=_one_sentence(key_sentences(first, tax)),
                              quote_by=_label(first), score=score, theme=theme,
-                             when=when))
+                             when=when,
+                             exchanges=[(ex.heading, list(ex.contributions)) for ex in exs],
+                             video_url=first.video_url or d.video_url))
     return out
 
 
@@ -234,9 +247,14 @@ def notice_entries(releases: list, themer: Themer) -> list[Entry]:
         meta = " · ".join(filter(None, [
             "Welsh Government", r.label.lower(),
             when.strftime("%a %-d %b") if when else "", it.speaker]))
+        paras = list(getattr(it, "paragraphs", None) or [])
+        if not paras:
+            lines = [ln.strip() for ln in (it.body or "").split("\n") if ln.strip()]
+            paras = [ln for ln in lines if ln != it.title.strip()]
         out.append(Entry(title=it.title, url=it.url, meta=meta,
                          quote=_one_sentence(r.points[0]) if r.points else "",
-                         score=score, theme=theme, when=when))
+                         score=score, theme=theme, when=when, kind="notice",
+                         paragraphs=paras, points=list(r.points), label=r.label))
     return out
 
 

@@ -341,8 +341,18 @@ def send(subject: str, html_body: str, text_body: str,
 # ---------------------------------------------------------------------------
 
 def post_to_flow(url: str, subject: str, body: str, count: int,
-                 session=None, dry_run: bool = True) -> tuple[bool, str]:
+                 session=None, dry_run: bool = True,
+                 attachments: list[tuple[str, bytes]] | None = None
+                 ) -> tuple[bool, str]:
     """POST ``{subject, body, count}`` to a Power Automate HTTP trigger.
+
+    ``attachments`` — ``(file name, bytes)`` pairs — go as an
+    ``attachments`` array of ``{"Name", "ContentBytes"}`` (base64), which is
+    the shape the Outlook "Send an email (V2)" action takes as its
+    Attachments input. The key is sent only when there is something to
+    attach, so the morning, debate and news emails are unchanged; the flow
+    reads it with ``coalesce(triggerBody()?['attachments'], json('[]'))``
+    (FORWARD-EMAIL-SETUP.md, "The Word document").
 
     Why this rather than SMTP
     -------------------------
@@ -375,6 +385,11 @@ def post_to_flow(url: str, subject: str, body: str, count: int,
         return False, "Dry run — nothing sent. Add --send to deliver."
 
     payload = {"subject": subject, "body": body, "count": count}
+    if attachments:
+        import base64
+        payload["attachments"] = [
+            {"Name": name, "ContentBytes": base64.b64encode(data).decode("ascii")}
+            for name, data in attachments]
     try:
         if session is None:
             import requests
