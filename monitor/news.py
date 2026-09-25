@@ -14,7 +14,9 @@ shadow cabinets, suspensions and the whip, by-elections, votes of no
 confidence. A story about an MS's private life is not an alert unless it
 leads to one of those. A headline must:
 
-  * contain a change word (TRIGGERS), and
+  * contain a change word (TRIGGERS) that reports a change — not one that
+    describes someone ("the member who defected"), and not in a headline
+    whose main verb is a reaction ("accuses", "criticises", "defends"), and
   * be about the Senedd or the Welsh Government (CONTEXT), and
   * not be a council story, a Westminster story, or a feature (EXCLUDE).
 
@@ -110,6 +112,24 @@ EXCLUDE = re.compile(
     r"^(who is|what we learned|analysis|opinion|comment|explained|watch|live)\b|"
     r"\bthe making of\b|\bin full\b|\bQ&A\b|\bexplained\b|\bprofile\b", re.I)
 _WESTMINSTER = re.compile(r"\b(MPs?|Westminster|House of Commons|Downing Street)\b")
+
+# A change word used to DESCRIBE someone, not to report a change: "Reform UK
+# politician accuses Senedd member who defected of 'fraud'" (WalesOnline,
+# 24 September 2026) is about an accusation. The defection was ten days
+# earlier. These clauses are removed before the change words are looked for.
+_DESCRIPTOR = re.compile(
+    r"\bwho (has |had |recently )?(defected|crossed the floor|quit|resigned|left|"
+    r"stood down|stepped down|was sacked|was suspended|lost the whip)\b", re.I)
+
+# A headline whose main verb is someone reacting — accusing, attacking,
+# defending, denying — is commentary on a change, not the change itself.
+# The change had its own alert when it happened.
+_REACTION = re.compile(
+    r"\b(accus(es|ed|e)|criticis(es|ed|e)|slams?|slammed|attacks?|attacked|"
+    r"hits? out|blasts?|blasted|condemns?|condemned|defends?|defended|"
+    r"responds?|responded|reacts?|reacted|mocks?|mocked|savages?|savaged|"
+    r"claims?|claimed|denies|denied|face[sd]? questions|questions over|row over|"
+    r"backlash)\b", re.I)
 
 # Words that make an alert NRLA business in its own right.
 HOUSING = re.compile(r"\b(housing|homes?|renters?|renting|landlords?|tenants?|"
@@ -221,8 +241,11 @@ def classify(h: Headline) -> Match | None:
         return None
     if not (_SENEDD.search(context) or (_WALES.search(context) and _PARTY.search(context))):
         return None
+    if _REACTION.search(title):
+        return None
+    changes = _DESCRIPTOR.sub(" ", title)
     for kind, label, pattern in TRIGGERS:
-        if pattern.search(title):
+        if pattern.search(changes):
             return Match(headline=h, kind=kind, label=label, names=names_in(title),
                          housing=bool(HOUSING.search(title)),
                          parties=parties_in(title))
