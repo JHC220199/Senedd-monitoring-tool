@@ -6,6 +6,11 @@
 #   business, and oral questions tabled for forthcoming sittings — filtered to
 #   NRLA relevance by exactly the same rule as the live page.
 #
+#   In a week the Senedd sat, it is headed by the WEEK IN REVIEW (Camlas's
+#   weekly briefing, targeted): what was said and published on NRLA issues
+#   this week, by NRLA theme, a line and a link each. See
+#   monitor/weekly_review.py.
+#
 # HOW IT IS DELIVERED, AND WHY THERE ARE NO CREDENTIALS HERE
 #   It POSTs {subject, body, count} to a Power Automate flow, which sends the
 #   mail from the operator's own account. No SMTP host, no app password, no IT
@@ -102,6 +107,16 @@ jobs:
         # the archive, and two workflows both committing it would collide.
         if: steps.clock.outputs.go == 'yes'
         run: python -m monitor.cli restore --from data/archive.sql
+
+      - name: Recall this week's news alerts
+        # Read-only: the political changes the hourly news alerts reported
+        # this week, for the week in review. Never saved from here.
+        if: steps.clock.outputs.go == 'yes'
+        uses: actions/cache/restore@v4
+        with:
+          path: data/news-state.json
+          key: news-state-friday-${{ github.run_id }}
+          restore-keys: news-state-
 
       - name: Build and send the future-business email
         if: steps.clock.outputs.go == 'yes'
