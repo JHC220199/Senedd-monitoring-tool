@@ -4831,6 +4831,74 @@ class TestWeekInReview(unittest.TestCase):
         self.assertNotIn("actions/cache/save", wf, "the Friday run must not overwrite it")
 
 
+
+class TestConsultationsAreJudgedOnTheirHeadline(unittest.TestCase):
+    """25 September 2026, the first Friday weekly briefing: four of nine
+    consultations were not NRLA business. Each is below with the words from
+    its real notice that let it through."""
+
+    def _c(self, title, summary, rest="", stale_themes=None):
+        item = Item(source_kind="consultation", source_name="Welsh Government — Consultation",
+                    title=title, body=f"{title}\n{summary}\nHow to respond\n{rest}",
+                    url="https://www.gov.wales/" + re.sub(r"\W+", "-", title.lower()),
+                    deadline=date(2026, 10, 30))
+        SCORER.score_item(item)
+        if stale_themes is not None:
+            # As stored in the archive under an older taxonomy.
+            item.themes, item.band = stale_themes, "Medium"
+        return item
+
+    def test_the_four_the_directorate_rejected(self):
+        rejected = [
+            self._c("Classification of self-catering properties for local tax purposes",
+                    "We want your views on proposed changes to the treatment of self-catering "
+                    "properties for local tax purposes.", "non-domestic rates"),
+            self._c("Shape plans for a new clean energy company, owned by Wales, to benefit Wales",
+                    "Proposals for a new public energy company aims to keep the benefits of our "
+                    "abundant energy sources in Wales.",
+                    # As in the real notice, the passing mention is well below
+                    # the summary: the headline is only the first few lines.
+                    "Energy Minister says: it is about cheaper, cleaner energy that is made "
+                    "and owned in Wales. " * 5 +
+                    "This year we are investing more than £37m in our Nest scheme to help "
+                    "low-income families escape cold, damp conditions."),
+            self._c("Stationary vehicle engine idling: local authority guidance",
+                    "We want your views on draft guidance for local authorities on tackling "
+                    "unnecessary vehicle engine idling.", "enforcement powers"),
+            self._c("Have your say on new powers to tackle roadside rubbish",
+                    "Registered vehicle owners could be fined for litter thrown from their car",
+                    "difficult to enforce against under current law; enforcement powers",
+                    stale_themes=["local_government_enforcement"]),
+        ]
+        for item in rejected:
+            self.assertFalse(TAX.qualifies_for_site(item), item.title)
+
+    def test_the_relevant_ones_stay(self):
+        kept = [
+            self._c("Codes of practice for the management of student accommodation",
+                    "We want your views on whether the Welsh Ministers should approve new codes "
+                    "of practice for the management of student accommodation.",
+                    "housing affordability"),
+            self._c("Rent Guarantor Guidance for Local Housing Authorities",
+                    "We want your views on our draft guidance for rent guarantor schemes.",
+                    "eligibility criteria for tenants, landlords and properties"),
+            self._c("Regulations for designating Building Safety Authorities",
+                    "We want your views on our proposals for regulations designating the local "
+                    "authorities that will be building safety authorities."),
+        ]
+        for item in kept:
+            self.assertTrue(TAX.qualifies_for_site(item), item.title)
+
+    def test_the_friday_email_uses_todays_rules_not_the_stored_score(self):
+        from monitor.forward import select_business
+        stale = self._c("Have your say on new powers to tackle roadside rubbish",
+                        "Registered vehicle owners could be fined for litter",
+                        "enforcement powers", stale_themes=["local_government_enforcement"])
+        stale.score, stale.band = 84.0, "Medium"
+        got = select_business([stale], TAX, today=date(2026, 9, 25))
+        self.assertEqual(got["consultations"], [])
+
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
