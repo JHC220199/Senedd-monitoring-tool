@@ -5112,9 +5112,17 @@ class TestWeeklyWordDocument(unittest.TestCase):
                                           session=_S(), dry_run=False,
                                           attachments=[("Briefing.docx", b"PK\x03\x04data")])
         self.assertTrue(sent)
+        # Power Automate's file object, not a bare base64 string: a bare
+        # string is encoded a second time by the flow, and the .docx that
+        # arrives is base64 text Word cannot open (25 September 2026).
         self.assertEqual(calls[0]["attachments"],
                          [{"Name": "Briefing.docx",
-                           "ContentBytes": base64.b64encode(b"PK\x03\x04data").decode()}])
+                           "ContentBytes": {
+                               "$content-type": "application/vnd.openxmlformats-"
+                                                "officedocument.wordprocessingml.document",
+                               "$content": base64.b64encode(b"PK\x03\x04data").decode()}}])
+        self.assertEqual(base64.b64decode(calls[0]["attachments"][0]["ContentBytes"]["$content"]),
+                         b"PK\x03\x04data", "the bytes arrive exactly as sent")
 
     def test_the_friday_command_attaches_it_and_keeps_a_copy(self):
         from monitor.cli import _weekly_document
