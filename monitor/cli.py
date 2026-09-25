@@ -594,8 +594,29 @@ def cmd_forward(args) -> int:
         repo = os.environ.get("GITHUB_REPOSITORY", "")
         page_url = (f"https://{repo.split('/')[0].lower()}.github.io/"
                     f"{repo.split('/')[1]}/") if "/" in repo else ""
+        review = None
+        if not getattr(args, "no_review", False):
+            # The week in review: this week's Records and Welsh Government
+            # notices, read live. A failure here must not cost the team the
+            # future-business half, so it is caught and reported.
+            from .weekly_review import build as build_review, render_review
+            try:
+                wr = build_review(today, tax,
+                                  Fetcher(min_interval=getattr(args, "interval", 1.5)),
+                                  news_state=getattr(args, "news_state", ""))
+                review = render_review(wr)
+                print(f"Week in review: {len(wr.entries)} entries, "
+                      f"{len(wr.changes)} political changes, "
+                      f"{'sat' if wr.sat else 'did not sit'}"
+                      + (f"; awaiting {'; '.join(wr.pending)}" if wr.pending else ""))
+            except Exception as exc:        # noqa: BLE001
+                print(f"Week in review could not be built: {exc}")
+                _summary_note("WARNING", f"**The week in review could not be "
+                              f"built**, so this Friday email has future "
+                              f"business only. {exc}")
         subject, html_body, count = render_forward(
-            sections, tax, today=today, new_since=since, page_url=page_url)
+            sections, tax, today=today, new_since=since, page_url=page_url,
+            review=review)
     finally:
         store.close()
 
@@ -1352,6 +1373,10 @@ def main(argv: list[str] | None = None) -> int:
                         "tagged NEW. Defaults to the previous Friday.")
     p.add_argument("--send", action="store_true",
                    help="actually POST to the Power Automate flow")
+    p.add_argument("--no-review", action="store_true",
+                   help="future business only, without the week in review")
+    p.add_argument("--news-state", default="data/news-state.json",
+                   help="the news alerts' memory, for this week's political changes")
     p.set_defaults(func=cmd_forward)
 
     p = sub.add_parser("morning",

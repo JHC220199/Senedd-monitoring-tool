@@ -311,7 +311,7 @@ def remember(state: dict, headlines: list[Headline], stories: list[Story],
     for s in stories:
         alerts.append({"at": now.isoformat(timespec="seconds"), "kind": s.kind,
                        "names": sorted(s.names), "parties": sorted(s.parties),
-                       "title": s.first.title})
+                       "title": s.first.title, "url": s.first.url})
     state["alerts"] = alerts
     if ministers is not None:
         state["ministers"] = ministers

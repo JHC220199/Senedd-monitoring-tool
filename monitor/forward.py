@@ -273,11 +273,18 @@ def _sitting(value: date | None) -> str:
 def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
                    today: date | None = None,
                    new_since: date | None = None,
-                   page_url: str = "") -> tuple[str, str, int]:
+                   page_url: str = "",
+                   review: tuple[str, int] | None = None) -> tuple[str, str, int]:
     """Return ``(subject, html_body, count)``.
 
     A count of zero means send nothing at all — see the module docstring.
+
+    ``review`` is the week in review (monitor/weekly_review.py): its email
+    rows and its count. When the Senedd sat, it goes first and the email
+    becomes the weekly briefing; otherwise this is the future-business email
+    as it always was.
     """
+    review_block, review_count = review or ("", 0)
     today = today or date.today()
     new_since = new_since or last_friday(today)
 
@@ -347,6 +354,16 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
     subject = (f"Senedd future business — {today.strftime('%-d %B %Y')} "
                f"({count} item{'s' if count != 1 else ''}"
                + (f", {n_new} new)" if n_new else ")"))
+    if review_block:
+        subject = (f"Senedd weekly briefing — {today.strftime('%-d %B %Y')} "
+                   f"({review_count} this week, {count} coming up)")
+        body = (review_block
+                + f'<tr><td style="padding:30px 28px 0;font-family:{FONT}">'
+                  f'<div style="font-size:13px;font-weight:700;letter-spacing:1.2px;'
+                  f'text-transform:uppercase;color:{ORANGE};border-top:2px solid {EDGE};'
+                  f'padding-top:22px">Coming up</div></td></tr>'
+                + body)
+    title = "Senedd weekly briefing" if review_block else "Senedd future business"
 
     tally = " · ".join(
         f"{len(rows)} {label}{'' if len(rows) == 1 else 's'}"
@@ -356,6 +373,10 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
             ("Plenary item", sections["plenary"]),
             ("consultation", sections["consultations"]),
         ) if rows)
+
+    if review_block:
+        tally = (f"This week: {review_count} item{'s' if review_count != 1 else ''} on "
+                 f"NRLA issues" + (f" · Coming up: {tally}" if tally else ""))
 
     newness = (f'<b style="color:{ORANGE}">{n_new} new since '
                f'{_e(_display_date(new_since))}.</b> ' if n_new
@@ -376,7 +397,7 @@ border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
 
   <tr><td bgcolor="{DARK_BLUE}" style="padding:24px 28px 20px;font-family:{FONT};color:#ffffff">
     <div style="font-size:20px;font-weight:700;letter-spacing:-.2px;color:#ffffff">
-      Senedd future business</div>
+      {_e(title)}</div>
     <div style="font-size:13px;color:#C3D2DC;padding-top:5px">
       National Residential Landlords Association &nbsp;·&nbsp; week of
       {_e(today.strftime('%-d %B %Y'))}</div>
@@ -415,4 +436,4 @@ border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
 </table>
 </td></tr></table>"""
 
-    return subject, html_body, count
+    return subject, html_body, count + review_count
