@@ -4986,6 +4986,63 @@ class TestWeeklyWordDocument(unittest.TestCase):
         # Nothing outside NRLA business: the rail question is not in it
         self.assertNotIn("rail services", text)
 
+    def test_word_can_open_it_elements_in_schema_order(self):
+        """25 September 2026: the first attachment would not open in Word
+        ("Word found unreadable content"). The borders had been appended to
+        the end of each paragraph's properties, and the link formatting was
+        in the wrong order. LibreOffice and python-docx do not mind; Word
+        refuses the whole file. The order below is the one the Office Open
+        XML schema requires (CT_PPrBase and CT_RPr)."""
+        import re as _re
+        import zipfile
+        from monitor.weekly_document import build_document
+        data = build_document(self.review, TAX, today=date(2026, 9, 25))
+        xml = zipfile.ZipFile(io.BytesIO(data)).read("word/document.xml").decode()
+        ppr_order = ["pStyle", "keepNext", "keepLines", "pageBreakBefore", "framePr",
+                     "widowControl", "numPr", "suppressLineNumbers", "pBdr", "shd",
+                     "tabs", "suppressAutoHyphens", "kinsoku", "wordWrap", "overflowPunct",
+                     "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd",
+                     "snapToGrid", "spacing", "ind", "contextualSpacing", "mirrorIndents",
+                     "suppressOverlap", "jc", "textDirection", "textAlignment",
+                     "textboxTightWrap", "outlineLvl", "divId", "cnfStyle", "rPr",
+                     "sectPr", "pPrChange"]
+        rpr_order = ["rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps",
+                     "strike", "dstrike", "outline", "shadow", "emboss", "imprint",
+                     "noProof", "snapToGrid", "vanish", "webHidden", "color", "spacing",
+                     "w", "kern", "position", "sz", "szCs", "highlight", "u", "effect"]
+        border_order = ["top", "left", "bottom", "right", "between", "bar"]
+
+        def children(block):
+            # Direct children only: the tag names at depth one.
+            out, depth = [], 0
+            for m in _re.finditer(r"<(/?)w:(\w+)[^>]*?(/?)>", block):
+                closing, name, selfclose = m.groups()
+                if closing:
+                    depth -= 1
+                    continue
+                if depth == 0:
+                    out.append(name)
+                if not selfclose:
+                    depth += 1
+            return out
+
+        def in_order(names, order):
+            idx = [order.index(n) for n in names if n in order]
+            return idx == sorted(idx) and len(names) == len(set(names))
+
+        pprs = _re.findall(r"<w:pPr>(.*?)</w:pPr>", xml, _re.S)
+        self.assertTrue(pprs)
+        for block in pprs:
+            names = children(block)
+            self.assertTrue(in_order(names, ppr_order), names)
+        for block in _re.findall(r"<w:pBdr>(.*?)</w:pBdr>", xml, _re.S):
+            self.assertTrue(in_order(children(block), border_order), block)
+        for block in _re.findall(r"<w:hyperlink[^>]*>.*?<w:rPr>(.*?)</w:rPr>", xml, _re.S):
+            self.assertTrue(in_order(children(block), rpr_order), children(block))
+        settings = zipfile.ZipFile(io.BytesIO(data)).read("word/settings.xml").decode()
+        if "<w:zoom" in settings:
+            self.assertRegex(settings, r'<w:zoom[^>]*w:percent="100"')
+
     def test_a_week_with_nothing_has_no_document(self):
         from monitor.weekly_document import build_document
         from monitor.weekly_review import Review
