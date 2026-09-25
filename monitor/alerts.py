@@ -340,6 +340,21 @@ def send(subject: str, html_body: str, text_body: str,
 # Sending without credentials, via Power Automate
 # ---------------------------------------------------------------------------
 
+_CONTENT_TYPES = {
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".pdf": "application/pdf",
+    ".html": "text/html",
+}
+
+
+def _content_type(name: str) -> str:
+    """Spelt out rather than left to ``mimetypes``, whose answer for .docx
+    depends on what the machine running it has installed."""
+    import os.path
+    return _CONTENT_TYPES.get(os.path.splitext(name)[1].lower(),
+                              "application/octet-stream")
+
+
 def post_to_flow(url: str, subject: str, body: str, count: int,
                  session=None, dry_run: bool = True,
                  attachments: list[tuple[str, bytes]] | None = None
@@ -347,9 +362,19 @@ def post_to_flow(url: str, subject: str, body: str, count: int,
     """POST ``{subject, body, count}`` to a Power Automate HTTP trigger.
 
     ``attachments`` — ``(file name, bytes)`` pairs — go as an
-    ``attachments`` array of ``{"Name", "ContentBytes"}`` (base64), which is
-    the shape the Outlook "Send an email (V2)" action takes as its
-    Attachments input. The key is sent only when there is something to
+    ``attachments`` array of ``{"Name", "ContentBytes"}``, which is the shape
+    the Outlook "Send an email (V2)" action takes as its Attachments input.
+
+    ContentBytes is Power Automate's own file object,
+    ``{"$content-type": ..., "$content": <base64>}``, not a bare base64
+    string. Given a bare string, the flow treats it as text and encodes it
+    AGAIN, so the attachment that arrives is the base64 text itself under a
+    .docx name. That is why the Friday document re-sent at 16.49 on
+    25 September 2026 would not open in Word although the file the run built
+    was sound. The file object is what base64ToBinary() produces inside a
+    flow, so the bytes arrive exactly as sent.
+
+    The key is sent only when there is something to
     attach, so the morning, debate and news emails are unchanged; the flow
     reads it with ``coalesce(triggerBody()?['attachments'], json('[]'))``
     (FORWARD-EMAIL-SETUP.md, "The Word document").
@@ -388,7 +413,10 @@ def post_to_flow(url: str, subject: str, body: str, count: int,
     if attachments:
         import base64
         payload["attachments"] = [
-            {"Name": name, "ContentBytes": base64.b64encode(data).decode("ascii")}
+            {"Name": name,
+             "ContentBytes": {
+                 "$content-type": _content_type(name),
+                 "$content": base64.b64encode(data).decode("ascii")}}
             for name, data in attachments]
     try:
         if session is None:
