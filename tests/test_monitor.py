@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import os
 import re
 import shutil
@@ -4809,11 +4810,17 @@ class TestWeekInReview(unittest.TestCase):
         from monitor.weekly_review import political_changes
         with tempfile.TemporaryDirectory() as tmp:
             p = os.path.join(tmp, "s.json")
-            Path(p).write_text('{"alerts": [{"at": "2026-09-22T12:00:00", "kind": "leadership",'
-                               ' "title": "A", "url": "u"}, {"at": "2026-09-10T12:00:00",'
-                               ' "kind": "defection", "title": "old"}]}')
+            Path(p).write_text(json.dumps({"alerts": [
+                {"at": "2026-09-22T12:00:00", "kind": "leadership", "url": "u",
+                 "title": "Laura Anne Jones elected Reform's deputy Welsh leader"},
+                {"at": "2026-09-25T08:00:00", "kind": "defection",
+                 "title": "Reform UK politician accuses Senedd member who defected of 'fraud'"},
+                {"at": "2026-09-10T12:00:00", "kind": "defection",
+                 "title": "Sarah Cooper-Lesadd MS defects to Plaid Cymru from Reform UK"}]}))
             got = political_changes(p, date(2026, 9, 21), date(2026, 9, 25))
-            self.assertEqual([c["title"] for c in got], ["A"])
+            self.assertEqual([c["title"] for c in got],
+                             ["Laura Anne Jones elected Reform's deputy Welsh leader"],
+                             "last week's is out of range; the wrong 'fraud' alert is re-judged out")
             self.assertEqual(political_changes(os.path.join(tmp, "missing"), date(2026, 9, 21),
                                                date(2026, 9, 25)), [])
 
