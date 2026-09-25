@@ -243,6 +243,8 @@ def notice_entries(releases: list, themer: Themer) -> list[Entry]:
 def political_changes(state_path: str, start: date, end: date) -> list[dict]:
     """This week's news alerts, from their memory (restored from the Actions
     cache by the Friday workflow). Missing memory means none are listed."""
+    from .collectors.news import Headline
+    from .news import classify
     try:
         with open(state_path, encoding="utf-8") as fh:
             state = json.load(fh)
@@ -254,7 +256,14 @@ def political_changes(state_path: str, start: date, end: date) -> list[dict]:
             at = datetime.fromisoformat(a["at"]).date()
         except (KeyError, ValueError):
             continue
-        if start <= at <= end + timedelta(days=0):
+        # Re-judged by today's rules, so an alert later found to be wrong —
+        # "Reform UK politician accuses Senedd member who defected of fraud",
+        # sent on 25 September 2026 before the rule was fixed — is not
+        # repeated in the weekly.
+        if not classify(Headline(outlet="", title=a.get("title", ""),
+                                 url=a.get("url", ""), at=None)):
+            continue
+        if start <= at <= end:
             out.append({"title": a.get("title", ""), "kind": a.get("kind", ""),
                         "url": a.get("url", ""), "at": at})
     return out
