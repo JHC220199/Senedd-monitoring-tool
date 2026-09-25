@@ -308,11 +308,15 @@ class GovWalesRSSCollector(Collector):
             lead = ""
             if budget > 0:
                 budget -= 1
-                lead, minister = self._lead_from_page(item.url)
+                paras, minister = self._page_paragraphs(item.url)
+                lead = paras[0] if paras else ""
                 if minister:
                     item.speaker = minister
                 if lead:
                     item.body = f"{item.title}\n{lead}"
+                # The whole statement, for the Friday Word document. An
+                # attribute, like .points, so the archive's schema is untouched.
+                item.paragraphs = paras
             item.points = [lead] if lead else []
             found.append((at, item, lead))
         found.sort(key=lambda t: t[0], reverse=True)
@@ -320,9 +324,14 @@ class GovWalesRSSCollector(Collector):
 
     def _lead_from_page(self, url: str) -> tuple[str, str]:
         """``(first paragraph, minister line)`` from a gov.wales page."""
+        paras, minister = self._page_paragraphs(url)
+        return (paras[0] if paras else ""), minister
+
+    def _page_paragraphs(self, url: str) -> tuple[list[str], str]:
+        """``(paragraphs, minister line)`` from a gov.wales page."""
         html = self.fetcher.get_text(url) if url else None
         if not html:
-            return "", ""
+            return [], ""
         soup = BeautifulSoup(html, "html.parser")
         paras = [_clean(p.get_text(" ", strip=True))
                  for p in soup.select(".page-content p") or soup.select("article p")]
@@ -331,9 +340,10 @@ class GovWalesRSSCollector(Collector):
         if paras and _MINISTER_LINE.match(paras[0]):
             minister, paras = paras[0], paras[1:]
         if paras:
-            return paras[0], minister
+            return paras, minister
         meta = soup.select_one('meta[name="description"]')
-        return (_clean(meta.get("content", "")) if meta else ""), minister
+        desc = _clean(meta.get("content", "")) if meta else ""
+        return ([desc] if desc else []), minister
 
 
 # "Mabon ap Gwynfor MS, Cabinet Minister for Health and Care"

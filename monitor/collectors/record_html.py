@@ -33,8 +33,9 @@ Each speaking block has ``.memberDetail .name``, ``.memberDetail .time`` and
 one or more ``.contributionText`` blocks — one per run of language — each
 holding either ``.verbatim.fullWidth`` (spoken in English) or ``.verbatim``
 (spoken in Welsh) followed by ``.translation`` (the simultaneous
-interpretation into English). English is taken from the translation when
-there is one.
+interpretation into English). Once the bilingual Record is out, English
+speeches gain a ``.translation`` into Welsh, so the English side is chosen by
+its words — see ``_english``.
 
 A committee's page exists, empty, before its Record is published — the page
 returns 200 with no contributions — so "published" means "has contributions".
@@ -128,18 +129,61 @@ def _clean(text: str) -> str:
     return "\n".join(line.strip() for line in text.split("\n") if line.strip())
 
 
-def _english(node) -> str:
-    """English text of a ``.contributionText``: the interpretation if the
-    words were spoken in Welsh, otherwise what was said."""
-    if node is None:
-        return ""
-    target = node.select_one(".translation") or node.select_one(".verbatim")
-    if target is None:
-        return ""
+# Words that mark a passage as English or as Welsh. Only words that are
+# common in one language and absent from the other ("a", "i" and "am" are
+# both, so they are not here).
+_EN_WORDS = frozenset("""the and of to that is for we it this are have with be
+was will not which has would they there their what can our been thank you
+minister member""".split())
+_CY_WORDS = frozenset("""yn y yr mae ac ar gan ei bod hyn wedi ein eich gyda fod
+sydd hefyd gyfer ydy oes hynny iawn rydym byddai gael rwy'n rydw diolch
+weinidog aelod ond hwn hon""".split())
+_WORD = re.compile(r"[a-zA-Z\u00C0-\u017F'’]+")
+
+
+def _englishness(text: str) -> int:
+    """English marker words minus Welsh ones: above 0 reads as English."""
+    words = [w.lower().replace("’", "'") for w in _WORD.findall(text or "")]
+    return (sum(w in _EN_WORDS for w in words)
+            - sum(w in _CY_WORDS for w in words))
+
+
+def _paras(target) -> str:
     paras = target.find_all("p")
     if paras:
         return _clean("\n".join(p.get_text(" ", strip=True) for p in paras))
     return _clean(target.get_text(" ", strip=True))
+
+
+def _english(node) -> str:
+    """English text of a ``.contributionText``.
+
+    The page takes two forms. While the Record is a draft, words spoken in
+    English are a lone ``.verbatim.fullWidth``, and words spoken in Welsh are
+    a ``.verbatim`` (Welsh) followed by a ``.translation`` (English). Once the
+    bilingual Record is published — within a few days — every block has both,
+    the language spoken on the left and a translation into the OTHER language
+    on the right, so for an English speech the ``.translation`` is Welsh.
+    Nothing in the markup says which language is which (checked on Plenary
+    16262, 25 September 2026: 336 blocks, every one ``verbatim`` +
+    ``translation``), so the words decide.
+
+    Taking the translation regardless read the Business Statement of
+    22 September in Welsh, and John Clark's question on HMOs and Carmelo
+    Colasanto's on housing delivery were missed by the weekly review.
+    """
+    if node is None:
+        return ""
+    verbatim = node.select_one(".verbatim")
+    translation = node.select_one(".translation")
+    if verbatim is None and translation is None:
+        return ""
+    if verbatim is None or translation is None:
+        return _paras(verbatim if translation is None else translation)
+    spoken, other = _paras(verbatim), _paras(translation)
+    if _englishness(spoken) > _englishness(other):
+        return spoken
+    return other
 
 
 def parse_record(html: str, meeting_id: str, forum: str, url: str = "") -> Record:
