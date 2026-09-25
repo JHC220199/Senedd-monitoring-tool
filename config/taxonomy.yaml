@@ -241,6 +241,9 @@ themes:
       - house in multiple occupancy
       - houses in multiple occupancy
       - multiple occupancy
+      - student accommodation
+      - student housing
+      - student lets
       - overcrowding
       - housing health and safety rating
       - HHSRS
@@ -349,8 +352,9 @@ themes:
       - land transaction tax
       - LTT
       - higher rates residential
-      - non-domestic rates
-      - business rates
+      # "non-domestic rates" and "business rates" removed 25 September 2026:
+      # business rates are not a residential landlord's tax, and they pulled in
+      # "Classification of self-catering properties for local tax purposes".
       - council tax reduction scheme
       - council tax
       - empty homes
@@ -401,6 +405,14 @@ themes:
       - tourism levy
       - tourism accommodation
       - registration scheme
+    exclude_if:
+      # How holiday lets are classed for business rates is a matter for the
+      # self-catering sector, not residential landlords (the directorate,
+      # 25 September 2026, of "Classification of self-catering properties for
+      # local tax purposes").
+      - local tax purposes
+      - non-domestic rates
+      - business rates
 
   # ---- TIER 3: the wider housing system -----------------------------------
 
@@ -572,6 +584,9 @@ themes:
       - roadside rubbish
       - litter
       - waste crime
+      # Engine idling is traffic enforcement, not housing (25 September 2026).
+      - engine idling
+      - vehicle idling
 
   # ---- TIER 4: context -----------------------------------------------------
 
