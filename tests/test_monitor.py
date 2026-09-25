@@ -4899,6 +4899,191 @@ class TestConsultationsAreJudgedOnTheirHeadline(unittest.TestCase):
         self.assertEqual(got["consultations"], [])
 
 
+class TestBilingualRecordIsReadInEnglish(unittest.TestCase):
+    """Once the bilingual Record is published, an English speech carries a
+    translation into WELSH. Taking the translation regardless read the
+    Business Statement of 22 September 2026 in Welsh, and the weekly review
+    missed John Clark on HMOs and Carmelo Colasanto on housing delivery."""
+
+    def _speech(self, verbatim, translation):
+        return ('<div class="itemContent contribution" id="C9"><div class="detailBar">'
+                '<div class="memberInfo"><div class="memberBar"><a href="https://business.'
+                'senedd.wales/mgUserInfo.aspx?UID=1"><div class="memberDetail"><span '
+                'class="name"> John Clark </span></div></a></div></div></div>'
+                f'<div class="contributionText"><div class="verbatim"><p>{verbatim}</p></div>'
+                f'<div class="translation"><p>{translation}</p></div></div></div>')
+
+    def _text(self, verbatim, translation):
+        from monitor.collectors.record_html import parse_record
+        page = _rec_page(_rec_agenda("A3", "3. Business Statement and Announcement"),
+                         self._speech(verbatim, translation))
+        return parse_record(page, "16262", "Plenary").items[0].blocks[0].contributions[0].text
+
+    ENGLISH = ("Trefnydd, can I request a statement from the Cabinet Minister on the extent "
+               "of houses in multiple occupancy being used to house people via Home Office schemes?")
+    WELSH = ("Drefnydd, a gaf i ofyn am ddatganiad gan y Gweinidog Cabinet ar y graddau y mae "
+             "tai amlfeddiannaeth yn cael eu defnyddio i gartrefu pobl drwy gynlluniau'r Swyddfa Gartref?")
+
+    def test_english_speech_with_welsh_translation_is_read_in_english(self):
+        self.assertEqual(self._text(self.ENGLISH, self.WELSH), self.ENGLISH)
+
+    def test_welsh_speech_with_english_translation_is_read_in_english(self):
+        self.assertEqual(self._text(self.WELSH, self.ENGLISH), self.ENGLISH)
+
+    def test_the_hmo_question_is_found_in_the_bilingual_record(self):
+        from monitor.collectors.record_html import parse_record
+        from monitor.debates import Relevance, select
+        page = _rec_page(
+            _rec_agenda("A3", "3. Business Statement and Announcement"),
+            _rec_speech("C10", "Kerry Ferguson", "The business statement. I call the Trefnydd.", role=CHAIR),
+            _rec_speech("C11", "Heledd Fychan", "There are no changes to this week's business.", role=TREFNYDD),
+            self._speech(self.ENGLISH, self.WELSH),
+            _rec_speech("C15", "Heledd Fychan", "That issue is not devolved."))
+        rec = parse_record(page, "16262", "Plenary")
+        got = select(rec, Relevance(TAX), date(2026, 9, 22))
+        self.assertTrue(got, "the HMO question should be selected")
+        self.assertIn("multiple occupancy",
+                      " ".join(c.text for d in got for ex in d.exchanges for c in ex.contributions))
+
+
+class TestWeeklyWordDocument(unittest.TestCase):
+    """The Friday email is a line and a link per item; the attached Word
+    document gives who said what, as Camlas's weekly briefing does — but
+    verbatim, from the Record, never paraphrased."""
+
+    def setUp(self):
+        from monitor.debates import Relevance, select
+        from monitor.weekly_review import Review, Themer, debate_entries
+        debates = select(_plenary(), Relevance(TAX), date(2026, 9, 22))
+        entries = debate_entries(debates, TAX, Themer(TAX))
+        self.review = Review(week_start=date(2026, 9, 21), week_end=date(2026, 9, 25),
+                             entries=entries, sat=True)
+
+    def _text(self, data):
+        import docx
+        d = docx.Document(io.BytesIO(data))
+        return "\n".join(p.text for p in d.paragraphs), d
+
+    def test_the_document_has_who_said_what_verbatim(self):
+        from monitor.weekly_document import build_document
+        data = build_document(self.review, TAX, today=date(2026, 9, 25))
+        self.assertTrue(data.startswith(b"PK"), "a .docx is a zip")
+        text, d = self._text(data)
+        self.assertIn("Senedd weekly briefing", text)
+        self.assertIn("In detail  ·  21 to 25 September 2026", text)
+        # The HMO request and the Trefnydd's reply, both in full
+        self.assertIn("John Clark MS", text)
+        self.assertIn("Trefnydd, can I request a statement on houses in multiple occupancy "
+                      "in Bangor being used for Home Office schemes?", text)
+        self.assertIn("That issue is not devolved.", text)
+        # The statement, each speaker in turn, with the minister's role
+        self.assertIn("Sian Gwenllian MS", text)
+        self.assertIn("Only four of 161 private buildings have been remediated.", text)
+        # Themes are Word headings, so the navigation pane works
+        heads = [p.text for p in d.paragraphs if p.style.name == "Heading 1"]
+        self.assertIn("Building safety & leasehold", heads)
+        self.assertIn("Private renting & renting reform", heads)
+        # Nothing outside NRLA business: the rail question is not in it
+        self.assertNotIn("rail services", text)
+
+    def test_a_week_with_nothing_has_no_document(self):
+        from monitor.weekly_document import build_document
+        from monitor.weekly_review import Review
+        empty = Review(week_start=date(2026, 8, 3), week_end=date(2026, 8, 7), sat=False)
+        self.assertIsNone(build_document(empty, TAX))
+        self.assertIsNone(build_document(None, TAX))
+
+    def test_long_contributions_are_cut_to_their_nrla_passages(self):
+        from monitor.weekly_document import CUT, excerpt
+        filler = " ".join(["The weather in the valleys has been changeable this month."] * 12)
+        text = "\n".join([
+            "Thank you, Dirprwy Lywydd.",
+            "I want to update Members on the building safety programme and on what comes next for Wales.",
+            filler, filler,
+            "Leaseholders should not pay for remediation of unsafe cladding.",
+            filler,
+            "Private landlords will be required to meet the new standard for rented homes."])
+        got = excerpt(text, TAX, full_words=100, cap=450)
+        self.assertEqual(got[0], CUT, "the courtesy line is skipped, and the cut is marked")
+        self.assertIn("I want to update Members on the building safety programme and on "
+                      "what comes next for Wales.", got)
+        self.assertIn("Leaseholders should not pay for remediation of unsafe cladding.", got)
+        self.assertIn("Private landlords will be required to meet the new standard for "
+                      "rented homes.", got)
+        self.assertNotIn(filler, got)
+        self.assertIn(CUT, got[1:])
+        # Short: whole, untouched
+        self.assertEqual(excerpt("Diolch.\nWill the Minister help tenants?", TAX, 100, 450),
+                         ["Diolch.", "Will the Minister help tenants?"])
+
+    def test_every_kept_paragraph_is_the_speakers_own_words(self):
+        from monitor.weekly_document import CUT, excerpt
+        text = "\n".join(f"Paragraph {i} about private landlords and tenants in Wales, "
+                         f"with enough words to count as substance here." for i in range(40))
+        paras = set(text.split("\n"))
+        for p in excerpt(text, TAX, full_words=100, cap=200):
+            self.assertTrue(p == CUT or p in paras, p)
+
+    def test_a_notice_does_not_repeat_its_summary_points(self):
+        from monitor.weekly_document import notice_paragraphs
+        from monitor.weekly_review import Entry
+        e = Entry(title="Alarm grant", url="u", meta="m", kind="notice",
+                  points=["Welsh Government announces the grant.", "From 1 October."],
+                  paragraphs=["Welsh Government announces the grant. From 1 October.",
+                              "Leaseholders in Wales will be able to claim support.",
+                              "Leaseholders in Wales will be able to claim support.",
+                              "The Cabinet Minister said", ":", "\u201cI have listened.\u201d"])
+        self.assertEqual(notice_paragraphs(e),
+                         ["Leaseholders in Wales will be able to claim support.",
+                          "The Cabinet Minister said:", "\u201cI have listened.\u201d"])
+
+    def test_stage_directions_are_tidied_and_interests_kept(self):
+        from monitor.weekly_document import tidy
+        self.assertEqual(tidy("a messy divorce\u2014[ Laughter .]\u2014and"),
+                         "a messy divorce\u2014[Laughter.]\u2014and")
+        self.assertEqual(tidy("Jane Dodds [R]"), "Jane Dodds [R]")
+
+    def test_it_goes_to_the_flow_as_an_attachment(self):
+        import base64
+        calls = []
+
+        class _S:
+            def post(self, url, json=None, timeout=None):
+                calls.append(json)
+                return SimpleNamespace(status_code=202, text="")
+        sent, _ = alerts_mod.post_to_flow("https://example.invalid/flow", "S", "B", 1,
+                                          session=_S(), dry_run=False,
+                                          attachments=[("Briefing.docx", b"PK\x03\x04data")])
+        self.assertTrue(sent)
+        self.assertEqual(calls[0]["attachments"],
+                         [{"Name": "Briefing.docx",
+                           "ContentBytes": base64.b64encode(b"PK\x03\x04data").decode()}])
+
+    def test_the_friday_command_attaches_it_and_keeps_a_copy(self):
+        from monitor.cli import _weekly_document
+        with tempfile.TemporaryDirectory() as tmp:
+            args = SimpleNamespace(out=os.path.join(tmp, "forward.html"))
+            sections = {"oral": [], "committees": [], "plenary": [], "consultations": []}
+            got = _weekly_document(args, self.review, TAX, sections, date(2026, 9, 25), "")
+            self.assertEqual(len(got), 1)
+            name, data = got[0]
+            self.assertEqual(name, "NRLA Senedd weekly briefing 25 September 2026.docx")
+            self.assertTrue(Path(tmp, "weekly-briefing.docx").exists())
+            self.assertEqual(_weekly_document(SimpleNamespace(out="", no_document=True),
+                                              self.review, TAX, sections,
+                                              date(2026, 9, 25), ""), [])
+            self.assertEqual(_weekly_document(args, None, TAX, sections,
+                                              date(2026, 9, 25), ""), [])
+        src = (Path(__file__).resolve().parent.parent / "monitor/cli.py").read_text()
+        self.assertIn("attachments=attachments", src)
+
+    def test_the_run_keeps_the_document(self):
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
+        self.assertIn("out/weekly-briefing.docx", wf)
+        req = (Path(__file__).resolve().parent.parent / "requirements.txt").read_text()
+        self.assertIn("python-docx", req)
+
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
