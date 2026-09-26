@@ -1,11 +1,14 @@
 # NRLA Senedd policy briefing
 
-*As at Friday 25 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Saturday 26 September 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+
+> [!WARNING]
+> **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd committee consultations and inquiries`
 
 > [!NOTE]
 > Collected another way (nothing missing): `Senedd forward look`
 
-**16** open consultations · **4** closing within three weeks · **31** developments to review
+**16** open consultations · **1** closing within three weeks · **34** developments to review
 
 ## Respond — things with a deadline
 
@@ -18,10 +21,10 @@
 | **Closed** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Priorities Consultation: Equality, Human Rights and Social Justice Committee](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=631)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Council Tax Reduction Scheme in Wales: technical consultation on reassessment thresholds](https://www.gov.wales/council-tax-reduction-scheme-wales-technical-consultation-reassessment-thresholds)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes today** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes today** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| **Closes today** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 21 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closed** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
+| 20 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | Closes 19 October | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _4 more — see the full dashboard_ | |
 
@@ -51,6 +54,24 @@ Touches committee scrutiny, energy efficiency & retrofit and budget & legislativ
 Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
 > Just picking up on the question that James asked just now, actually, I've got constituents who are very concerned that, say, data centres are being considered to be essential national infrastructure. But I think that, actually, biodiversity habitats also should be considered as essential national infrastructure. But,…
 <sub>[Watch this moment](http://www.senedd.tv/en/16233?startPos=3607&l=en)</sub>
+
+**[7. Statement by the Cabinet Minister for Local Government, Housing and Planning: Building Safety Programme Update](https://record.senedd.wales/Plenary/16262)**  
+<sub>22 September 2026 · Plenary · David Hughes, Jayne Bryant, Sian Gwenllian and 5 others</sub>  
+Touches building safety & leasehold, homelessness and housing supply & development. Read and decide whether a line to take is needed.  
+> Cabinet Minister, the building safety programme risks becoming yet another example of taxpayers being asked to foot the bill for failures that they did not cause. England regulates buildings above 18m under its strictest duties. Wales has brought every multi-occupied residential building of any height into the new…
+<sub>[Watch this moment](http://www.senedd.tv/en/16262?startPos=18785&l=en)</sub>
+
+**[3. Business Statement and Announcement](https://record.senedd.wales/Plenary/16262)**  
+<sub>22 September 2026 · Plenary · Carmelo Colasanto, John Clark, Heledd Fychan</sub>  
+Touches committee scrutiny, budget & legislative programme and hmos & property standards. Read and decide whether a line to take is needed.  
+> I'm raising this as an MS for Carmarthenshire, but I need to declare that I am also the Chair of the Local Government, Housing and Planning Committee. Trefnydd, can I ask for a statement from the Welsh Government on nutrient neutrality and its impact on housing delivery in west Wales?   Following Natural Resources…
+<sub>[Watch this moment](http://www.senedd.tv/en/16262?startPos=7540&l=en)</sub>
+
+**[4. Statement by the First Minister: 'New Ambition for Wales: Programme for Government 2026-2030'](https://record.senedd.wales/Plenary/16262)**  
+<sub>22 September 2026 · Plenary · Darren Millar, Rhun ap Iorwerth, Ken Skates and 10 others</sub>  
+Touches budget & legislative programme, housing supply & development and social housing. Read and decide whether a line to take is needed.  
+> It's always interesting watching a messy divorce—[ Laughter .]—and, my goodness, has it been an untidy one.   Can I thank you, First Minister, for advance notice of your statement, although not quite as in advance as the Western Mail 's notice of your statement today, which seemed to have more detail than any Member…
+<sub>[Watch this moment](http://www.senedd.tv/en/16262?startPos=10105&l=en)</sub>
 
 **[Welsh Government to fund interim alarm measures for leaseholders facing waking watch costs](https://media.service.gov.wales/news/welsh-government-to-fund-interim-alarm-measures-for-leaseholders-facing-waking-watch-costs)**  
 <sub>22 September 2026 · Welsh Government</sub>  
@@ -111,23 +132,7 @@ Touches committee scrutiny and budget & legislative programme. Read and decide w
 > I set out, in response to the letter from the Legislation Committee, my understanding of the timetable, which is clearly in the hands of my colleagues in the UK Government. The Bill completed its passage through the Commons before summer recess and had its Second Reading in the Lords on 1 September. The dates are not…
 <sub>[Watch this moment](http://www.senedd.tv/en/16266?startPos=2427&l=en)</sub>
 
-**[OQ64467](https://record.senedd.wales/OrderPaper/OralQuestions/15-09-2026/)**  
-<sub>10 September 2026 · Plenary · David Hughes</sub>  
-Touches private rented sector. Watch for the answer — it will set out the Government's position.  
-> Will the First Minister set out a timeline for the introduction of new measures to better protect renters?
-
-**[2. Questions to the Cabinet Minister for Local Government, Housing and Planning](https://record.senedd.wales/Plenary/16086)**  
-<sub>15 July 2026 · Plenary · Francesca O'Brien, Sian Gwenllian, Safa Elhassan and 8 others</sub>  
-Touches building safety & leasehold, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
-> Thank you, Minister, for your answer. So, I take that as a 'no', but, don't panic, I thought that would be the reason, or the answer. But my team and I have been hard at work collecting this data from councils. We take Cardiff Council as an example; I'm sure our friend in the corner there will be listening with…
-<sub>[Watch this moment](http://www.senedd.tv/en/16086?startPos=4091&l=en)</sub>
-
-**[Questions to the Cabinet Minister for Local Government, Housing and Planning](https://record.senedd.wales/Plenary/16086)**  
-<sub>15 July 2026 · Plenary</sub>  
-Touches property taxation and planning system. Watch for the answer — it will set out the Government's position.  
-> The town-centre taskforce will address the structural challenges facing town centres, including business rates and planning reform, by working collaboratively with partners and maintaining a strong focus on delivery to help town centres adapt, attract investment and activity, and thrive in the years ahead.
-
-_16 further items in the full dashboard._
+_19 further items in the full dashboard._
 
 ## Coming up
 
@@ -144,4 +149,4 @@ _16 further items in the full dashboard._
 
 ---
 
-<sub>152 items scored from 1031 collected records, 25 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>161 items scored from 1115 collected records, 26 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
