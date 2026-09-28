@@ -5,7 +5,7 @@
 > [!WARNING]
 > **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd committee consultations and inquiries`
 
-**16** open consultations · **2** closing within three weeks · **34** developments to review
+**17** open consultations · **2** closing within three weeks · **35** developments to review
 
 ## Respond — things with a deadline
 
@@ -23,7 +23,7 @@
 | **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | 18 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | 21 days left | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| … | _4 more — see the full dashboard_ | |
+| … | _5 more — see the full dashboard_ | |
 
 <details><summary>Open, but no closing date published yet (14)</summary>
 
@@ -39,6 +39,11 @@
 </details>
 
 ## Review — what has happened
+
+**[Written Statement: Consultation on making the “general crisis” provision in the Allocation of Housing and Homelessness (Eligibility) (Wales) (Amendment) Regulations 2026 permanent](https://www.gov.wales/written-statement-consultation-making-general-crisis-provision-allocation-housing-and-homelessness?utm_source=rss-announcements&utm_medium=rss-feed&utm_campaign=announcements-Written+Statement%3A+Consultation+on+making+the+%E2%80%9Cgeneral+crisis%E2%80%9D+provision+in+the+Allocation+of+Housing+and+Homelessness+%28Eligibility%29+%28Wales%29+%28Amendment%29+Regulations+2026+permanent)**  
+<sub>28 September 2026 · Welsh Government</sub>  
+Touches homelessness. Read and decide whether a line to take is needed.  
+> Written Statement: Consultation on making the “general crisis” provision in the Allocation of Housing and Homelessness (Eligibility) (Wales) (Amendment) Regulations 2026 permanent
 
 **[2. General scrutiny session: Deputy First Minister and Cabinet Minister for Equality and Social Justice](https://record.senedd.wales/Committee/16247)**  
 <sub>23 September 2026 · Equality, Human Rights and Social Justice Committee · Sioned Williams, Zaynub Akbar, Jayne Bryant and 11 others</sub>  
@@ -123,13 +128,7 @@ Touches budget & legislative programme. Read and decide whether a line to take i
 > The review will take a comprehensive view of the higher education system. It will examine student support, institutional funding, research and innovation, participation, graduate outcomes, and the organisation and resilience of the sector in Wales. But it will not limit itself to traditional full-time undergraduate…
 <sub>[Watch this moment](http://www.senedd.tv/en/16260?startPos=11707&l=en)</sub>
 
-**[3. Introductory evidence session with the Cabinet Minister for Government Effectiveness and the Constitution](https://record.senedd.wales/Committee/16266)**  
-<sub>14 September 2026 · Public Accounts and Public Administration Committee · Dafydd Trystan Davies, Andrew Griffin, Anna Nicholl</sub>  
-Touches committee scrutiny and budget & legislative programme. Read and decide whether a line to take is needed.  
-> I set out, in response to the letter from the Legislation Committee, my understanding of the timetable, which is clearly in the hands of my colleagues in the UK Government. The Bill completed its passage through the Commons before summer recess and had its Second Reading in the Lords on 1 September. The dates are not…
-<sub>[Watch this moment](http://www.senedd.tv/en/16266?startPos=2427&l=en)</sub>
-
-_19 further items in the full dashboard._
+_20 further items in the full dashboard._
 
 ## Coming up
 
@@ -146,4 +145,4 @@ _19 further items in the full dashboard._
 
 ---
 
-<sub>166 items scored from 1120 collected records, 28 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>168 items scored from 1122 collected records, 28 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
