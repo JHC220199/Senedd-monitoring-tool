@@ -90,9 +90,28 @@ def select(announcements: list[tuple], marker, state: dict,
         if not marker.item(item):
             continue
         points = list(getattr(item, "points", []) or ([lead] if lead else []))
+        if not headline_is_nrla(item, points, marker.tax):
+            continue
         out.append(Release(item=item, published_utc=at, points=points))
     out.sort(key=lambda r: r.published_utc or datetime.min, reverse=True)
     return out[:3] if test else out
+
+
+def headline_is_nrla(item: Item, points: list[str], tax) -> bool:
+    """Is the notice ABOUT an NRLA theme — in its title or its own summary
+    points — rather than mentioning one further down?
+
+    An alert is an interruption, so a passing mention is not enough. On
+    28 September 2026 "UK Budget must deliver on its rail promises to Wales"
+    was alerted because, in a list of asks of the Chancellor far down the
+    notice, it called for Local Housing Allowance to be unfrozen. The title
+    and all three summary points were about rail, the cost of living and
+    public spending; the directorate's verdict was not relevant. The same
+    rule as consultations (Taxonomy.headline_qualifies), with the notice's
+    summary points standing in for the opening of the text.
+    """
+    summary = "\n".join(p for p in points if p) or (item.body or "")[:tax.HEADLINE_CHARS]
+    return tax.headline_qualifies(item, headline=f"{item.title or ''}\n{summary}")
 
 
 def remember(state: dict, announcements: list[tuple], now: datetime) -> dict:

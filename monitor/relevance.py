@@ -230,7 +230,7 @@ class Taxonomy:
     # on ..."). About the first 400 characters of the stored body.
     HEADLINE_CHARS = 400
 
-    def headline_qualifies(self, item: Item) -> bool:
+    def headline_qualifies(self, item: Item, headline: str | None = None) -> bool:
         """Is a consultation ABOUT an NRLA theme, not merely mentioning one?
 
         A consultation is judged on its own headline, because its full notice
@@ -242,7 +242,10 @@ class Taxonomy:
         in its title or summary, and a relevant consultation always does.
         """
         generic = set(self.site_config.get("non_qualifying_themes", []) or [])
-        headline = f"{item.title or ''}\n{(item.body or '')[:self.HEADLINE_CHARS]}"
+        # ``headline`` overrides what counts as the headline: a press notice
+        # passes its title and its own summary points (monitor/press.py).
+        if headline is None:
+            headline = f"{item.title or ''}\n{(item.body or '')[:self.HEADLINE_CHARS]}"
         full = f"{item.title or ''}\n{item.body or ''}"
         for key, spec in self.themes.items():
             if key in generic or float(spec.get("weight", 0)) <= 0:

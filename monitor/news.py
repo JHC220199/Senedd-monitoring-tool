@@ -80,8 +80,18 @@ TRIGGERS: list[tuple[str, str, re.Pattern]] = [(k, l, re.compile(p, re.I)) for k
     ("resignation", "Resignation",
      r"\bresign(s|ed|ing|ation)?\b|\bstands? down\b|\bstood down\b|"
      r"\bsteps? down\b|\bstepped down\b|\bquits\b|\bsacked\b|\bdismissed\b"),
+    # "new leader" on its own is a description, not an event: "Rebuilding
+    # Welsh Labour a marathon not a sprint, says new leader" (BBC, 27 September
+    # 2026) is an interview weeks after the election, and was alerted. The
+    # phrase counts only with the act of choosing: "names new leader", "new
+    # leader elected", "as new leader".
     ("leadership", "Leadership",
-     r"\bnew (deputy )?leader\b|\bleadership (contest|election|race|challenge|bid)\b|"
+     r"\b(names?|named|elects?|elected|announces?|announced|unveils?|unveiled|"
+     r"confirms?|confirmed|chooses|chose|chosen|picks?|picked|appoints?|appointed)\b"
+     r".{0,40}\bnew (deputy )?leader\b|"
+     r"\bnew (deputy )?leader\b.{0,30}\b(elected|named|announced|confirmed|chosen|"
+     r"revealed|unveiled)\b|\b(as|is) (the )?(party's )?new ([\w'’]+ ){0,3}leader\b|"
+     r"\bleadership (contest|election|race|challenge|bid)\b|"
      r"\b(elected|named|unveiled|confirmed|chosen|becomes)\b.{0,60}\b(deputy )?leader\b"),
     ("appointment", "Appointment",
      r"\b(appointed|appoints|named|names|unveils?|confirmed)\b.{0,60}"
