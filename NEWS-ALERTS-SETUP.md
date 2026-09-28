@@ -63,6 +63,10 @@ These are left out:
 - features and profiles ("Who is…", "What we learned…", "Q&A in full");
 - MSs' private lives, such as a health diagnosis, unless it leads to one of
   the changes above;
+- interviews and comment about someone already in post. "Rebuilding Welsh
+  Labour a marathon not a sprint, says new leader" (27 September 2026) is not
+  a leadership change; "new leader" only counts alongside the act of choosing
+  one ("names new leader", "new leader elected", "confirmed as new leader");
 - repeats. Once an event has been alerted, other outlets' versions of it and
   follow-ups are not alerted again for three days, unless the kind of change
   is new. For example, "elected leader" and later "names shadow cabinet" are
@@ -111,9 +115,13 @@ nothing is green and short. That is normal.
 - Press notices from the Welsh Government newsroom, and written statements
   and announcements from gov.wales. The newsroom does not publish written
   statements.
-- Only those that match the relevance rules. On 22–24 September 2026 that
-  was one notice out of eleven: the waking watch alarm grant, the same one
-  Camlas alerted.
+- Only those that match the relevance rules **and** are about an NRLA theme
+  in their title or their own summary points. A passing mention further down
+  is not enough: "UK Budget must deliver on its rail promises to Wales"
+  (28 September 2026) mentioned Local Housing Allowance once, in a list of
+  asks, and should not have been alerted. On 22–24 September 2026 one notice
+  out of eleven qualified: the waking watch alarm grant, the same one Camlas
+  alerted.
 - Not "Oral Statement:" items. These are the text of statements already made
   in the Chamber, which the debate summaries cover.
 - They also still appear, tagged NRLA, in the next morning's Bore da
