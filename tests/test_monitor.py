@@ -4407,6 +4407,9 @@ class TestNewsAlertTriggers(unittest.TestCase):
         "Reform UK name new deputy leader in Wales": "leadership",
         "First Minister announces Cabinet reshuffle": "reshuffle",
         "Reform MS suspended after comments": "suspension",
+        "Welsh Labour names new leader after members' ballot": "leadership",
+        "Welsh Labour's new leader elected with 58% of the vote": "leadership",
+        "Party confirms Senedd member as new Welsh Labour leader": "leadership",
     }
     NOT_ALERTS = [
         "Welsh Green Party leader Anthony Slaughter diagnosed with cancer",
@@ -4427,6 +4430,11 @@ class TestNewsAlertTriggers(unittest.TestCase):
         "Reform UK politician accuses Senedd member who defected of 'fraud'",
         "Plaid Cymru defends decision to accept Reform UK defector",
         "Reform leader criticises MS who quit the party",
+        # 28 September 2026: alerted as "Leadership", wrongly. An interview
+        # with a leader elected weeks before; "new leader" describes her.
+        "Rebuilding Welsh Labour a marathon not a sprint, says new leader",
+        "Welsh Labour's new leader sets out her priorities for the party",
+        "New leader must win back voters, says former First Minister",
     ]
 
     def test_political_changes_alert(self):
@@ -4695,6 +4703,32 @@ class TestPressReleaseAlerts(unittest.TestCase):
         self.assertTrue(subject.startswith("TEST — "))
         self.assertIn("This is a test.", body)
         self.assertEqual(render_press([]), ("", "", 0))
+
+    def test_a_passing_mention_further_down_is_not_an_alert(self):
+        """28 September 2026: alerted, wrongly. The title and all three of its
+        own summary points are about rail and public spending; Local Housing
+        Allowance appears once, in a list of asks far down the notice."""
+        from monitor.press import select
+        rail = _notice(
+            "UK Budget must deliver on its rail promises to Wales",
+            "Ahead of the Autumn Budget the Cabinet Minister for Finance set out "
+            "priorities for Wales. Rail: the £14 billion pledge. Cost of living: "
+            "targeted support for struggling households, including unfreezing Local "
+            "Housing Allowance rates to prevent people falling into homelessness.",
+            points=["Welsh Government urges Chancellor to speed up delivery of £14 billion "
+                    "rail pledge, as current funding covers just 1% of Network Rail's spend.",
+                    "Cabinet Minister for Finance also presses UK Government to act on the "
+                    "cost of living, public spending and investment in Wales.",
+                    "Finance Minister: \"Wales has waited long enough.\""])
+        self.assertTrue(self.marker.item(rail[1]), "the relevance rule alone lets it in")
+        self.assertEqual(select([rail], self.marker, {}), [])
+        # A notice that is about housing in its summary points still goes.
+        lha = _notice("Welsh Government calls for Local Housing Allowance to be unfrozen",
+                      "Local Housing Allowance private rented sector tenants",
+                      points=["Local Housing Allowance rates should rise to help tenants in "
+                              "the private rented sector."])
+        self.assertEqual(len(select([lha], self.marker, {})), 1)
+        self.assertEqual(len(select([WAKING_WATCH], self.marker, {})), 1)
 
     def test_a_written_statement_says_so(self):
         from monitor.press import render_press, select
