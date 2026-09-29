@@ -632,6 +632,12 @@ def cmd_forward(args) -> int:
                 wr = build_review(today, tax,
                                   Fetcher(min_interval=getattr(args, "interval", 1.5)),
                                   news_state=getattr(args, "news_state", ""))
+                from .weekly_ai import enabled, summarise_review
+                key, model = enabled()
+                if key and wr.entries:
+                    usage = summarise_review(wr, key, model)
+                    print(usage.report())
+                    _summary_note("NOTE", usage.report())
                 review = render_review(wr)
                 print(f"Week in review: {len(wr.entries)} entries, "
                       f"{len(wr.changes)} political changes, "
@@ -644,7 +650,7 @@ def cmd_forward(args) -> int:
                               f"business only. {exc}")
         subject, html_body, count = render_forward(
             sections, tax, today=today, new_since=since, page_url=page_url,
-            review=review)
+            review=review, ai_model=getattr(wr, "ai_model", "") if wr else "")
         attachments = _weekly_document(args, wr, tax, sections, today, page_url)
     finally:
         store.close()
@@ -855,7 +861,12 @@ def cmd_debates(args) -> int:
     for err in tv.errors + pages.errors:
         print(f"  note: {err}")
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    # AI summaries for this email are switched on separately from the key:
+    # the directorate is trying the key on the Friday briefing first
+    # (29 September 2026). Set the repository variable DEBATE_SUMMARIES_AI
+    # to "on" to use it here too.
+    api_key = (os.environ.get("ANTHROPIC_API_KEY", "")
+               if os.environ.get("DEBATE_SUMMARIES_AI", "").strip().lower() == "on" else "")
     print(f"Summarising {len(found)} item(s) with "
           f"{'AI summaries (Claude)' if api_key else 'key sentences (no API key set)'}")
     debates = summarise(found, tax, api_key=api_key)

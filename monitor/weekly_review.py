@@ -99,6 +99,9 @@ class Entry:
     points: list = field(default_factory=list)      # a notice's summary points
     label: str = ""              # "Press release", "Written statement"
     video_url: str = ""
+    # Claude's summaries, when the key is set (monitor/weekly_ai.py):
+    # {"line": str, "by": {(exchange, contribution): str}, "notice": str}
+    ai: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -109,6 +112,7 @@ class Review:
     changes: list[dict] = field(default_factory=list)   # political changes
     pending: list[str] = field(default_factory=list)    # Records not yet out
     sat: bool = False
+    ai_model: str = ""           # set when any entry carries an AI summary
 
     @property
     def count(self) -> int:
@@ -347,7 +351,10 @@ def _entry_row(e: Entry, compact: bool = False) -> str:
     cell = (f'padding:12px 18px;border-bottom:1px solid {LINE};'
             f'font-family:{FONT};vertical-align:top;')
     quote = ""
-    if e.quote and not compact:
+    if e.ai.get("line") and not compact:
+        quote = (f'<div style="font-size:13px;line-height:1.5;color:{OFF_BLACK};'
+                 f'padding-top:4px">{_e(e.ai["line"])}</div>')
+    elif e.quote and not compact:
         by = f'<span style="font-style:normal;color:{MUTED}"> — {_e(e.quote_by)}</span>' \
             if e.quote_by else ""
         quote = (f'<div style="font-size:13px;line-height:1.5;color:{OFF_BLACK};'
@@ -386,10 +393,13 @@ def render_review(review: Review) -> tuple[str, int]:
     week = (f"{review.week_start:%-d} to {review.week_end:%-d %B}"
             if review.week_start.month == review.week_end.month else
             f"{review.week_start:%-d %B} to {review.week_end:%-d %B}")
-    parts = [_heading("This week in the Senedd",
-                      f"{week}. What was said and published on NRLA issues, "
-                      f"by theme. Each line links to the Record or the notice; "
-                      f"quotations are the speaker's own words.", big=True)]
+    lede = (f"{week}. What was said and published on NRLA issues, by theme. "
+            + ("Each line is a summary written by AI (Claude) from the Record or "
+               "the notice, which it links to; the attached document has more."
+               if review.ai_model else
+               "Each line links to the Record or the notice; quotations are the "
+               "speaker's own words."))
+    parts = [_heading("This week in the Senedd", lede, big=True)]
 
     if not review.entries and not review.changes:
         parts.append(_card([f'<tr><td style="padding:14px 18px;font-family:{FONT};'

@@ -387,14 +387,22 @@ def _debate(d: _Doc, e, tax: Taxonomy) -> None:
     if e.whole and e.exchanges and e.exchanges[0][1]:
         lead_speaker = e.exchanges[0][1][0].speaker
     last_heading = None
-    for heading, contribs in e.exchanges:
+    by = (e.ai or {}).get("by", {})
+    for x, (heading, contribs) in enumerate(e.exchanges):
         if heading and heading != last_heading and heading not in e.title:
             d.heading(heading, 3)
         last_heading = heading
-        for c in contribs:
+        for y, c in enumerate(contribs):
             if _words(c.text) < 3:
                 continue            # "Diolch." — procedure, not substance
-            if e.whole:
+            if (x, y) in by:
+                paras = [by[(x, y)]]          # Claude's summary, checked
+            elif by:
+                # The AI left this one out as thanks or procedure, or its
+                # summary failed the figures check: the speaker's own words.
+                paras = excerpt(c.text, tax, FULL_WORDS_EXCHANGE if not e.whole
+                                else FULL_WORDS_DEBATE, CAP_WORDS)
+            elif e.whole:
                 lead = c.speaker == lead_speaker and c is contribs[0]
                 paras = excerpt(c.text, tax, FULL_WORDS_DEBATE,
                                 CAP_WORDS_LEAD if lead else CAP_WORDS)
@@ -447,6 +455,10 @@ def notice_paragraphs(e) -> list[str]:
 def _notice(d: _Doc, e) -> None:
     for point in e.points[:5]:
         d.bullet(point)
+    if (e.ai or {}).get("notice"):
+        p = d.para(e.ai["notice"], after=3, indent_cm=0.35)
+        _border_left(p)
+        return
     words = 0
     for text in notice_paragraphs(e):
         w = _words(text)
@@ -529,14 +541,23 @@ def build_document(review, tax: Taxonomy, sections: dict | None = None,
     _border_bottom(org)
 
     intro = d.para(after=8)
-    intro.add_run(
-        "This goes with the Friday email. For each item on NRLA issues this week "
-        "it gives who said what, in their own words, from the Senedd's Record of "
-        "Proceedings. Questions and their answers are in full. Longer statements "
-        "are cut to the passages on NRLA issues; ").font.size = _pt(10)
-    cut = intro.add_run(CUT)
-    cut.font.size, cut.font.color.rgb = _pt(10), _rgb(MUTED)
-    intro.add_run(" marks a cut, and each heading links to the full text.").font.size = _pt(10)
+    if getattr(review, "ai_model", ""):
+        intro.add_run(
+            "This goes with the Friday email. For each item on NRLA issues this week "
+            "it gives who said what, summarised by AI (Claude) from the Senedd's "
+            "Record of Proceedings. Each summary is checked so that no figure appears "
+            "that the speaker did not give; where one failed that check, the speaker's "
+            "own words are shown instead. Each heading links to the full text: use "
+            "the Record, not these summaries, when quoting anyone.").font.size = _pt(10)
+    else:
+        intro.add_run(
+            "This goes with the Friday email. For each item on NRLA issues this week "
+            "it gives who said what, in their own words, from the Senedd's Record of "
+            "Proceedings. Questions and their answers are in full. Longer statements "
+            "are cut to the passages on NRLA issues; ").font.size = _pt(10)
+        cut = intro.add_run(CUT)
+        cut.font.size, cut.font.color.rgb = _pt(10), _rgb(MUTED)
+        intro.add_run(" marks a cut, and each heading links to the full text.").font.size = _pt(10)
 
     # Headlines
     heads = review.headlines()
@@ -586,10 +607,13 @@ def build_document(review, tax: Taxonomy, sections: dict | None = None,
     _border_bottom(end, colour="D9E2E8", size=6)
     note = d.para(size=8.5, colour=MUTED)
     note.add_run(
-        "Every word attributed to a speaker is from the Senedd's Record of "
-        "Proceedings: English as spoken, or the official interpretation where the "
-        "words were spoken in Welsh. Nothing is summarised or paraphrased. "
-        "Senedd Cymru and Welsh Government material is reproduced under the Open "
+        (f"Summaries are written by AI ({review.ai_model}) from the Senedd's Record "
+         "of Proceedings and the Welsh Government's notices, and are not quotations. "
+         if getattr(review, "ai_model", "") else
+         "Every word attributed to a speaker is from the Senedd's Record of "
+         "Proceedings: English as spoken, or the official interpretation where the "
+         "words were spoken in Welsh. Nothing is summarised or paraphrased. ")
+        + "Senedd Cymru and Welsh Government material is reproduced under the Open "
         "Government Licence v3.0.").font.size = _pt(8.5)
     for run in note.runs:
         run.font.color.rgb = _rgb(MUTED)

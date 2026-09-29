@@ -283,7 +283,8 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
                    today: date | None = None,
                    new_since: date | None = None,
                    page_url: str = "",
-                   review: tuple[str, int] | None = None) -> tuple[str, str, int]:
+                   review: tuple[str, int] | None = None,
+                   ai_model: str = "") -> tuple[str, str, int]:
     """Return ``(subject, html_body, count)``.
 
     A count of zero means send nothing at all — see the module docstring.
@@ -373,6 +374,13 @@ def render_forward(sections: dict[str, list[Item]], tax: Taxonomy,
                   f'padding-top:22px">Coming up</div></td></tr>'
                 + body)
     title = "Senedd weekly briefing" if review_block else "Senedd future business"
+    ai_note = (f"The summaries of this week's business are written by AI ({ai_model}) "
+               f"from the published record, and checked so that no figure appears "
+               f"that the source does not contain; follow the links for the exact "
+               f"words before quoting anyone. Every title and date is the published "
+               f"record." if ai_model and review_block else
+               "Nothing in this email is summarised by a language model — every "
+               "question, title and date is the published record.")
 
     tally = " · ".join(
         f"{len(rows)} {label}{'' if len(rows) == 1 else 's'}"
@@ -435,8 +443,7 @@ border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
     <p style="font-size:11.5px;color:{MUTED};line-height:1.55;margin:0;
       padding-top:16px;font-family:{FONT}">
       Senedd Cymru and Welsh Government material is reproduced under the Open
-      Government Licence v3.0. Nothing in this email is summarised by a
-      language model — every question, title and date is the published record.
+      Government Licence v3.0. {_e(ai_note)}
       Written questions are deliberately excluded; the team's dedicated tool
       tracks those.
     </p>
