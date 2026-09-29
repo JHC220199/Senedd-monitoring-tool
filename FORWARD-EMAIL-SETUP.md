@@ -63,8 +63,11 @@ summarised by Claude (Sonnet 5 by default), in both places:
 - **In the email**, each line has a one-sentence summary instead of a
   quotation.
 - **In the Word document**, every contribution is summarised in reported
-  speech ("Francesca O'Brien MS said..."), and each notice gets a short
-  summary under its own points.
+  speech ("Francesca O'Brien MS said..."): one sentence of no more than 30
+  words, or two sentences and 50 words for a minister's opening statement.
+  Each notice gets a summary of up to 50 words under its own points. A longer
+  reply is cut back to whole sentences, or asked for again if one sentence
+  alone runs far over.
 
 Every summary is checked. If it contains a figure the speaker did not say
 (in digits or in words: "Seventy per cent" allows "70%"), it is dropped. Any
