@@ -10,8 +10,9 @@ Record, and comes back with:
     quotation;
   * a summary of every contribution, for the Word document, in the style of
     Camlas's weekly briefing ("Francesca O'Brien said progress on remediation
-    had been too slow...");
-  * for a press release or written statement, a short summary of the notice.
+    had been too slow..."): one sentence, 30 words at most (50 for a
+    minister's opening statement);
+  * for a press release or written statement, a summary of 50 words at most.
 
 The directorate's choices, 29 September 2026: everything summarised, in the
 email and the document; Claude Sonnet 5.
@@ -89,10 +90,14 @@ other speakers by full name followed by MS ("Francesca O'Brien MS asked...").
 - "line" is ONE sentence of no more than 35 words saying what was raised or \
 announced that matters to the NRLA.
 - Summarise EVERY numbered contribution, including political exchanges and \
-contributions that are not about housing: one to three sentences each; up to \
-five for a minister's opening statement. Never copy a speech out. The only \
-contribution that may have an empty summary is one that is nothing but \
-thanks or procedure ("Thank you, Llywydd", calling the next speaker).
+contributions that are not about housing. Be brief: each summary is ONE \
+sentence of no more than 30 words, giving only the speaker's main point or \
+question and any commitment or figure that matters to the NRLA. A \
+contribution marked (opening statement) may have up to two sentences and 50 \
+words. Leave out background, examples, anecdotes, thanks and rhetoric. Never \
+copy a speech out. The only contribution that may have an empty summary is \
+one that is nothing but thanks or procedure ("Thank you, Llywydd", calling \
+the next speaker).
 - Write a figure either as the speaker said it or as the same number in \
 digits ("seventy per cent" or "70 per cent"). Never work out a new figure: no \
 totals, differences or percentages the speaker did not give.
@@ -111,6 +116,7 @@ class Usage:
     failures: int = 0
     rejected: int = 0            # summaries dropped by the figures check
     retried: int = 0             # contributions asked for a second time
+    too_long: int = 0            # summaries far over length, asked for again
     extracts: int = 0            # still unsummarised: a short extract is shown
     input_tokens: int = 0
     output_tokens: int = 0
@@ -130,6 +136,7 @@ class Usage:
                 + (f"; {self.rejected} summar{'y' if self.rejected == 1 else 'ies'} "
                    f"dropped by the figures check" if self.rejected else "")
                 + (f"; {self.retried} contribution(s) asked for again" if self.retried else "")
+                + (f" ({self.too_long} for being too long)" if self.too_long else "")
                 + (f"; {self.extracts} left as a short extract" if self.extracts else "")
                 + ".")
 
@@ -165,27 +172,68 @@ def flat_contributions(entry) -> list[tuple[tuple[int, int], object]]:
 # summary ("Thank you, Minister.") is simply printed as it is.
 MUST_SUMMARISE_WORDS = 40
 
+# The longest a summary may be, in words (1 October 2026: the directorate
+# found three-sentence summaries far too long — the document grew from six
+# pages to seven). A longer reply is cut back to whole sentences; one whose
+# first sentence alone is far over is asked for again, shorter.
+WORDS_CONTRIBUTION = 30
+WORDS_OPENING = 50
+WORDS_NOTICE = 50
+
+_SENTENCE_END = re.compile(r"(?<=[.!?])[\"'\u201d\u2019]?\s+(?=[A-Z\"'\u2018\u201c(])")
+
+
+def fit(text: str, cap: int) -> str:
+    """``text`` cut back to whole sentences within ``cap`` words; the first
+    sentence is always kept. "" if even that is far too long (more than half
+    as long again), so that it is asked for again."""
+    sents = [x.strip() for x in _SENTENCE_END.split(text or "") if x.strip()]
+    if not sents:
+        return ""
+    if _words(sents[0]) > cap * 1.5:
+        return ""
+    out = [sents[0]]
+    for x in sents[1:]:
+        if _words(" ".join(out + [x])) > cap:
+            break
+        out.append(x)
+    return " ".join(out)
+
+
+def _cap(entry, key) -> int:
+    return WORDS_OPENING if _is_opening(entry, key) else WORDS_CONTRIBUTION
+
+
+def _is_opening(entry, key) -> bool:
+    """The first contribution of a whole debate or statement, by a minister."""
+    if not entry.whole or key != (0, 0) or not entry.exchanges:
+        return False
+    c = entry.exchanges[0][1][0]
+    return bool(re.search(r"minister|trefnydd|counsel general", (c.role or ""), re.I))
+
 
 def _debate_prompt(entry, flat=None, again: bool = False) -> tuple[str, list]:
     flat = flat_contributions(entry) if flat is None else flat
     budget = MAX_INPUT_CHARS // max(1, len(flat))
     lines = [f"Item: {entry.title}", f"Where and when: {entry.meta}",
              ("These contributions still need a summary. Every one of them must "
-              "have one: none of them is only thanks or procedure. Leave \"line\" "
+              "have one, no longer than the rules allow (one sentence, 30 words at "
+              "most): none of them is only thanks or procedure. Leave \"line\" "
               "empty." if again else
               "This is the whole debate." if entry.whole else
               "These are the relevant exchanges from the item: each is a question "
               "or request and the reply to it."), ""]
     last = None
-    for n, ((i, _j), c) in enumerate(flat, 1):
-        heading = entry.exchanges[i][0]
+    for n, (key, c) in enumerate(flat, 1):
+        heading = entry.exchanges[key[0]][0]
         if heading and heading != last:
             lines.append(f"[Question: {heading}]")
             last = heading
         who = (f"{c.speaker} MS" if getattr(c, "member", False) else c.speaker) + \
             (f" ({c.role})" if c.role else "")
         text = c.text if len(c.text) <= budget else c.text[:budget] + " …"
-        lines.append(f"{n}. {who}:\n{text}\n")
+        mark = " (opening statement)" if _is_opening(entry, key) else ""
+        lines.append(f"{n}. {who}{mark}:\n{text}\n")
     lines.append(f"Reply in exactly this shape: {DEBATE_SHAPE}")
     return "\n".join(lines), flat
 
@@ -194,8 +242,9 @@ def _notice_prompt(entry) -> tuple[str, str]:
     text = "\n".join(list(entry.points) + list(entry.paragraphs))[:MAX_INPUT_CHARS]
     prompt = (f"Welsh Government {entry.label or 'notice'}: {entry.title}\n"
               f"Published: {entry.meta}\n\n{text}\n\n"
-              f"Write \"summary\" as a short paragraph (up to five sentences) on what "
-              f"the notice announces. Reply in exactly this shape: {NOTICE_SHAPE}")
+              f"Write \"summary\" in one or two sentences, no more than "
+              f"{WORDS_NOTICE} words, on what the notice announces. Reply in exactly "
+              f"this shape: {NOTICE_SHAPE}")
     return prompt, text
 
 
@@ -247,6 +296,7 @@ def summarise_entry(entry, api_key: str, model: str, usage: Usage, post) -> None
         data = _call(prompt, api_key, model, usage, post)
         line, summary = _clean(data.get("line")), _clean(data.get("summary"))
         ai = {}
+        summary = fit(summary, WORDS_NOTICE) or summary
         for key, value in (("line", line), ("notice", summary)):
             if value and figures_check(value, f"{entry.title}\n{source}"):
                 ai[key] = value
@@ -260,7 +310,7 @@ def summarise_entry(entry, api_key: str, model: str, usage: Usage, post) -> None
         return
     data = _call(prompt, api_key, model, usage, post)
     ai = {"by": {}}
-    _take(data, flat, ai["by"], usage)
+    _take(entry, data, flat, ai["by"], usage)
     # Anything of substance that came back empty, or whose summary failed the
     # figures check, is asked for once more on its own (29 September 2026:
     # Francesca O'Brien MS's building safety speech came back with "70%"
@@ -272,7 +322,8 @@ def summarise_entry(entry, api_key: str, model: str, usage: Usage, post) -> None
         usage.retried += len(missing)
         try:
             again, _ = _debate_prompt(entry, missing, again=True)
-            _take(_call(again, api_key, model, usage, post), missing, ai["by"], usage)
+            _take(entry, _call(again, api_key, model, usage, post), missing, ai["by"],
+                  usage, last_try=True)
         except Exception as exc:            # noqa: BLE001 — the first pass stands
             print(f"  second AI pass failed for {entry.title[:60]!r}: {exc}")
     usage.extracts += sum(1 for key, c in flat
@@ -286,8 +337,9 @@ def summarise_entry(entry, api_key: str, model: str, usage: Usage, post) -> None
     entry.ai = ai
 
 
-def _take(data: dict, flat: list, by: dict, usage: Usage) -> None:
-    """Put the checked summaries from a reply into ``by``."""
+def _take(entry, data: dict, flat: list, by: dict, usage: Usage,
+          last_try: bool = False) -> None:
+    """Put the checked summaries from a reply into ``by``, cut to length."""
     by_n = {}
     for p in data.get("points", []) or []:
         try:
@@ -300,10 +352,18 @@ def _take(data: dict, flat: list, by: dict, usage: Usage) -> None:
         s = by_n.get(n, "")
         if not s:
             continue
-        if figures_check(s, c.text):
-            by[key] = s
-        else:
+        if not figures_check(s, c.text):
             usage.rejected += 1
+            continue
+        short = fit(s, _cap(entry, key))
+        if not short and last_try:
+            # Still one over-long sentence after asking again: keep it,
+            # rather than fall back to the speaker's own words.
+            short = s
+        if short:
+            by[key] = short
+        else:
+            usage.too_long += 1
 
 
 def summarise_review(review, api_key: str, model: str = "", post=None) -> Usage:
