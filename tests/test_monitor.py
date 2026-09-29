@@ -5503,6 +5503,13 @@ class TestWeeklyAISummaries(unittest.TestCase):
         wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
         self.assertIn("ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}", wf)
 
+    def test_a_past_week_can_be_tried_as_a_test(self):
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
+        self.assertIn("week_of:", wf)
+        self.assertIn('--week-of "$WEEK_OF"', wf)
+        src = (Path(__file__).resolve().parent.parent / "monitor/cli.py").read_text()
+        self.assertIn('subject = "TEST — " + subject', src)
+
 
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
