@@ -122,6 +122,12 @@ jobs:
         if: steps.clock.outputs.go == 'yes'
         env:
           MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}
+          # AI summaries of the week (monitor/weekly_ai.py). The key alone
+          # switches them on; the variable WEEKLY_SUMMARIES_AI=off turns them
+          # off, and WEEKLY_SUMMARY_MODEL picks another model.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          WEEKLY_SUMMARIES_AI: ${{ vars.WEEKLY_SUMMARIES_AI }}
+          WEEKLY_SUMMARY_MODEL: ${{ vars.WEEKLY_SUMMARY_MODEL }}
         run: python -m monitor.cli forward --send --out out/forward.html
 
       - name: Put the email on this page too

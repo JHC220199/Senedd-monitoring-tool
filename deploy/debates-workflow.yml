@@ -72,6 +72,7 @@ jobs:
           MONITOR_FLOW_URL: ${{ secrets.MONITOR_FLOW_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DEBATE_SUMMARY_MODEL: ${{ vars.DEBATE_SUMMARY_MODEL }}
+          DEBATE_SUMMARIES_AI: ${{ vars.DEBATE_SUMMARIES_AI }}
         run: python -m monitor.cli debates --send --out out/debates.html
 
       - name: Remember which meetings are done
