@@ -91,5 +91,6 @@ jobs:
           path: |
             out/news.html
             out/press.html
+            out/opinions.html
           retention-days: 30
           if-no-files-found: ignore
