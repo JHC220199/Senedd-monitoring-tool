@@ -67,6 +67,11 @@ These are left out:
   Labour a marathon not a sprint, says new leader" (27 September 2026) is not
   a leadership change; "new leader" only counts alongside the act of choosing
   one ("names new leader", "new leader elected", "confirmed as new leader");
+- changes that have not happened: petitions, calls for someone to resign,
+  "should" and "if" stories, and questions. "Over 3000 people sign petition
+  demanding MSs give up their seats if they defect" (28 September 2026) is
+  about a petition, not a defection. A resignation that follows calls to quit
+  is still alerted;
 - repeats. Once an event has been alerted, other outlets' versions of it and
   follow-ups are not alerted again for three days, unless the kind of change
   is new. For example, "elected leader" and later "names shadow cabinet" are
