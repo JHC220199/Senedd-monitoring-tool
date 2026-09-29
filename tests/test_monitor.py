@@ -5381,6 +5381,129 @@ class TestStatementsOfOpinion(unittest.TestCase):
         self.assertIn("out/opinions.html", wf)
 
 
+class TestWeeklyAISummaries(unittest.TestCase):
+    """The API key, tried on the Friday briefing first (29 September 2026):
+    everything summarised, in the email and the document, Claude Sonnet 5.
+    No real call is made here: the API is replaced by a stand-in."""
+
+    def setUp(self):
+        from monitor.debates import Relevance, select
+        from monitor.weekly_review import Review, Themer, debate_entries
+        entries = debate_entries(select(_plenary(), Relevance(TAX), date(2026, 9, 22)),
+                                 TAX, Themer(TAX))
+        self.review = Review(week_start=date(2026, 9, 21), week_end=date(2026, 9, 25),
+                             entries=entries, sat=True)
+        self.safety = [e for e in entries if "Building Safety" in e.title][0]
+        self.hmo = [e for e in entries if e.title == "Business Statement and Announcement"][0]
+
+    class _Resp:
+        def __init__(self, payload, status=200):
+            self.status_code, self._payload, self.text = status, payload, ""
+
+        def json(self):
+            return self._payload
+
+    def _post(self, replies):
+        calls = []
+
+        def post(url, timeout=None, headers=None, json=None):
+            calls.append(json)
+            prompt = json["messages"][0]["content"]
+            for marker, reply in replies:
+                if marker in prompt:
+                    return reply
+            return TestWeeklyAISummaries._Resp({"content": [], "usage": {}}, status=500)
+        return post, calls
+
+    def _reply(self, data, tin=1000, tout=200):
+        import json as _json
+        return self._Resp({"content": [{"type": "text", "text": _json.dumps(data)}],
+                           "usage": {"input_tokens": tin, "output_tokens": tout}})
+
+    def test_summaries_are_checked_and_costed(self):
+        from monitor.weekly_ai import summarise_review
+        replies = [
+            ("Building Safety Programme Update", self._reply({
+                "line": "The Cabinet Minister said 11 of 161 buildings were complete.",
+                "points": [{"n": 1, "summary": "The Cabinet Minister said remediation had "
+                            "not moved quickly enough; 11 of 161 buildings were complete."},
+                           {"n": 2, "summary": "Francesca O'Brien MS said 57 buildings "
+                            "had been remediated."},     # 57 is not in her words
+                           {"n": 3, "summary": "The Cabinet Minister said the alarm grant "
+                            "would open soon."}]}, tin=3000, tout=400)),
+            ("houses in multiple occupancy", self._reply({
+                "line": "John Clark MS asked for a statement on HMOs used for Home Office "
+                        "schemes; the Trefnydd said it was not devolved.",
+                "points": [{"n": 1, "summary": "John Clark MS asked for a statement."},
+                           {"n": 2, "summary": "The Trefnydd said it was not devolved."}]})),
+        ]
+        post, calls = self._post(replies)
+        usage = summarise_review(self.review, "test-key", "claude-sonnet-5", post=post)
+        self.assertEqual(calls[0]["model"], "claude-sonnet-5")
+        self.assertIn("Do not name private individuals", calls[0]["system"])
+        self.assertTrue(self.safety.ai["line"].startswith("The Cabinet Minister said 11 of 161"))
+        by = self.safety.ai["by"]
+        self.assertEqual(len(by), 2, "the summary with a figure she never gave is dropped")
+        self.assertEqual(usage.rejected, 1)
+        self.assertIn("not devolved", self.hmo.ai["line"])
+        self.assertEqual(self.review.ai_model, "claude-sonnet-5")
+        self.assertGreaterEqual(usage.input_tokens, 4000)
+        self.assertAlmostEqual(usage.cost, (usage.input_tokens * 2 + usage.output_tokens * 10) / 1e6)
+        self.assertIn("about $", usage.report())
+
+    def test_the_email_and_document_say_they_are_ai_summaries(self):
+        from monitor.forward import render_forward
+        from monitor.weekly_ai import summarise_review
+        from monitor.weekly_document import build_document
+        from monitor.weekly_review import render_review
+        post, _ = self._post([("Building Safety Programme Update", self._reply({
+            "line": "The Cabinet Minister set out progress on remediation for leaseholders.",
+            "points": [{"n": 1, "summary": "The Cabinet Minister said remediation had not "
+                        "moved quickly enough for leaseholders."}]}))])
+        summarise_review(self.review, "test-key", "claude-sonnet-5", post=post)
+        block, count = render_review(self.review)
+        self.assertIn("The Cabinet Minister set out progress on remediation", block)
+        self.assertIn("summary written by AI (Claude)", block)
+        sections = {"oral": [], "committees": [], "plenary": [], "consultations": []}
+        _, body, _ = render_forward(sections, TAX, today=date(2026, 9, 25),
+                                    review=(block, count), ai_model=self.review.ai_model)
+        self.assertIn("written by AI (claude-sonnet-5)", body)
+        self.assertNotIn("Nothing in this email is summarised by a language model", body)
+        import docx
+        d = docx.Document(io.BytesIO(build_document(self.review, TAX, today=date(2026, 9, 25))))
+        text = "\n".join(p.text for p in d.paragraphs)
+        self.assertIn("summarised by AI (Claude)", text)
+        self.assertIn("The Cabinet Minister said remediation had not moved quickly enough", text)
+        # Where the AI gave nothing (the HMO item failed here), the speaker's words
+        self.assertIn("Trefnydd, can I request a statement on houses in multiple occupancy", text)
+
+    def test_a_failure_falls_back_to_the_verbatim_briefing(self):
+        from monitor.weekly_ai import summarise_review
+        from monitor.weekly_review import render_review
+        post, _ = self._post([])          # every call fails
+        usage = summarise_review(self.review, "test-key", post=post)
+        self.assertEqual(usage.failures, len(self.review.entries))
+        self.assertEqual(self.review.ai_model, "")
+        block, _ = render_review(self.review)
+        self.assertIn("quotations are the speaker&#x27;s own words", block)
+
+    def test_switches(self):
+        from monitor.weekly_ai import enabled
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "k"}, clear=False):
+            os.environ.pop("WEEKLY_SUMMARIES_AI", None)
+            os.environ.pop("WEEKLY_SUMMARY_MODEL", None)
+            self.assertEqual(enabled(), ("k", "claude-sonnet-5"))
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "k", "WEEKLY_SUMMARIES_AI": "off"}):
+            self.assertEqual(enabled(), ("", ""))
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}):
+            self.assertEqual(enabled(), ("", ""))
+        src = (Path(__file__).resolve().parent.parent / "monitor/cli.py").read_text()
+        self.assertIn('os.environ.get("DEBATE_SUMMARIES_AI", "").strip().lower() == "on"', src,
+                      "the debate emails stay verbatim until switched on separately")
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
+        self.assertIn("ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}", wf)
+
+
 def main() -> int:
     Path("data").mkdir(exist_ok=True)
     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
