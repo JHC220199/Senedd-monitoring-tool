@@ -5,7 +5,7 @@
 > [!WARNING]
 > **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd committee consultations and inquiries`
 
-**17** open consultations · **2** closing within three weeks · **35** developments to review
+**17** open consultations · **2** closing within three weeks · **36** developments to review
 
 ## Respond — things with a deadline
 
@@ -39,6 +39,12 @@
 </details>
 
 ## Review — what has happened
+
+**[2. Ministerial scrutiny session: Cabinet Minister for Education and the Welsh Language](https://record.senedd.wales/Committee/16239)**  
+<sub>28 September 2026 · Culture, Communications, Cymraeg and Sport Committee · Rebeca Phillips, Anna Brychan</sub>  
+Touches budget & legislative programme and planning system. Read and decide whether a line to take is needed.  
+> Thank you very much, Chair. Welcome, Minister. Thank you for joining us this morning.   Embedding the Welsh language across Government is critical, of course. I believe, in the past, Ministers perhaps have been working in silos in terms of the Welsh language, so I really welcome this new focus. The planning system…
+<sub>[Watch this moment](http://www.senedd.tv/en/16239?startPos=2277&l=en)</sub>
 
 **[Written Statement: Consultation on making the “general crisis” provision in the Allocation of Housing and Homelessness (Eligibility) (Wales) (Amendment) Regulations 2026 permanent](https://www.gov.wales/written-statement-consultation-making-general-crisis-provision-allocation-housing-and-homelessness?utm_source=rss-announcements&utm_medium=rss-feed&utm_campaign=announcements-Written+Statement%3A+Consultation+on+making+the+%E2%80%9Cgeneral+crisis%E2%80%9D+provision+in+the+Allocation+of+Housing+and+Homelessness+%28Eligibility%29+%28Wales%29+%28Amendment%29+Regulations+2026+permanent)**  
 <sub>28 September 2026 · Welsh Government</sub>  
@@ -122,13 +128,7 @@ Touches second homes & short-term lets and property taxation. Read and decide wh
 > Thank you, Llywydd. Today, I'm pleased to announce changes the Welsh Government will make to reflect our manifesto commitments to rebalance the non-domestic rates system, and level the playing field for high-street businesses. We recognise the importance of vibrant retail, hospitality and leisure sectors, and these…
 <sub>[Watch this moment](http://www.senedd.tv/en/16260?startPos=9363&l=en)</sub>
 
-**[5. Statement by the Deputy Minister for Skills and Tertiary Education: Review of Higher Education](https://record.senedd.wales/Plenary/16260)**  
-<sub>15 September 2026 · Plenary · Cefin Campbell</sub>  
-Touches budget & legislative programme. Read and decide whether a line to take is needed.  
-> The review will take a comprehensive view of the higher education system. It will examine student support, institutional funding, research and innovation, participation, graduate outcomes, and the organisation and resilience of the sector in Wales. But it will not limit itself to traditional full-time undergraduate…
-<sub>[Watch this moment](http://www.senedd.tv/en/16260?startPos=11707&l=en)</sub>
-
-_20 further items in the full dashboard._
+_21 further items in the full dashboard._
 
 ## Coming up
 
@@ -145,4 +145,4 @@ _20 further items in the full dashboard._
 
 ---
 
-<sub>168 items scored from 1122 collected records, 29 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>170 items scored from 1130 collected records, 29 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
