@@ -913,7 +913,8 @@ def cmd_news(args) -> int:
     state = load_state(args.state)
     fetcher = Fetcher(min_interval=args.interval)
     codes = [_news_part(args, state, now, fetcher),
-             _press_part(args, state, now, fetcher)]
+             _press_part(args, state, now, fetcher),
+             _opinion_part(args, state, now, fetcher)]
     if not args.test:
         save_state(state, args.state)
     return max(codes)
@@ -1057,6 +1058,64 @@ def _press_part(args, state: dict, now, fetcher) -> int:
     sent, code = _send(args, subject, html_body, count, "Press release alerts")
     if (args.send and (sent or count == 0)) or args.remember:
         remember(state, announcements, now)
+    return code
+
+
+def _opinion_part(args, state: dict, now, fetcher) -> int:
+    """Statement of Opinion alerts (monitor/opinions.py). Independent of the
+    other two parts: a failure here costs only these alerts."""
+    from .collectors.opinions import OpinionCollector
+    from .morning import Marker
+    from .opinions import (FIRST_NUMBER, last_number, remember, render_opinions,
+                           select)
+
+    source = OpinionCollector(fetcher)
+    marker = Marker(Taxonomy.load(args.taxonomy))
+    last = last_number(state)
+    first_run = last is None
+    start = (FIRST_NUMBER - 1) if first_run else last
+
+    if args.test:
+        found, newest = source.after(start)
+        recent = source.before(max(newest, start), count=25)
+        picked = [op for op in select(recent, marker)][:1]
+        subject, html_body, count = render_opinions(picked, test=True)
+        if not count:
+            print("Test: no relevant Statement of Opinion among the most recent, "
+                  "so no test alert can be built.")
+            return 0
+        _write_out(getattr(args, "opinion_out", ""), html_body)
+        print(f"Test subject: {subject}")
+        return _send(args, subject, html_body, count, "Statement of Opinion alerts")[1]
+
+    found, newest = source.after(start)
+    for err in source.errors:
+        print(f"  note: {err}")
+    if source.errors and not found and newest == start:
+        _summary_note("WARNING", "**Statement of Opinion alerts: the Senedd Record "
+                      "could not be read.** " + " ".join(source.errors))
+        return 2
+    if first_run:
+        # The first run learns where the numbering has got to and sends
+        # nothing, so only statements tabled from now on are alerted (the
+        # directorate's choice, 29 September 2026).
+        if args.send or args.remember:
+            remember(state, newest)
+        print(f"Statements of Opinion, first run: {len(found)} found up to number "
+              f"{newest}. Nothing sent — alerts start with the next one tabled.")
+        return 0
+    chosen = select(found, marker, today=now.date())
+    print(f"{len(found)} new Statements of Opinion after number {start}, "
+          f"{len(chosen)} relevant.")
+    for op in found:
+        print(f"  {'NRLA ' if op in chosen else '     '}{op.reference} {op.title}")
+    subject, html_body, count = render_opinions(chosen)
+    if count:
+        _write_out(getattr(args, "opinion_out", ""), html_body)
+        print(f"Subject: {subject}")
+    sent, code = _send(args, subject, html_body, count, "Statement of Opinion alerts")
+    if (args.send and (sent or count == 0)) or args.remember:
+        remember(state, newest)
     return code
 
 
@@ -1442,6 +1501,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("news", help="political news and press release alerts")
     p.add_argument("--out", default="out/news.html")
     p.add_argument("--press-out", default="out/press.html")
+    p.add_argument("--opinion-out", default="out/opinions.html")
     p.add_argument("--state", default="data/news-state.json")
     p.add_argument("--remember", action="store_true",
                    help="record what was read even without --send")
