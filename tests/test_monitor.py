@@ -5593,6 +5593,39 @@ class TestWeeklyAISummaries(unittest.TestCase):
         ext = [p.text for p in d.paragraphs if p.text.startswith("Extract (no AI summary)")][0]
         self.assertLess(len(ext.split()), 70)
 
+    def test_summaries_are_kept_short(self):
+        """1 October 2026: "all of the summaries are far too long"."""
+        from monitor.weekly_ai import WORDS_CONTRIBUTION, fit, summarise_review
+        long_one = ("Francesca O'Brien MS said only four of 161 buildings had been "
+                    "remediated. She said 70 per cent had not started. She contrasted "
+                    "this with the social housing block at Celestia, where nearly £2 "
+                    "million had been spent. She asked whether leaseholders had been "
+                    "treated unfairly.")
+        self.assertEqual(fit(long_one, 30), "Francesca O'Brien MS said only four of 161 "
+                         "buildings had been remediated. She said 70 per cent had not started.")
+        self.assertEqual(fit(" ".join(["word"] * 60) + ".", 30), "",
+                         "one sentence far over the limit is asked for again")
+        review, e = self._long_review()
+        rambling = ("Francesca O'Brien MS said " + "that progress had been slow and "
+                    * 12 + "that leaseholders had waited.")
+        post, calls = self._post([
+            ("still need a summary", self._reply({"line": "", "points": [
+                {"n": 1, "summary": "Francesca O'Brien MS said only four of 161 private "
+                 "buildings had been remediated."}]})),
+            ("Building Safety Programme Update", self._reply({
+                "line": "The Cabinet Minister said remediation had been too slow.",
+                "points": [{"n": 1, "summary": "The Cabinet Minister said remediation "
+                            "had not moved quickly enough."},
+                           {"n": 2, "summary": rambling}]})),
+        ])
+        usage = summarise_review(review, "test-key", post=post)
+        self.assertEqual(usage.too_long, 1)
+        self.assertEqual(len(calls), 2)
+        self.assertLessEqual(len(e.ai["by"][(0, 1)].split()), WORDS_CONTRIBUTION)
+        prompt = calls[0]["messages"][0]["content"]
+        self.assertIn("Sian Gwenllian (Cabinet Minister) (opening statement):", prompt)
+        self.assertIn("ONE sentence of no more than 30 words", calls[0]["system"])
+
     def test_a_past_week_can_be_tried_as_a_test(self):
         wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
         self.assertIn("week_of:", wf)
