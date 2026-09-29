@@ -138,7 +138,9 @@ WalesOnline politics feeds, and the Welsh Government's own list of ministers,
 every hour in office hours. The alert gives the headlines and links only;
 nothing is copied or summarised. The same hourly check emails any Welsh
 Government press release or written statement that matches the relevance
-rules, with the notice's own summary points. It is started by one more
+rules, with the notice's own summary points, and any new Statement of
+Opinion (the Senedd's early day motions) on an NRLA issue, with its wording
+and who has signed it. It is started by one more
 Power Automate flow: [`NEWS-ALERTS-SETUP.md`](NEWS-ALERTS-SETUP.md).
 
 **If a run went green and something looks wrong, read `TROUBLESHOOTING.md`.**

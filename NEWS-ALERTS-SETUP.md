@@ -135,13 +135,36 @@ nothing is green and short. That is normal.
 The summary points are the Welsh Government's own words, reproduced under
 the Open Government Licence. Nothing is paraphrased.
 
+### Statement of Opinion alerts
+
+The same hourly check also reads any new **Statements of Opinion**, the
+Senedd's equivalent of early day motions, and emails the ones on NRLA issues.
+This replaces Camlas's "Alert - Statement of Opinion" (29 September 2026:
+Kiera Marshall MS on Local Housing Allowance, OPIN-2026-0544).
+
+- **What the email has:** the reference, title and date, who tabled it, the
+  statement's own words, who has signed it so far, and a link to it in the
+  Senedd's Record.
+- **Which ones:** those matching the NRLA's relevance rules on a substantive
+  theme. Checked against every Statement of Opinion from 2024 to September
+  2026, six of about 150 qualified: Local Housing Allowance, the ECO4 and
+  GBIS retrofit schemes, the Grenfell Tower Inquiry, criminalising
+  homelessness, and pay for homelessness and housing support workers.
+- **How they are found:** the Senedd publishes no list, but each statement
+  has a numbered page (record.senedd.wales/StatementOfOpinion/544), so the
+  tool reads the numbers after the last one it has seen.
+- **Alerts only.** They are not added to the morning or Friday emails.
+- **The first run** notes where the numbering has got to and sends nothing,
+  so only statements tabled from then on are alerted.
+
 ### Sending yourself a test
 
 To check that alerts reach your inbox, without waiting for real news:
 **GitHub → Actions → Senedd news alerts → Run workflow**, tick **Send TEST
-alerts**, then **Run workflow**. About a minute later you get two emails whose
+alerts**, then **Run workflow**. About a minute later you get three emails whose
 subjects start **TEST —**: one with the most recent political changes in the
-news, and one with the most recent relevant Welsh Government notice. Either may
+news, one with the most recent relevant Welsh Government notice, and one with
+the most recent relevant Statement of Opinion. Any of them may
 already be old news, and each has a "This is a test" banner. A test remembers
 nothing, so it can never stop a real alert from being sent.
 
