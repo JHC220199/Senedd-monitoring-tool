@@ -55,6 +55,35 @@ week's additions are findable in ten seconds.
 rather than receiving six identical "nothing this week" emails and learning to
 delete the seventh unread.
 
+### AI summaries (with the API key)
+
+Once the `ANTHROPIC_API_KEY` repository secret exists, the week's business is
+summarised by Claude (Sonnet 5 by default), in both places:
+
+- **In the email**, each line has a one-sentence summary instead of a
+  quotation.
+- **In the Word document**, every contribution is summarised in reported
+  speech ("Francesca O'Brien MS said..."), and each notice gets a short
+  summary under its own points.
+
+Every summary is checked. If it contains a figure the speaker did not say, it
+is dropped and the speaker's own words are shown instead. Private
+individuals are never named. If the API fails, the briefing goes out
+verbatim as before. Both the email and the document say that the summaries
+are AI-written, and link to the Record for the exact words.
+
+**Cost:** each run writes its token use and cost to the run page (GitHub →
+Actions → the run → Summary), for example "AI summaries (claude-sonnet-5): 7
+call(s), 21,400 input + 3,900 output tokens, about $0.082".
+
+**Switches** (Settings → Secrets and variables → Actions → **Variables**):
+
+| Variable | Value | Effect |
+|---|---|---|
+| `WEEKLY_SUMMARIES_AI` | `off` | Back to verbatim, without removing the key |
+| `WEEKLY_SUMMARY_MODEL` | e.g. `claude-haiku-4-5` | Another model |
+| `DEBATE_SUMMARIES_AI` | `on` | Also use AI in the next-day debate emails (off by default) |
+
 ### The Word document attached
 
 In a week the Senedd sat, the email also carries a Word document, *NRLA

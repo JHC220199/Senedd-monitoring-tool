@@ -90,10 +90,13 @@ model, Claude Sonnet 5. A busy sitting week costs well under £1.
    - **Name:** `ANTHROPIC_API_KEY`
    - **Secret:** paste the key.
    - **Add secret.**
-5. That is all. The next morning's email will use AI summaries. The run log
-   says which mode it used.
+5. **Switch it on for this email.** Since 29 September 2026 the key is
+   shared with the Friday briefing, which uses it first. For the debate
+   summaries too, add a repository **variable** (Settings → Secrets and
+   variables → Actions → Variables) called `DEBATE_SUMMARIES_AI` with the
+   value `on`. The run log says which mode it used.
 
-To switch it off, delete the secret. To use a different model, add a
+To switch it off, delete that variable. To use a different model, add a
 repository **variable** or secret called `DEBATE_SUMMARY_MODEL`. The default
 works; you do not need to change it.
 
