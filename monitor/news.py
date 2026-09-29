@@ -70,7 +70,7 @@ SEEN_DAYS = 30
 # (kind, label, pattern) — first match wins, so the more specific come first.
 TRIGGERS: list[tuple[str, str, re.Pattern]] = [(k, l, re.compile(p, re.I)) for k, l, p in [
     ("defection", "Defection",
-     r"\bdefect(s|ed|ing)?\b|\bcross(es|ed)? the floor\b|"
+     r"\bdefect(s|ed|ing)\b|\bcross(es|ed)? the floor\b|"
      r"\b(joins|joined|quits|quit|leaves|left)\b.{0,40}\b(Plaid|Labour|Reform|"
      r"Conservatives?|Tories|Lib ?Dems?|Liberal Democrats|Greens?|the party)\b"),
     ("shadow_cabinet", "Shadow cabinet",
@@ -130,6 +130,23 @@ _WESTMINSTER = re.compile(r"\b(MPs?|Westminster|House of Commons|Downing Street)
 _DESCRIPTOR = re.compile(
     r"\bwho (has |had |recently )?(defected|crossed the floor|quit|resigned|left|"
     r"stood down|stepped down|was sacked|was suspended|lost the whip)\b", re.I)
+
+# A change that has not happened: asked for, threatened, or imagined.
+# "Over 3000 people sign petition demanding MSs give up their seats if they
+# defect" (Nation.Cymru, 28 September 2026) is about a petition, and was
+# alerted as a defection. Nor is "Plaid calls for minister to resign" a
+# resignation. These phrases are removed before the change words are looked
+# for, so "Minister resigns after calls to quit" still alerts on "resigns".
+# "X to stand down at the next election" is left alone: in a headline that
+# is an announcement, and it is news.
+_HYPOTHETICAL = re.compile(
+    r"\bif (they|he|she|MSs?|members?|politicians?|an MS|anyone)\b\s+"
+    r"(defect|resign|quit|leave|cross the floor|switch parties|change party)\b|"
+    r"\b(calls?|call|urges?|urged|demands?|demanded|demanding|pressure|petition|"
+    r"asks?|asked|told|tells|pushes?|pushed)\b[^.;:]{0,50}?\bto (resign|quit|stand down|"
+    r"step down|defect|leave|go)\b|"
+    r"\b(should|must|would|could|might) (resign|quit|stand down|step down|defect|"
+    r"be sacked|be suspended|lose the whip)\b", re.I)
 
 # A headline whose main verb is someone reacting — accusing, attacking,
 # defending, denying — is commentary on a change, not the change itself.
@@ -253,7 +270,9 @@ def classify(h: Headline) -> Match | None:
         return None
     if _REACTION.search(title):
         return None
-    changes = _DESCRIPTOR.sub(" ", title)
+    if title.rstrip().endswith("?"):
+        return None             # a question is speculation, not an event
+    changes = _HYPOTHETICAL.sub(" ", _DESCRIPTOR.sub(" ", title))
     for kind, label, pattern in TRIGGERS:
         if pattern.search(changes):
             return Match(headline=h, kind=kind, label=label, names=names_in(title),
