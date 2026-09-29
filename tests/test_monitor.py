@@ -4585,6 +4585,9 @@ class TestNewsCommand(unittest.TestCase):
              mock.patch("monitor.collectors.govwales.GovWalesNewsroomCollector.recent",
                         return_value=notices or []), \
              mock.patch("monitor.collectors.govwales.GovWalesRSSCollector.recent", return_value=[]), \
+             mock.patch("monitor.collectors.opinions.OpinionCollector.after",
+                        side_effect=lambda last: ([], last)), \
+             mock.patch("monitor.collectors.opinions.OpinionCollector.before", return_value=[]), \
              mock.patch.object(cli.alerts_mod, "post_to_flow", return_value=send_result) as post, \
              mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x"}), \
              contextlib.redirect_stdout(io.StringIO()):
@@ -5191,6 +5194,191 @@ class TestWeeklyWordDocument(unittest.TestCase):
         self.assertIn("out/weekly-briefing.docx", wf)
         req = (Path(__file__).resolve().parent.parent / "requirements.txt").read_text()
         self.assertIn("python-docx", req)
+
+
+# ---------------------------------------------------------------------------
+# Statement of Opinion alerts (monitor/opinions.py, collectors/opinions.py)
+# ---------------------------------------------------------------------------
+
+def _soo_member(name, area, signed=None):
+    when = f'<div class="dateSupported">Subscribed on: {signed}</div>' if signed else ""
+    return (f'<div class="memberBar"><a href="https://business.senedd.wales/mgUserInfo.aspx?UID=1">'
+            f'<img class="memberImage" src="x.jpg"/><div class="memberDetail">'
+            f'<span class="name"> {name} </span><span class="area"> {area} </span></div>'
+            f'{when}</a></div>')
+
+
+def _soo_page(number, title, tabled, points, by=("Kiera Marshall", "Caerdydd Penarth"),
+              subscribers=()):
+    body = "".join(f"<p>{p}</p>" for p in points)
+    subs = ""
+    if subscribers:
+        subs = ('<div class="itemContent__supporter-section"><h3 class="subheading">Subscribers</h3>'
+                '<div class="itemContent__supporter-section-container">'
+                + "".join(_soo_member(*m) for m in subscribers) + "</div></div>")
+    return (f'<html><body><header>Senedd Cymru</header><main><div class="itemContent">'
+            f'<h1>OPIN-2026-{number:04d} {title}</h1><span>(e)</span>'
+            f'<div>Tabled on {tabled}</div><div><p>This Senedd:</p>{body}</div>'
+            f'<div class="itemContent__supporter-section"><h3 class="subheading">Tabled By</h3>'
+            f'<div class="itemContent__supporter-section-container">{_soo_member(*by)}</div></div>'
+            f'{subs}</div></main></body></html>')
+
+
+SOO_EMPTY = "<html><body><main><div>Statement of Opinion</div></main></body></html>"
+SOO_LHA = _soo_page(544, "Local Housing Allowance", "29/09/2026", [
+    "1. Recognises that the cost of private renting is out of reach for many households in Wales.",
+    "2. Notes the specific impact that the UK Government's decision to freeze Local Housing "
+    "Allowance (LHA) for the last two years has had on devolved efforts to prevent and "
+    "resolve homelessness",
+    "3. Calls on the UK Government to commit to an increase of LHA to reflect the growing "
+    "cost of renting in Wales."])
+SOO_ABERFAN = _soo_page(540, "Remembering Aberfan, 60 years on from the disaster", "14/09/2026", [
+    "1. Notes 21 October 2026 will mark 60 years since the Aberfan disaster.",
+    "2. Pays tribute to the dignity and strength of the community."],
+    by=("Vikki Howells", "Pontypridd Cynon Merthyr"),
+    subscribers=[("Becca Martin", "Clwyd", "18/09/2026"), ("Huw Thomas", "Caerdydd Penarth", "14/09/2026")])
+SOO_SURVEY = _soo_page(414, "Provision of public Information", "03/06/2024", [
+    "1. Notes with concern the belief that all information should be provided online.",
+    "2. Further notes that the National Survey for Wales found that 10 per cent of people "
+    "in Wales do not use the internet.",
+    "3. Supports the provision of council public notices in local newspapers."])
+SOO_LEVELS = _soo_page(436, "Protection of the Gwent Levels", "05/11/2024", [
+    "1. Recognises the environmental importance of the Gwent Levels.",
+    "2. Expresses deep concern at multiple solar farm applications.",
+    "3. Calls on the Welsh Government to strengthen planning policy and protect the Levels."])
+
+
+class _SooFetcher:
+    def __init__(self, pages, fail=()):
+        self.pages, self.fail, self.calls = pages, set(fail), []
+
+    def get_text(self, url, params=None):
+        n = int(url.rstrip("/").rsplit("/", 1)[1])
+        self.calls.append(n)
+        if n in self.fail:
+            return None
+        return self.pages.get(n, SOO_EMPTY)
+
+
+class TestStatementsOfOpinion(unittest.TestCase):
+    """Camlas's "Alert - Statement of Opinion", 29 September 2026: Kiera
+    Marshall MS's statement on Local Housing Allowance (OPIN-2026-0544). The
+    Senedd's equivalent of early day motions."""
+
+    def setUp(self):
+        from monitor.morning import Marker
+        self.marker = Marker(TAX)
+
+    def test_a_statement_is_read_in_full(self):
+        from monitor.collectors.opinions import parse_opinion
+        op = parse_opinion(SOO_ABERFAN, 540)
+        self.assertEqual(op.reference, "OPIN-2026-0540")
+        self.assertEqual(op.title, "Remembering Aberfan, 60 years on from the disaster")
+        self.assertEqual(op.tabled, date(2026, 9, 14))
+        self.assertEqual(op.tabled_by.name, "Vikki Howells")
+        self.assertEqual(op.tabled_by.constituency, "Pontypridd Cynon Merthyr")
+        self.assertEqual([(m.name, m.signed) for m in op.supporters],
+                         [("Becca Martin", date(2026, 9, 18)), ("Huw Thomas", date(2026, 9, 14))])
+        self.assertEqual(op.points[0], "This Senedd:")
+        self.assertEqual(op.url, "https://record.senedd.wales/StatementOfOpinion/540")
+        self.assertIsNone(parse_opinion(SOO_EMPTY, 545), "an unused number is not a statement")
+
+    def test_new_statements_are_found_by_number(self):
+        from monitor.collectors.opinions import OpinionCollector
+        f = _SooFetcher({543: SOO_ABERFAN.replace("0540", "0543"), 544: SOO_LHA})
+        found, newest = OpinionCollector(f).after(542)
+        self.assertEqual([op.number for op in found], [543, 544])
+        self.assertEqual(newest, 544)
+        self.assertEqual(f.calls, [543, 544, 545, 546, 547, 548],
+                         "four empty pages in a row mark the end")
+
+    def test_a_page_that_cannot_be_read_stops_the_search(self):
+        """So the memory never moves past a statement nobody has seen."""
+        from monitor.collectors.opinions import OpinionCollector
+        c = OpinionCollector(_SooFetcher({544: SOO_LHA}, fail={544}))
+        found, newest = c.after(543)
+        self.assertEqual((found, newest), ([], 543))
+        self.assertTrue(c.errors)
+
+    def test_only_nrla_statements_are_alerted(self):
+        from monitor.collectors.opinions import parse_opinion
+        from monitor.opinions import relevant
+        self.assertTrue(relevant(parse_opinion(SOO_LHA, 544), self.marker))
+        self.assertFalse(relevant(parse_opinion(SOO_ABERFAN, 540), self.marker))
+        self.assertFalse(relevant(parse_opinion(SOO_SURVEY, 414), self.marker),
+                         "a housing statistic alone is context, not NRLA business")
+        self.assertFalse(relevant(parse_opinion(SOO_LEVELS, 436), self.marker),
+                         "planning with no word about homes is not NRLA business")
+
+    def test_the_first_run_learns_and_sends_nothing(self):
+        """Only statements tabled from now on are alerted (29 September 2026)."""
+        from monitor import cli
+        from monitor.collectors.opinions import parse_opinion
+        lha = parse_opinion(SOO_LHA, 544)
+        args = SimpleNamespace(taxonomy=None, test=False, send=True, remember=False,
+                               opinion_out="")
+        state = {}
+        with mock.patch("monitor.collectors.opinions.OpinionCollector.after",
+                        return_value=([lha], 544)), \
+             mock.patch.object(cli.alerts_mod, "post_to_flow", return_value=(True, "sent")) as post, \
+             contextlib.redirect_stdout(io.StringIO()):
+            code = cli._opinion_part(args, state, datetime(2026, 9, 29, 15, 0), None)
+        self.assertEqual(code, 0)
+        post.assert_not_called()
+        self.assertEqual(state["opinions_last"], 544)
+
+    def test_the_email(self):
+        from monitor.collectors.opinions import parse_opinion
+        from monitor.opinions import remember, render_opinions, last_number
+        op = parse_opinion(SOO_LHA, 544)
+        subject, body, count = render_opinions([op])
+        self.assertEqual(subject, "Statement of Opinion: Local Housing Allowance (Kiera Marshall MS)")
+        self.assertEqual(count, 1)
+        self.assertIn("OPIN-2026-0544", body)
+        self.assertIn("Kiera Marshall MS (Caerdydd Penarth)", body)
+        self.assertIn("Calls on the UK Government to commit to an increase of LHA", body)
+        self.assertIn("https://record.senedd.wales/StatementOfOpinion/544", body)
+        self.assertIn("No other Members have signed it yet.", body)
+        self.assertNotIn("This is a test", body)
+        self.assertTrue(render_opinions([op], test=True)[0].startswith("TEST — "))
+        self.assertEqual(render_opinions([]), ("", "", 0))
+        state = {}
+        remember(state, 544)
+        remember(state, 540)
+        self.assertEqual(last_number(state), 544, "the memory never goes backwards")
+
+    def test_the_hourly_run_sends_once_and_remembers(self):
+        from monitor import cli
+        from monitor.collectors.opinions import parse_opinion
+        lha = parse_opinion(SOO_LHA, 544)
+        args = SimpleNamespace(taxonomy=None, test=False, send=True, remember=False,
+                               opinion_out="")
+        state = {"opinions_last": 543}
+        with mock.patch("monitor.collectors.opinions.OpinionCollector.after",
+                        return_value=([lha], 544)), \
+             mock.patch.object(cli.alerts_mod, "post_to_flow", return_value=(True, "sent")) as post, \
+             mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x"}), \
+             contextlib.redirect_stdout(io.StringIO()):
+            code = cli._opinion_part(args, state, datetime(2026, 9, 29, 15, 0), None)
+        self.assertEqual(code, 0)
+        self.assertEqual(post.call_args[0][1],
+                         "Statement of Opinion: Local Housing Allowance (Kiera Marshall MS)")
+        self.assertEqual(state["opinions_last"], 544)
+        # A failed send is retried next hour: the memory does not move.
+        state = {"opinions_last": 543}
+        with mock.patch("monitor.collectors.opinions.OpinionCollector.after",
+                        return_value=([lha], 544)), \
+             mock.patch.object(cli.alerts_mod, "post_to_flow", return_value=(False, "HTTP 500")), \
+             mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x"}), \
+             contextlib.redirect_stdout(io.StringIO()):
+            cli._opinion_part(args, state, datetime(2026, 9, 29, 15, 0), None)
+        self.assertEqual(state["opinions_last"], 543)
+
+    def test_the_hourly_run_includes_them(self):
+        src = (Path(__file__).resolve().parent.parent / "monitor/cli.py").read_text()
+        self.assertIn("_opinion_part(args, state, now, fetcher)", src)
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/news.yml").read_text()
+        self.assertIn("out/opinions.html", wf)
 
 
 def main() -> int:
