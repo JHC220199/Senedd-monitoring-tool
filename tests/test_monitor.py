@@ -5503,6 +5503,96 @@ class TestWeeklyAISummaries(unittest.TestCase):
         wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
         self.assertIn("ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}", wf)
 
+    # Francesca O'Brien MS on the building safety statement, 22 September 2026
+    # (Record of Proceedings): in the first test with the key, her summary
+    # was dropped for "70%" and the document printed her whole speech.
+    OBRIEN = ("The Minister told this Chamber today that progress on the remediation "
+              "has not moved quickly, and I totally agree with her statement on that, "
+              "but her predecessor said much the same thing. What we've not heard, for "
+              "nine years may I add, is a satisfactory explanation for why so little has "
+              "actually been done. As of the summer this year, out of 161 private sector "
+              "buildings that developers are responsible for, only four have been fully "
+              "remediated, which is shocking. Seventy per cent have not even started work, "
+              "though most, we are told, have plans in place.\n"
+              "At Celestia in Cardiff Bay, the Welsh Government funded cladding "
+              "replacement on the social housing block to the tune of nearly £2 million. "
+              "The other seven blocks at Celestia, including private leaseholders, remain "
+              "untouched. Does the Minister accept that leaseholders have been treated "
+              "unfairly?")
+
+    def _long_review(self):
+        from monitor.collectors.record_html import Contribution
+        from monitor.weekly_review import Entry, Review
+        e = Entry(title="Statement: Building Safety Programme Update", url="https://x",
+                  meta="Plenary · Tue 22 Sep", whole=True, exchanges=[("", [
+                      Contribution(anchor="a", speaker="Sian Gwenllian", role="Cabinet Minister",
+                                   text="Thank you, Dirprwy Lywydd. Remediation has not "
+                                        "moved quickly enough for leaseholders."),
+                      Contribution(anchor="b", speaker="Francesca O'Brien", member=True,
+                                   text=self.OBRIEN),
+                      Contribution(anchor="c", speaker="Sian Gwenllian", role="Cabinet Minister",
+                                   text="Thank you, Francesca.")])])
+        return Review(week_start=date(2026, 9, 21), week_end=date(2026, 9, 25),
+                      entries=[e], sat=True), e
+
+    def test_figures_said_in_words_pass_the_check(self):
+        from monitor.debates import figures_check
+        ok = ("Francesca O'Brien MS said only 4 of 161 buildings had been remediated "
+              "after 9 years, 70% had not started, and nearly £2m had been spent on the "
+              "social housing block at Celestia while the other 7 blocks remained untouched.")
+        self.assertTrue(figures_check(ok, self.OBRIEN))
+        self.assertTrue(figures_check("£2,000,000 was spent.", self.OBRIEN))
+        self.assertFalse(figures_check("12 of 161 buildings were complete.", self.OBRIEN))
+        self.assertFalse(figures_check("75% had not started.", self.OBRIEN))
+        self.assertTrue(figures_check("21 homes", "twenty-one homes"))
+        self.assertTrue(figures_check("250 homes", "two hundred and fifty homes"))
+
+    def test_a_speech_with_no_summary_is_asked_for_again(self):
+        from monitor.weekly_ai import summarise_review
+        review, e = self._long_review()
+        post, calls = self._post([
+            ("still need a summary", self._reply({"line": "", "points": [
+                {"n": 1, "summary": "Francesca O'Brien MS said only four of 161 private "
+                 "buildings had been remediated and 70 per cent had not started."}]})),
+            ("Building Safety Programme Update", self._reply({
+                "line": "The Cabinet Minister said remediation had been too slow.",
+                "points": [{"n": 1, "summary": "The Cabinet Minister said remediation "
+                            "had not moved quickly enough."}]})),     # O'Brien left out
+        ])
+        usage = summarise_review(review, "test-key", post=post)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("Every one of them must have one", calls[1]["messages"][0]["content"])
+        self.assertIn("Seventy per cent", calls[1]["messages"][0]["content"])
+        self.assertIn("70 per cent had not started", e.ai["by"][(0, 1)])
+        self.assertEqual(usage.retried, 1)
+        self.assertEqual(usage.extracts, 0)
+        self.assertNotIn((0, 2), e.ai["by"])      # "Thank you, Francesca." is not asked again
+        self.assertIn("Summarise EVERY numbered contribution", calls[0]["system"])
+
+    def test_the_document_never_prints_a_whole_speech_when_ai_is_on(self):
+        import docx
+        from monitor.weekly_ai import summarise_review
+        from monitor.weekly_document import build_document
+        review, e = self._long_review()
+        post, _ = self._post([("still need a summary", self._Resp({}, status=500)),
+                              ("Building Safety Programme Update", self._reply({
+            "line": "", "points": [{"n": 1, "summary": "The Cabinet Minister said "
+                                    "remediation had not moved quickly enough."},
+                                   {"n": 2, "summary": "Francesca O'Brien MS said 57 "
+                                    "buildings were complete."}]}))])   # fails the check
+        with contextlib.redirect_stdout(io.StringIO()):
+            usage = summarise_review(review, "test-key", post=post)
+        self.assertEqual(usage.extracts, 1)
+        self.assertIn("left as a short extract", usage.report())
+        d = docx.Document(io.BytesIO(build_document(review, TAX, today=date(2026, 9, 25))))
+        text = "\n".join(p.text for p in d.paragraphs)
+        self.assertIn("Extract (no AI summary)", text)
+        self.assertNotIn("The other seven blocks at Celestia", text)
+        self.assertNotIn("57 buildings", text)
+        self.assertIn("Thank you, Francesca.", text)   # a short remark, as it is
+        ext = [p.text for p in d.paragraphs if p.text.startswith("Extract (no AI summary)")][0]
+        self.assertLess(len(ext.split()), 70)
+
     def test_a_past_week_can_be_tried_as_a_test(self):
         wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
         self.assertIn("week_of:", wf)
