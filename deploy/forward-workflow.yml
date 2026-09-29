@@ -37,6 +37,11 @@ on:
     - cron: "0 14 * * 5"      # 15.00 London while BST is in force
     - cron: "0 15 * * 5"      # 15.00 London while GMT is in force
   workflow_dispatch:          # run it on demand from the Actions tab
+    inputs:
+      week_of:
+        description: "TEST a past week: any date in it, e.g. 2026-09-25 (leave empty for this week)"
+        required: false
+        default: ""
 
 concurrency:
   group: senedd-forward
@@ -128,7 +133,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           WEEKLY_SUMMARIES_AI: ${{ vars.WEEKLY_SUMMARIES_AI }}
           WEEKLY_SUMMARY_MODEL: ${{ vars.WEEKLY_SUMMARY_MODEL }}
-        run: python -m monitor.cli forward --send --out out/forward.html
+          WEEK_OF: ${{ inputs.week_of }}
+        run: |
+          if [ -n "$WEEK_OF" ]; then
+            python -m monitor.cli forward --send --out out/forward.html --week-of "$WEEK_OF"
+          else
+            python -m monitor.cli forward --send --out out/forward.html
+          fi
 
       - name: Put the email on this page too
         # So that "did it go, and what was in it?" is answerable from the run
