@@ -614,6 +614,12 @@ def cmd_forward(args) -> int:
         items = _without_unverifiable_diary(
             store.query(min_score=0, limit=5000), store.last_runs(limit=1))
         today = date.today()
+        week_of = getattr(args, "week_of", "") or ""
+        if week_of:
+            # A test of a past week (29 September 2026: trying the AI
+            # summaries on the week of 21 September). The subject says TEST.
+            today = date.fromisoformat(week_of)
+            print(f"TEST: building the briefing for the week of {today:%-d %B %Y}.")
         since = (date.fromisoformat(args.new_since) if args.new_since
                  else last_friday(today))
         sections = select_business(items, tax, today=today,
@@ -655,6 +661,8 @@ def cmd_forward(args) -> int:
     finally:
         store.close()
 
+    if getattr(args, "week_of", ""):
+        subject = "TEST — " + subject
     print(f"Subject: {subject}")
     for name, rows in sections.items():
         print(f"  {len(rows):>3}  {name}")
@@ -1475,6 +1483,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="actually POST to the Power Automate flow")
     p.add_argument("--no-review", action="store_true",
                    help="future business only, without the week in review")
+    p.add_argument("--week-of", default="",
+                   help="ISO date: build the briefing for that week instead, as a "
+                        "TEST (for trying changes on a past week)")
     p.add_argument("--no-document", action="store_true",
                    help="send the email without the Word document attached")
     p.add_argument("--news-state", default="data/news-state.json",
