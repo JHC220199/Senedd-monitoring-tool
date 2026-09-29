@@ -66,15 +66,24 @@ summarised by Claude (Sonnet 5 by default), in both places:
   speech ("Francesca O'Brien MS said..."), and each notice gets a short
   summary under its own points.
 
-Every summary is checked. If it contains a figure the speaker did not say, it
-is dropped and the speaker's own words are shown instead. Private
-individuals are never named. If the API fails, the briefing goes out
+Every summary is checked. If it contains a figure the speaker did not say
+(in digits or in words: "Seventy per cent" allows "70%"), it is dropped. Any
+contribution of 40 words or more left without a summary, for that reason or
+because it came back empty, is sent again on its own. If there is still no
+summary, the document shows only its key sentence or two, marked "Extract (no
+AI summary)"; a whole speech is never printed. Short remarks without a summary
+("Thank you, Minister.") appear as they are. Private individuals are never
+named. If the API fails, the briefing goes out
 verbatim as before. Both the email and the document say that the summaries
 are AI-written, and link to the Record for the exact words.
 
 **Cost:** each run writes its token use and cost to the run page (GitHub →
 Actions → the run → Summary), for example "AI summaries (claude-sonnet-5): 7
 call(s), 21,400 input + 3,900 output tokens, about $0.082".
+
+**Trying it on a past week:** GitHub → Actions → Senedd future business
+(Friday) → **Run workflow**, and put any date from that week in **week_of**
+(for example `2026-09-25`). The email's subject starts **TEST —**.
 
 **Switches** (Settings → Secrets and variables → Actions → **Variables**):
 
