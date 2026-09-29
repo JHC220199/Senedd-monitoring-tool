@@ -4410,6 +4410,10 @@ class TestNewsAlertTriggers(unittest.TestCase):
         "Welsh Labour names new leader after members' ballot": "leadership",
         "Welsh Labour's new leader elected with 58% of the vote": "leadership",
         "Party confirms Senedd member as new Welsh Labour leader": "leadership",
+        # Still alerts: the resignation happened, whatever preceded it.
+        "Cabinet Minister resigns after calls to quit over waiting lists": "resignation",
+        "Veteran Plaid MS to stand down at next Senedd election": "resignation",
+        "Senedd member defecting to Reform UK from Welsh Conservatives": "defection",
     }
     NOT_ALERTS = [
         "Welsh Green Party leader Anthony Slaughter diagnosed with cancer",
@@ -4435,6 +4439,12 @@ class TestNewsAlertTriggers(unittest.TestCase):
         "Rebuilding Welsh Labour a marathon not a sprint, says new leader",
         "Welsh Labour's new leader sets out her priorities for the party",
         "New leader must win back voters, says former First Minister",
+        # 28 September 2026: alerted as a "Defection", wrongly. A petition
+        # about what should happen if an MS defects in future.
+        "Over 3000 people sign petition demanding MSs give up their seats if they defect",
+        "Plaid calls for Cabinet Minister to resign over waiting lists",
+        "Reform MS should resign, says Welsh Conservative leader",
+        "Should MSs who switch parties face a by-election?",
     ]
 
     def test_political_changes_alert(self):
