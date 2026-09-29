@@ -20,8 +20,11 @@ SAFEGUARDS
 ----------
   * Only the text sent is used; the instructions forbid adding anything.
   * Every summary is checked mechanically: if it contains a figure the
-    speaker did not say, it is thrown away and the verbatim extract is used
-    for that contribution instead (the same check as the debate summaries).
+    speaker did not say (in digits or in words), it is thrown away (the same
+    check as the debate summaries). A contribution of substance with no
+    summary, for that reason or because it came back empty, is asked for
+    again on its own; if there is still none, the document shows its key
+    sentence or two, marked as an extract — never the whole speech.
   * Private individuals are not named.
   * Any failure — no key, an error from the API, a reply that is not the JSON
     asked for — falls back to the verbatim version, so the email always goes.
@@ -85,9 +88,14 @@ ministers, public bodies and organisations may be named.
 other speakers by full name followed by MS ("Francesca O'Brien MS asked...").
 - "line" is ONE sentence of no more than 35 words saying what was raised or \
 announced that matters to the NRLA.
-- For contributions: one to three sentences each; up to five for a \
-minister's opening statement. Give an empty summary for a contribution that \
-is only thanks or procedure.
+- Summarise EVERY numbered contribution, including political exchanges and \
+contributions that are not about housing: one to three sentences each; up to \
+five for a minister's opening statement. Never copy a speech out. The only \
+contribution that may have an empty summary is one that is nothing but \
+thanks or procedure ("Thank you, Llywydd", calling the next speaker).
+- Write a figure either as the speaker said it or as the same number in \
+digits ("seventy per cent" or "70 per cent"). Never work out a new figure: no \
+totals, differences or percentages the speaker did not give.
 
 Reply with JSON only, no prose around it."""
 
@@ -102,6 +110,8 @@ class Usage:
     calls: int = 0
     failures: int = 0
     rejected: int = 0            # summaries dropped by the figures check
+    retried: int = 0             # contributions asked for a second time
+    extracts: int = 0            # still unsummarised: a short extract is shown
     input_tokens: int = 0
     output_tokens: int = 0
 
@@ -119,6 +129,8 @@ class Usage:
                 + (f"; {self.failures} item(s) fell back to verbatim" if self.failures else "")
                 + (f"; {self.rejected} summar{'y' if self.rejected == 1 else 'ies'} "
                    f"dropped by the figures check" if self.rejected else "")
+                + (f"; {self.retried} contribution(s) asked for again" if self.retried else "")
+                + (f"; {self.extracts} left as a short extract" if self.extracts else "")
                 + ".")
 
 
@@ -149,11 +161,19 @@ def flat_contributions(entry) -> list[tuple[tuple[int, int], object]]:
     return out
 
 
-def _debate_prompt(entry) -> tuple[str, list]:
-    flat = flat_contributions(entry)
+# A contribution this long must come back summarised; a shorter one with no
+# summary ("Thank you, Minister.") is simply printed as it is.
+MUST_SUMMARISE_WORDS = 40
+
+
+def _debate_prompt(entry, flat=None, again: bool = False) -> tuple[str, list]:
+    flat = flat_contributions(entry) if flat is None else flat
     budget = MAX_INPUT_CHARS // max(1, len(flat))
     lines = [f"Item: {entry.title}", f"Where and when: {entry.meta}",
-             ("This is the whole debate." if entry.whole else
+             ("These contributions still need a summary. Every one of them must "
+              "have one: none of them is only thanks or procedure. Leave \"line\" "
+              "empty." if again else
+              "This is the whole debate." if entry.whole else
               "These are the relevant exchanges from the item: each is a question "
               "or request and the reply to it."), ""]
     last = None
@@ -239,23 +259,24 @@ def summarise_entry(entry, api_key: str, model: str, usage: Usage, post) -> None
     if not flat:
         return
     data = _call(prompt, api_key, model, usage, post)
-    by_n = {}
-    for p in data.get("points", []) or []:
-        try:
-            n = int(p.get("n"))
-        except (TypeError, ValueError):
-            continue
-        if 1 <= n <= len(flat):
-            by_n[n] = _clean(p.get("summary"))
     ai = {"by": {}}
-    for n, (key, c) in enumerate(flat, 1):
-        s = by_n.get(n, "")
-        if not s:
-            continue
-        if figures_check(s, c.text):
-            ai["by"][key] = s
-        else:
-            usage.rejected += 1
+    _take(data, flat, ai["by"], usage)
+    # Anything of substance that came back empty, or whose summary failed the
+    # figures check, is asked for once more on its own (29 September 2026:
+    # Francesca O'Brien MS's building safety speech came back with "70%"
+    # where she said "Seventy per cent", and the FMQs exchanges came back
+    # empty, so the document printed them in full).
+    missing = [(key, c) for key, c in flat
+               if key not in ai["by"] and _words(c.text) >= MUST_SUMMARISE_WORDS]
+    if missing:
+        usage.retried += len(missing)
+        try:
+            again, _ = _debate_prompt(entry, missing, again=True)
+            _take(_call(again, api_key, model, usage, post), missing, ai["by"], usage)
+        except Exception as exc:            # noqa: BLE001 — the first pass stands
+            print(f"  second AI pass failed for {entry.title[:60]!r}: {exc}")
+    usage.extracts += sum(1 for key, c in flat
+                          if key not in ai["by"] and _words(c.text) >= MUST_SUMMARISE_WORDS)
     line = _clean(data.get("line"))
     everything = "\n".join([entry.title] + [c.text for _k, c in flat])
     if line and figures_check(line, everything):
@@ -265,6 +286,26 @@ def summarise_entry(entry, api_key: str, model: str, usage: Usage, post) -> None
     entry.ai = ai
 
 
+def _take(data: dict, flat: list, by: dict, usage: Usage) -> None:
+    """Put the checked summaries from a reply into ``by``."""
+    by_n = {}
+    for p in data.get("points", []) or []:
+        try:
+            n = int(p.get("n"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if 1 <= n <= len(flat):
+            by_n[n] = _clean(p.get("summary"))
+    for n, (key, c) in enumerate(flat, 1):
+        s = by_n.get(n, "")
+        if not s:
+            continue
+        if figures_check(s, c.text):
+            by[key] = s
+        else:
+            usage.rejected += 1
+
+
 def summarise_review(review, api_key: str, model: str = "", post=None) -> Usage:
     """Summarise every entry of the week in review, in place."""
     import requests
@@ -272,11 +313,14 @@ def summarise_review(review, api_key: str, model: str = "", post=None) -> Usage:
     post = post or requests.post
     usage = Usage(model=model or DEFAULT_MODEL)
     for entry in review.entries:
-        try:
-            summarise_entry(entry, api_key, usage.model, usage, post)
-        except Exception as exc:            # noqa: BLE001 — any failure falls back
-            usage.failures += 1
-            entry.ai = {}
-            print(f"  AI summary unavailable for {entry.title[:60]!r}: {exc}")
+        for attempt in (1, 2):              # a passing API error is tried again
+            try:
+                summarise_entry(entry, api_key, usage.model, usage, post)
+                break
+            except Exception as exc:        # noqa: BLE001 — any failure falls back
+                entry.ai = {}
+                if attempt == 2:
+                    usage.failures += 1
+                    print(f"  AI summary unavailable for {entry.title[:60]!r}: {exc}")
     review.ai_model = usage.model if any(e.ai for e in review.entries) else ""
     return usage

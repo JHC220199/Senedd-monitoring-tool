@@ -37,6 +37,8 @@ import re
 from datetime import date
 
 from .relevance import Taxonomy, find_terms
+from .debates import key_sentences
+from .weekly_ai import MUST_SUMMARISE_WORDS
 
 DARK_BLUE = "113B54"
 ORANGE = "E96C19"
@@ -387,6 +389,7 @@ def _debate(d: _Doc, e, tax: Taxonomy) -> None:
     if e.whole and e.exchanges and e.exchanges[0][1]:
         lead_speaker = e.exchanges[0][1][0].speaker
     last_heading = None
+    ai_on = "by" in (e.ai or {})
     by = (e.ai or {}).get("by", {})
     for x, (heading, contribs) in enumerate(e.exchanges):
         if heading and heading != last_heading and heading not in e.title:
@@ -395,13 +398,19 @@ def _debate(d: _Doc, e, tax: Taxonomy) -> None:
         for y, c in enumerate(contribs):
             if _words(c.text) < 3:
                 continue            # "Diolch." — procedure, not substance
+            extract = False
             if (x, y) in by:
                 paras = [by[(x, y)]]          # Claude's summary, checked
-            elif by:
-                # The AI left this one out as thanks or procedure, or its
-                # summary failed the figures check: the speaker's own words.
-                paras = excerpt(c.text, tax, FULL_WORDS_EXCHANGE if not e.whole
-                                else FULL_WORDS_DEBATE, CAP_WORDS)
+            elif ai_on:
+                # No summary even after a second try. A short remark is
+                # printed as it is; a speech never is — only its key sentence
+                # or two, marked as an extract (29 September 2026: "I don't
+                # want full speeches in there").
+                if _words(c.text) < MUST_SUMMARISE_WORDS:
+                    paras = excerpt(c.text, tax, MUST_SUMMARISE_WORDS, MUST_SUMMARISE_WORDS)
+                else:
+                    key = key_sentences(c, tax)
+                    paras, extract = ([key], True) if key else ([], False)
             elif e.whole:
                 lead = c.speaker == lead_speaker and c is contribs[0]
                 paras = excerpt(c.text, tax, FULL_WORDS_DEBATE,
@@ -419,8 +428,13 @@ def _debate(d: _Doc, e, tax: Taxonomy) -> None:
             if c.role:
                 d.muted(who, f"  {c.role}")
             for i, text in enumerate(paras):
-                p = d.para(text, colour=MUTED if text == CUT else None,
-                           after=3, indent_cm=0.35)
+                if extract:
+                    p = d.para(after=3, indent_cm=0.35)
+                    d.muted(p, "Extract (no AI summary): ")
+                    p.add_run(f"“{text}”")
+                else:
+                    p = d.para(text, colour=MUTED if text == CUT else None,
+                               after=3, indent_cm=0.35)
                 _border_left(p)
                 if i < len(paras) - 1:
                     p.paragraph_format.keep_with_next = False

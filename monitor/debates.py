@@ -399,15 +399,99 @@ def _numbers(text: str) -> set[str]:
     return out
 
 
+_UNITS = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve "
+    "thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split())}
+_TENS = {w: 10 * i for i, w in enumerate(
+    "_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()) if w != "_"}
+_ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+             "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10,
+             "eleventh": 11, "twelfth": 12, "twentieth": 20, "thirtieth": 30,
+             "hundredth": 100}
+_SCALES = {"hundred": 100, "thousand": 1000, "million": 1_000_000,
+           "billion": 1_000_000_000}
+_NUMBER_WORD = re.compile(
+    r"\b(?:" + "|".join(sorted(list(_UNITS) + list(_TENS) + list(_SCALES) + ["a", "and"],
+                                key=len, reverse=True))
+    + r")(?:[\s-]+(?:" + "|".join(sorted(list(_UNITS) + list(_TENS) + list(_SCALES)
+                                         + ["and"], key=len, reverse=True))
+    + r"))*\b", re.I)
+
+
+def _words_value(words: list[str]) -> int | None:
+    total = current = 0
+    seen = False
+    for w in words:
+        if w in ("and", "a"):
+            if w == "a":
+                current = max(current, 1)
+            continue
+        if w in _UNITS:
+            current += _UNITS[w]
+        elif w in _TENS:
+            current += _TENS[w]
+        elif w == "hundred":
+            current = max(current, 1) * 100
+        elif w in _SCALES:
+            total += max(current, 1) * _SCALES[w]
+            current = 0
+        else:
+            return None
+        seen = True
+    return total + current if seen else None
+
+
+def _word_numbers(text: str) -> set[str]:
+    """Numbers the speaker said in words, as digits: "Seventy per cent" gives
+    70, "four of 161" gives 4, "two and a half thousand" gives 2 and 1000s
+    of its parts. The Record writes out numbers under a hundred and many
+    round ones, so a faithful summary that writes "70%" must pass."""
+    out: set[str] = set()
+    for m in _NUMBER_WORD.finditer(text or ""):
+        words = [w.lower() for w in re.split(r"[\s-]+", m.group(0)) if w]
+        while words and words[0] in ("a", "and"):
+            words = words[1:]
+        while words and words[-1] in ("a", "and"):
+            words = words[:-1]
+        if not words:
+            continue
+        v = _words_value(words)
+        if v is not None:
+            out.add(str(v))
+        for w in words:                    # each part on its own as well
+            v = _UNITS.get(w, _TENS.get(w))
+            if v is not None:
+                out.add(str(v))
+    for w in re.findall(r"[a-z]+", (text or "").lower()):
+        if w in _ORDINALS:
+            out.add(str(_ORDINALS[w]))
+    # "a half" / "half" appear as 0.5 or 50%
+    if re.search(r"\bhalf\b", text or "", re.I):
+        out.update({"50", "0.5"})
+    if re.search(r"\bquarter\b", text or "", re.I):
+        out.update({"25", "0.25"})
+    return out
+
+
 def figures_check(summary: str, source: str) -> bool:
     """True when every figure in the summary appears in the source.
 
     Numbers are where a paraphrase does the most damage — a wrong figure in a
     briefing gets repeated — and they are the one thing that can be checked
-    mechanically. Numbers written as words ("three") are allowed through in
-    both directions; this catches a figure appearing from nowhere.
+    mechanically. A figure the speaker said in words counts ("Seventy per
+    cent" allows 70%); this catches a figure appearing from nowhere.
     """
-    return _numbers(summary) <= _numbers(source)
+    have = _numbers(source) | _word_numbers(source)
+    # "£2 million" may be summarised as "£2m" or as "£2,000,000".
+    for m in re.finditer(r"(\d[\d,.]*)\s*(thousand|million|billion|bn|m)\b", source or "", re.I):
+        base = m.group(1).replace(",", "").rstrip(".")
+        mult = {"thousand": 1000, "million": 1_000_000, "m": 1_000_000,
+                "billion": 1_000_000_000, "bn": 1_000_000_000}[m.group(2).lower()]
+        try:
+            have.add(str(int(round(float(base) * mult))))
+        except ValueError:
+            pass
+    return _numbers(summary) <= have
 
 
 def _prompt(debate: Debate) -> tuple[str, list[Contribution]]:
