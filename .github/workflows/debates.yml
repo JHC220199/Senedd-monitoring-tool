@@ -16,9 +16,15 @@
 #   day in September 2026 (see morning.yml).
 #
 # HOW IT IS SUMMARISED
-#   With the ANTHROPIC_API_KEY secret: AI summaries (Claude), figures checked
-#   against the speaker's words. Without it: each speaker's most relevant
-#   sentences, verbatim. The secret is optional; everything works without it.
+#   With the ANTHROPIC_API_KEY secret: AI summaries (Claude), one sentence of
+#   30 words or fewer per speaker, figures checked against the speaker's
+#   words. Without it, or with the repository variable DEBATE_SUMMARIES_AI set
+#   to "off": each speaker's most relevant sentences, verbatim.
+#
+# TESTING ON A PAST SITTING
+#   Actions → Senedd debate summaries → Run workflow, with the sitting's date
+#   in "TEST a past sitting". The email is marked TEST and nothing is recorded
+#   as done, so the next morning's run is unaffected.
 #
 # WHY IT CAN WRITE TO THE REPOSITORY
 #   To remember which meetings it has done (data/debates-sent.json), so a
@@ -32,6 +38,11 @@ on:
     workflows: ["Senedd morning briefing"]
     types: [completed]
   workflow_dispatch:
+    inputs:
+      test_sitting:
+        description: "TEST a past sitting: its date, e.g. 2026-09-29 (leave empty for a normal run)"
+        required: false
+        default: ""
 
 concurrency:
   group: senedd-debates
@@ -73,7 +84,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DEBATE_SUMMARY_MODEL: ${{ vars.DEBATE_SUMMARY_MODEL }}
           DEBATE_SUMMARIES_AI: ${{ vars.DEBATE_SUMMARIES_AI }}
-        run: python -m monitor.cli debates --send --out out/debates.html
+          TEST_SITTING: ${{ inputs.test_sitting }}
+        run: |
+          if [ -n "$TEST_SITTING" ]; then
+            python -m monitor.cli debates --send --out out/debates.html --test-sitting "$TEST_SITTING"
+          else
+            python -m monitor.cli debates --send --out out/debates.html
+          fi
 
       - name: Remember which meetings are done
         run: |
