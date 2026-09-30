@@ -1698,9 +1698,10 @@ class TestHostedSite(unittest.TestCase):
         self.assertNotIn("Not everything is being monitored", page)
 
     def test_no_priority_ratings_are_shown(self):
-        """The operator does not want the tool ranking importance: "we don't
-        need a rating from the tool on how important each identified part is"
-        (12 Aug 2026). Deadlines convey urgency; a Critical badge does not."""
+        """No scores: "we don't need a rating from the tool on how important
+        each identified part is" (12 Aug 2026). Since 30 September 2026 the
+        directorate wants a simple "Priority" marker on core business — but
+        still never a Critical/High/Medium rating."""
         hot = make_item("rent controls in the private rented sector "
                         "eviction Renting Homes (Wales) Act Rent Smart Wales",
                         title="Consultation: rent controls",
@@ -1869,6 +1870,64 @@ class TestHostedSite(unittest.TestCase):
         page = self._page([wq, oq])
         self.assertNotIn("WQ99999", page)
         self.assertIn("OQ88888", page)
+
+    def test_what_matters_most_is_at_the_top(self):
+        """30 September 2026: "too hard to decipher and see what actually is
+        most important to the NRLA". Priorities first, a Priority marker on
+        core business, passing matches folded away, the last 30 days by
+        default."""
+        core = make_item("rent controls in the private rented sector, and "
+                         "evictions under the Renting Homes (Wales) Act",
+                         title="Statement: Reform of the private rented sector "
+                               "and renting homes",
+                         source_kind="written_statement")
+        core.item_date = date.today() - timedelta(days=3)
+        passing = make_item("houses in multiple occupation were mentioned once",
+                            title="Member Debate: Ophthalmology services",
+                            source_kind="plenary_transcript")
+        passing.item_date = date.today() - timedelta(days=3)
+        passing.band = "Low"
+        cons = make_item("We want your views on rent controls in the private "
+                         "rented sector. How to respond Consultation ends: 16 "
+                         "October 2026 Consultation launched: 10 August 2026 "
+                         "Consultation description We are consulting on: rent data.",
+                         title="Consultation: rent data and the private rented sector",
+                         source_kind="consultation")
+        cons.deadline = date.today() + timedelta(days=16)
+        page = self._page([core, passing, cons])
+        body = page.split("<script>")[0]
+        self.assertIn("What matters now", body)
+        self.assertLess(body.index('id="now"'), body.index('id="consultations"'))
+        self.assertIn('<span class="flag">Priority</span>', body)
+        now = body[body.index('id="now"'):body.index('id="consultations"')]
+        self.assertIn("Reform of the private rented sector", now)
+        self.assertIn("rent data and the private rented sector", now)
+        self.assertNotIn("Ophthalmology", now)
+        # The passing match is still on the page, folded away, not deleted.
+        row = body[body.index("Ophthalmology") - 400:body.index("Ophthalmology")]
+        self.assertIn('data-l="background" class="bg"', row)
+        # Consultation page furniture is gone from the excerpt.
+        self.assertNotIn("How to respond", body)
+        self.assertNotIn("Consultation launched", body)
+        self.assertIn("consulting on: rent data", body)
+        # Dated rows carry their date for the 30-day filter, and issues for
+        # the issue filter.
+        self.assertIn(f'data-d="{core.item_date.isoformat()}"', body)
+        self.assertIn('data-i="renting', body)
+        self.assertIn('data-days="30"', body)
+
+    def test_a_press_release_published_twice_is_listed_once(self):
+        a = make_item("Welsh Government to fund interim alarm measures for "
+                      "leaseholders in the private rented sector",
+                      title="Welsh Government to fund interim alarm measures",
+                      source_kind="press_release", url="https://gov.wales/a")
+        b = make_item("Welsh Government to fund interim alarm measures for "
+                      "leaseholders in the private rented sector, with more",
+                      title="Welsh Government to fund interim alarm measures",
+                      source_kind="press_release", url="https://gov.wales/b")
+        body = self._page([a, b]).split("<script>")[0]
+        section = body[body.index('id="statements"'):]
+        self.assertEqual(section.count("Welsh Government to fund interim alarm measures<"), 1)
 
     def test_titles_with_quotes_cannot_break_the_page(self):
         from monitor.site import render_site
