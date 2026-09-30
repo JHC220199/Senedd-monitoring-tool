@@ -137,12 +137,12 @@ _21 further items in the full dashboard._
 - **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
 - **30 September 2026** — [Equality, Human Rights and Social Justice Committee — 30 September 2026, 09.45](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16248)
 - **30 September 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 30 September 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16234)
+- **30 September 2026** — [Equality, Human Rights and Social Justice Committee — 30 September 2026, 09.45](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16248)
 - **01 October 2026** — [Local Government, Housing and Planning Committee — 1 October 2026, 09.15](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16305)
 - **01 October 2026** — [Finance Committee — 1 October 2026, 09.15](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16294)
 - **01 October 2026** — [Local Government, Housing and Planning Committee — 01 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16305)
 - **01 October 2026** — [Finance Committee — 01 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16294)
-- **05 October 2026** — [Legislation Committee — 05 October 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16302)
 
 ---
 
-<sub>170 items scored from 1130 collected records, 30 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>171 items scored from 1131 collected records, 30 September 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
