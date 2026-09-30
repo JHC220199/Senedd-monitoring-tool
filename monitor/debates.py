@@ -364,9 +364,17 @@ note: neutral, British English, past tense.
 Rules:
 - Use ONLY what is in the text you are given. Add no facts, context, figures, \
 dates, party labels or opinions of your own. If you are unsure, leave it out.
-- One or two sentences per contribution. The opening statement of a minister \
-may have up to four. Keep figures, commitments, dates and named policies \
-exactly as the speaker gave them.
+- Summarise EVERY numbered contribution, including political exchanges and \
+contributions that are not about housing. Be brief: each summary is ONE \
+sentence of no more than 30 words, giving only the speaker's main point or \
+question and any commitment or figure that matters to the NRLA. A \
+contribution marked (opening statement) may have up to two sentences and 50 \
+words. Leave out background, examples, anecdotes, thanks and rhetoric. Never \
+copy a speech out.
+- Keep commitments, dates and named policies as the speaker gave them. Write \
+a figure either as the speaker said it or as the same number in digits \
+("seventy per cent" or "70 per cent"). Never work out a new figure: no \
+totals, differences or percentages the speaker did not give.
 - Give most space to anything touching housing, the private rented sector, \
 landlords, renters, building safety, homelessness, property taxation and \
 local authority enforcement.
@@ -375,10 +383,12 @@ company employees. Describe them generically ("a resident in Cardiff"). \
 Members, ministers, public bodies and companies may be named.
 - Refer to a minister by title ("The Cabinet Minister said..."), and to other \
 speakers by name without "MS" (the email adds it).
-- Skip contributions that are only thanks or procedure by returning an empty \
-summary for them.
-- "overview" is one sentence saying what the item was about. Leave it empty \
-if the item is a set of unrelated questions or requests.
+- The only contribution that may have an empty summary is one that is \
+nothing but thanks or procedure ("Thank you, Llywydd", calling the next \
+speaker).
+- "overview" is one sentence of no more than 30 words saying what the item \
+was about. Leave it empty if the item is a set of unrelated questions or \
+requests.
 
 Reply with JSON only, no prose around it, in exactly this shape:
 {"overview": "...", "points": [{"n": 1, "summary": "..."}, ...]}"""
@@ -494,24 +504,46 @@ def figures_check(summary: str, source: str) -> bool:
     return _numbers(summary) <= have
 
 
-def _prompt(debate: Debate) -> tuple[str, list[Contribution]]:
+# A contribution this long must come back summarised (asked for a second
+# time if need be); a shorter one with no summary is thanks or procedure.
+MUST_SUMMARISE_WORDS = 40
+WORDS_POINT = 30
+WORDS_OPENING = 50
+
+
+def _is_opening(debate: Debate, index: int, c: Contribution) -> bool:
+    """A minister's first contribution to a whole debate or statement."""
+    return debate.whole and index == 0 and bool(_MINISTERIAL.search(c.role or ""))
+
+
+def _prompt(debate: Debate, only: list[int] | None = None,
+            again: bool = False) -> tuple[str, list[Contribution]]:
+    """The prompt, and the contributions it numbers. ``only`` limits it to
+    those positions (for the second pass)."""
     flat = [c for ex in debate.exchanges for c in ex.contributions]
-    budget = MAX_INPUT_CHARS // max(1, len(flat))
+    picks = list(range(len(flat))) if only is None else only
+    budget = MAX_INPUT_CHARS // max(1, len(picks))
     lines = [f"Meeting: {debate.record.forum}",
              f"Agenda item: {debate.title}",
-             ("This is the whole debate." if debate.whole else
+             ("These contributions still need a summary. Every one of them must "
+              "have one, no longer than the rules allow (one sentence, 30 words at "
+              "most): none of them is only thanks or procedure. Leave \"overview\" "
+              "empty." if again else
+              "This is the whole debate." if debate.whole else
               "These are selected exchanges from the item; each is a question "
               "or request and the reply to it."), ""]
     last_heading = None
-    for n, c in enumerate(flat, 1):
+    for n, i in enumerate(picks, 1):
+        c = flat[i]
         heading = next((ex.heading for ex in debate.exchanges if c in ex.contributions), "")
         if heading and heading != last_heading:
             lines.append(f"[Question: {heading}]")
             last_heading = heading
         who = c.speaker + (f" ({c.role})" if c.role else "")
+        mark = " (opening statement)" if _is_opening(debate, i, c) else ""
         text = c.text if len(c.text) <= budget else c.text[:budget] + " …"
-        lines.append(f"{n}. {who}:\n{text}\n")
-    return "\n".join(lines), flat
+        lines.append(f"{n}. {who}{mark}:\n{text}\n")
+    return "\n".join(lines), [flat[i] for i in picks]
 
 
 def _parse_json(text: str) -> dict | None:
@@ -525,85 +557,147 @@ def _parse_json(text: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def _ask(prompt: str, api_key: str, model: str, post, usage) -> dict:
+    resp = post(API_URL, timeout=180, headers={
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }, json={
+        "model": model or DEFAULT_MODEL,
+        "max_tokens": 4000,
+        "system": SYSTEM_PROMPT,
+        "messages": [{"role": "user", "content": prompt}],
+    })
+    if usage is not None:
+        usage.calls += 1
+    if resp.status_code != 200:
+        raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:300]}")
+    body = resp.json()
+    if usage is not None:
+        u = body.get("usage") or {}
+        usage.input_tokens += int(u.get("input_tokens") or 0) + \
+            int(u.get("cache_creation_input_tokens") or 0) + \
+            int(u.get("cache_read_input_tokens") or 0)
+        usage.output_tokens += int(u.get("output_tokens") or 0)
+    text = "".join(part.get("text", "") for part in body.get("content", [])
+                   if part.get("type") == "text")
+    data = _parse_json(text)
+    if data is None:
+        raise RuntimeError("the reply was not the JSON asked for")
+    return data
+
+
+def _by_n(data: dict, count: int) -> dict[int, str]:
+    out: dict[int, str] = {}
+    for p in data.get("points", []) or []:
+        try:
+            n = int(p.get("n"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if 1 <= n <= count:
+            out[n] = re.sub(r"\s+", " ", str(p.get("summary") or "")).strip()
+    return out
+
+
 def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
-                 model: str = "", post=None) -> Debate:
-    """Claude's summary, checked; any contribution that fails the check, or a
-    debate the call fails on entirely, falls back to key sentences."""
+                 model: str = "", post=None, usage=None) -> Debate:
+    """Claude's summary of every contribution, short and checked.
+
+    Every summary must pass the figures check and fit the length limit (one
+    sentence of 30 words; 50 for a minister's opening statement — the
+    directorate's limits for the Friday document, 1 October 2026). Anything
+    of substance left without one is asked for once more on its own; only if
+    that fails too are the speaker's key sentences shown, marked as quotes.
+    If the call fails entirely, the whole email falls back to key sentences.
+    """
     import requests
+    from .weekly_ai import fit
 
     post = post or requests.post
     prompt, flat = _prompt(debate)
     try:
-        resp = post(API_URL, timeout=180, headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        }, json={
-            "model": model or DEFAULT_MODEL,
-            "max_tokens": 4000,
-            "system": SYSTEM_PROMPT,
-            "messages": [{"role": "user", "content": prompt}],
-        })
-        if resp.status_code != 200:
-            raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:300]}")
-        text = "".join(part.get("text", "") for part in resp.json().get("content", [])
-                       if part.get("type") == "text")
-        data = _parse_json(text)
-        if data is None:
-            raise RuntimeError("the reply was not the JSON asked for")
+        data = _ask(prompt, api_key, model, post, usage)
     except Exception as exc:                    # noqa: BLE001 — any failure falls back
         summarise_verbatim(debate, tax)
         debate.overview = ""
         debate.notes = [f"AI summary unavailable ({exc}); key sentences shown instead."]
+        if usage is not None:
+            usage.failures += 1
         return debate
-
-    by_n: dict[int, str] = {}
-    for p in data.get("points", []) or []:
-        try:
-            n = int(p.get("n"))
-        except (TypeError, ValueError):
-            continue
-        if 1 <= n <= len(flat):
-            by_n[n] = re.sub(r"\s+", " ", str(p.get("summary") or "")).strip()
 
     source_all = "\n".join(c.text for c in flat)
     overview = re.sub(r"\s+", " ", str(data.get("overview") or "")).strip()
-    debate.overview = overview if figures_check(overview, source_all) else ""
+    debate.overview = (fit(overview, WORDS_POINT) or "") \
+        if overview and figures_check(overview, source_all) else ""
+
+    got: dict[int, str] = {}
+    failed: set[int] = set()        # a summary came back but could not be used
+
+    def take(reply: dict, picks: list[int], last_try: bool) -> None:
+        for n, s in _by_n(reply, len(picks)).items():
+            i = picks[n - 1]
+            c = flat[i]
+            if not s:
+                continue
+            if not figures_check(s, c.text):
+                failed.add(i)
+                if usage is not None:
+                    usage.rejected += 1
+                continue
+            cap = WORDS_OPENING if _is_opening(debate, i, c) else WORDS_POINT
+            short = fit(s, cap) or (s if last_try else "")
+            if short:
+                got[i] = short
+                failed.discard(i)
+            else:
+                failed.add(i)
+                if usage is not None:
+                    usage.too_long += 1
+
+    take(data, list(range(len(flat))), last_try=False)
+    missing = [i for i, c in enumerate(flat) if i not in got
+               and (i in failed or len(c.text.split()) >= MUST_SUMMARISE_WORDS)]
+    if missing:
+        if usage is not None:
+            usage.retried += len(missing)
+        try:
+            again, _ = _prompt(debate, missing, again=True)
+            take(_ask(again, api_key, model, post, usage), missing, last_try=True)
+        except Exception as exc:                # noqa: BLE001 — the first pass stands
+            print(f"  second AI pass failed for {debate.title[:60]!r}: {exc}")
 
     debate.mode = "ai"
     debate.points = []
-    rejected = 0
-    n = 0
+    quoted = 0
+    i = 0
     for ex in debate.exchanges:
         row = []
         for c in ex.contributions:
-            n += 1
-            summary = by_n.get(n, "")
-            if not summary:
-                continue            # thanks or procedure, as instructed
-            if figures_check(summary, c.text):
-                row.append(Point(contribution=c, summary=summary))
-            else:
-                rejected += 1
+            if i in got:
+                row.append(Point(contribution=c, summary=got[i]))
+            elif i in failed or len(c.text.split()) >= MUST_SUMMARISE_WORDS:
                 fallback = key_sentences(c, tax)
                 if fallback:
+                    quoted += 1
                     row.append(Point(contribution=c, summary=fallback, verbatim=True))
+            # else: thanks or procedure, left out as instructed
+            i += 1
         debate.points.append(row)
-    if rejected:
-        debate.notes = [f"{rejected} AI summar{'y' if rejected == 1 else 'ies'} "
-                        f"quoted a figure not found in the speaker's words and "
-                        f"{'was' if rejected == 1 else 'were'} replaced by the "
-                        f"speaker's own sentences."]
+    if usage is not None:
+        usage.extracts += quoted
+    debate.notes = ([f"{quoted} contribution{'s' if quoted != 1 else ''} could not be "
+                     f"summarised and {'are' if quoted != 1 else 'is'} shown as the "
+                     f"speaker's own sentences, in quotation marks."] if quoted else [])
     return debate
 
 
 def summarise(debates: list[Debate], tax: Taxonomy,
-              api_key: str | None = None, model: str = "") -> list[Debate]:
+              api_key: str | None = None, model: str = "", usage=None) -> list[Debate]:
     key = api_key if api_key is not None else os.environ.get("ANTHROPIC_API_KEY", "")
     model = model or os.environ.get("DEBATE_SUMMARY_MODEL", "")
     for d in debates:
         if key:
-            summarise_ai(d, tax, key, model)
+            summarise_ai(d, tax, key, model, usage=usage)
         else:
             summarise_verbatim(d, tax)
     return [d for d in debates if any(d.points)]

@@ -834,6 +834,15 @@ def cmd_debates(args) -> int:
     fetcher = Fetcher(min_interval=args.interval)
     state = load_state(args.state)
     done = set(state["meetings"])
+    # A test on a past sitting: that day's meetings only, done or not, marked
+    # TEST, and nothing remembered, so the next real run is unaffected.
+    test_day = date.fromisoformat(args.test_sitting) if getattr(
+        args, "test_sitting", "") else None
+    if test_day:
+        today, done = test_day + timedelta(days=1), set()
+        args.lookback = 1
+        print(f"TEST: the meetings of {test_day:%a %-d %B %Y} only; nothing is "
+              f"recorded as done.")
 
     tv = SeneddTVScheduleCollector(fetcher)
     tv.schedule()
@@ -841,8 +850,11 @@ def cmd_debates(args) -> int:
     recent = [tv.fill(m) for m in recent
               if m.when and m.when < today and (today - m.when).days <= args.lookback]
     listing = RecordTranscriptCollector(fetcher, taxonomy=tax).list_meetings()
-    todo = candidates(recent, listing, today, done, state_baseline(state),
+    todo = candidates(recent, listing, today, done,
+                      None if test_day else state_baseline(state),
                       lookback=args.lookback)
+    if test_day:
+        todo = [c for c in todo if c.when == test_day]
     if not todo:
         print("No meetings waiting to be summarised — nothing to do.")
         return 0
@@ -869,20 +881,28 @@ def cmd_debates(args) -> int:
     for err in tv.errors + pages.errors:
         print(f"  note: {err}")
 
-    # AI summaries for this email are switched on separately from the key:
-    # the directorate is trying the key on the Friday briefing first
-    # (29 September 2026). Set the repository variable DEBATE_SUMMARIES_AI
-    # to "on" to use it here too.
-    api_key = (os.environ.get("ANTHROPIC_API_KEY", "")
-               if os.environ.get("DEBATE_SUMMARIES_AI", "").strip().lower() == "on" else "")
+    # AI summaries whenever the key is there (the directorate's choice, 30
+    # September 2026, after trying it on the Friday briefing). The repository
+    # variable DEBATE_SUMMARIES_AI=off goes back to key sentences without
+    # removing the key.
+    from .weekly_ai import Usage
+    api_key = ("" if os.environ.get("DEBATE_SUMMARIES_AI", "").strip().lower() == "off"
+               else os.environ.get("ANTHROPIC_API_KEY", "").strip())
+    model = os.environ.get("DEBATE_SUMMARY_MODEL", "").strip()
+    usage = Usage(model=model or "claude-sonnet-5")
     print(f"Summarising {len(found)} item(s) with "
           f"{'AI summaries (Claude)' if api_key else 'key sentences (no API key set)'}")
-    debates = summarise(found, tax, api_key=api_key)
+    debates = summarise(found, tax, api_key=api_key, model=model, usage=usage)
+    if api_key and usage.calls:
+        print(usage.report())
+        _summary_note("NOTE", usage.report())
 
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     page_url = (f"https://{repo.split('/')[0].lower()}.github.io/"
                 f"{repo.split('/')[1]}/") if "/" in repo else ""
     subject, html_body, count = render_debates(debates, pending, page_url=page_url)
+    if count and test_day:
+        subject = "TEST — " + subject
     if count:
         print(f"Subject: {subject}")
         if args.out:
@@ -901,7 +921,9 @@ def cmd_debates(args) -> int:
 
     # Remember a meeting only once its summary has gone (or there was nothing
     # to send). If the email failed, tomorrow's run tries the same meetings.
-    if args.send and (sent or count == 0) or args.remember:
+    if test_day:
+        print("TEST: nothing recorded as done.")
+    elif args.send and (sent or count == 0) or args.remember:
         state["meetings"].update(finished)
         save_state(state, today, args.state)
         print(f"Recorded {len(finished)} meeting(s) as done in {args.state}")
@@ -1516,6 +1538,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="days back to look for meetings")
     p.add_argument("--remember", action="store_true",
                    help="record the meetings as done even without --send")
+    p.add_argument("--test-sitting", default="",
+                   help="ISO date of a past sitting to summarise again as a test "
+                        "(subject marked TEST; nothing recorded as done)")
     p.add_argument("--send", action="store_true",
                    help="actually POST to the Power Automate flow")
     p.set_defaults(func=cmd_debates)
