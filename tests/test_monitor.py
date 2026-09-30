@@ -4145,6 +4145,58 @@ class TestDebateSummaries(unittest.TestCase):
         self.assertTrue(all(p.verbatim for row in d.points for p in row))
         self.assertIn("unavailable", d.notes[0])
 
+    def test_ai_summaries_are_short_and_a_missing_one_is_asked_for_again(self):
+        """30 September 2026: the debate email uses the Friday document's
+        limits — one sentence, 30 words at most."""
+        import json as _json
+        from monitor.debates import WORDS_POINT, summarise_ai
+        from monitor.weekly_ai import Usage
+        from monitor.collectors.record_html import Contribution
+        d = self.statement
+        long = ("Only four of 161 private buildings have been remediated, and "
+                "seventy per cent have not started. " * 3).strip()
+        d.exchanges[0].contributions[1] = Contribution(
+            anchor="C2", speaker="Francesca O'Brien", member=True, text=long)
+        replies = []
+
+        class Resp:
+            status_code = 200
+            text = ""
+
+            def __init__(self, payload):
+                self.payload = payload
+
+            def json(self):
+                return {"content": [{"type": "text", "text": _json.dumps(self.payload)}],
+                        "usage": {"input_tokens": 1000, "output_tokens": 100}}
+
+        def post(url, **kw):
+            prompt = kw["json"]["messages"][0]["content"]
+            replies.append(prompt)
+            if "still need a summary" in prompt:
+                return Resp({"overview": "", "points": [{"n": 1, "summary":
+                             "Francesca O'Brien said only four of 161 buildings had been "
+                             "remediated and 70 per cent had not started."}]})
+            return Resp({"overview": "An update on building safety.", "points": [
+                {"n": 1, "summary": "The Cabinet Minister said remediation had not moved "
+                 "quickly enough. She said the alarm grant would open soon. She thanked "
+                 "leaseholders for their patience over many difficult years."},
+                {"n": 2, "summary": ""}]})
+
+        usage = Usage()
+        summarise_ai(d, TAX, "key", post=post, usage=usage)
+        self.assertEqual(len(replies), 2)
+        self.assertIn("(opening statement)", replies[0])
+        points = d.points[0]
+        self.assertTrue(all(not p.verbatim for p in points))
+        self.assertIn("70 per cent", points[1].summary)
+        for p in points:
+            self.assertLessEqual(len(p.summary.split()), 50)
+        self.assertLessEqual(len(points[1].summary.split()), WORDS_POINT)
+        self.assertEqual(usage.calls, 2)
+        self.assertEqual(usage.retried, 1)
+        self.assertIn("about $", usage.report())
+
     def test_without_a_key_nothing_leaves_the_runner(self):
         from monitor import debates as mod
         with mock.patch.object(mod, "summarise_ai", side_effect=AssertionError("called")):
@@ -4268,6 +4320,45 @@ class TestDebatesCommand(unittest.TestCase):
         code, meetings = self._run((False, "HTTP 500"))
         self.assertEqual(code, 2)
         self.assertEqual(meetings, {})
+
+    def test_a_past_sitting_can_be_tried_as_a_test(self):
+        """A test on a sitting already done: marked TEST, nothing remembered."""
+        from monitor import cli
+        from monitor.collectors.record_html import parse_record
+        from monitor.collectors.seneddtv import Meeting
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        state = os.path.join(tmp, "sent.json")
+        before = ('{"baseline": "2026-09-20", "meetings": {"16262": '
+                  '{"date": "2026-09-22", "forum": "Plenary"}}}')
+        Path(state).write_text(before)
+        plenary = Meeting(guid="g", name="Plenary", committee_id="908",
+                          when=date(2026, 9, 22), meeting_id="16262")
+        args = SimpleNamespace(taxonomy=None, date="", interval=0, state=state,
+                               lookback=10, remember=False, send=True,
+                               out=os.path.join(tmp, "d.html"),
+                               test_sitting="2026-09-22")
+        with mock.patch("monitor.collectors.seneddtv.SeneddTVScheduleCollector.schedule",
+                        return_value=[]), \
+             mock.patch("monitor.collectors.seneddtv.SeneddTVScheduleCollector.parse_recent_meetings",
+                        return_value=[plenary]), \
+             mock.patch("monitor.collectors.seneddtv.SeneddTVScheduleCollector.fill",
+                        side_effect=lambda m: m), \
+             mock.patch("monitor.collectors.record_transcripts.RecordTranscriptCollector.list_meetings",
+                        return_value=[]), \
+             mock.patch("monitor.collectors.record_html.RecordPageCollector.record",
+                        return_value=parse_record(PLENARY_FIXTURE, "16262", "Plenary")), \
+             mock.patch.object(cli.alerts_mod, "post_to_flow",
+                               return_value=(True, "sent")) as post, \
+             mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x",
+                                          "ANTHROPIC_API_KEY": ""}), \
+             contextlib.redirect_stdout(io.StringIO()):
+            code = cli.cmd_debates(args)
+        self.assertEqual(code, 0)
+        self.assertTrue(post.call_args[0][1].startswith("TEST — Senedd debate summaries"))
+        self.assertEqual(Path(state).read_text(), before, "nothing recorded as done")
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/debates.yml").read_text()
+        self.assertIn('--test-sitting "$TEST_SITTING"', wf)
 
 
 class TestDebatesWorkflowGuards(unittest.TestCase):
@@ -5498,8 +5589,8 @@ class TestWeeklyAISummaries(unittest.TestCase):
         with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}):
             self.assertEqual(enabled(), ("", ""))
         src = (Path(__file__).resolve().parent.parent / "monitor/cli.py").read_text()
-        self.assertIn('os.environ.get("DEBATE_SUMMARIES_AI", "").strip().lower() == "on"', src,
-                      "the debate emails stay verbatim until switched on separately")
+        self.assertIn('os.environ.get("DEBATE_SUMMARIES_AI", "").strip().lower() == "off"', src,
+                      "the debate emails use the key too (30 September 2026) unless switched off")
         wf = (Path(__file__).resolve().parent.parent / ".github/workflows/forward.yml").read_text()
         self.assertIn("ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}", wf)
 
