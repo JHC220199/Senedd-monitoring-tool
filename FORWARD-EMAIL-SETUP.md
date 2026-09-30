@@ -94,7 +94,7 @@ call(s), 21,400 input + 3,900 output tokens, about $0.082".
 |---|---|---|
 | `WEEKLY_SUMMARIES_AI` | `off` | Back to verbatim, without removing the key |
 | `WEEKLY_SUMMARY_MODEL` | e.g. `claude-haiku-4-5` | Another model |
-| `DEBATE_SUMMARIES_AI` | `on` | Also use AI in the next-day debate emails (off by default) |
+| `DEBATE_SUMMARIES_AI` | `off` | Key sentences, not AI, in the next-day debate emails (AI is on by default since 30 September 2026) |
 
 ### The Word document attached
 

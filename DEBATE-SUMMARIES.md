@@ -90,15 +90,27 @@ model, Claude Sonnet 5. A busy sitting week costs well under £1.
    - **Name:** `ANTHROPIC_API_KEY`
    - **Secret:** paste the key.
    - **Add secret.**
-5. **Switch it on for this email.** Since 29 September 2026 the key is
-   shared with the Friday briefing, which uses it first. For the debate
-   summaries too, add a repository **variable** (Settings → Secrets and
-   variables → Actions → Variables) called `DEBATE_SUMMARIES_AI` with the
-   value `on`. The run log says which mode it used.
+5. **That is all.** Since 30 September 2026 this email uses the key
+   whenever it is there (the Friday briefing uses it too). The run log and
+   the run's summary page say which mode it used, and what it cost.
 
-To switch it off, delete that variable. To use a different model, add a
-repository **variable** or secret called `DEBATE_SUMMARY_MODEL`. The default
-works; you do not need to change it.
+**How the summaries are written.** One sentence of no more than 30 words per
+speaker; a minister's opening statement may have two sentences and 50 words.
+Every figure is checked against what the speaker said (a figure said in words,
+"Seventy per cent", allows "70%"). A contribution of substance left without a
+usable summary is asked for once more on its own; only if that fails too is
+the speaker's key sentence or two shown instead, in quotation marks.
+
+**To switch it off** without removing the key, add a repository **variable**
+(Settings → Secrets and variables → Actions → Variables) called
+`DEBATE_SUMMARIES_AI` with the value `off`. To use a different model, add a
+repository variable called `DEBATE_SUMMARY_MODEL`. The default works; you do
+not need to change it.
+
+**Testing on a past sitting:** GitHub → Actions → Senedd debate summaries →
+Run workflow, and put the sitting's date (for example `2026-09-29`) in "TEST a
+past sitting". The email goes to whoever is on the flow, marked TEST, and
+nothing is recorded as done.
 
 Do not paste the key into an email, a chat or the repository. If it is ever
 exposed, delete it in the Anthropic console and make a new one.
