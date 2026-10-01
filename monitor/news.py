@@ -146,7 +146,14 @@ _HYPOTHETICAL = re.compile(
     r"asks?|asked|told|tells|pushes?|pushed)\b[^.;:]{0,50}?\bto (resign|quit|stand down|"
     r"step down|defect|leave|go)\b|"
     r"\b(should|must|would|could|might) (resign|quit|stand down|step down|defect|"
-    r"be sacked|be suspended|lose the whip)\b", re.I)
+    r"be sacked|be suspended|lose the whip)\b|"
+    # The noun form: "Green activist calls for resignation of Welsh
+    # Government ministers in trans surgery row" (Nation.Cymru, 1 October
+    # 2026) — a demand, alerted as a resignation.
+    r"\b(calls?|call|calling|urges?|urged|urging|demands?|demanded|demanding|"
+    r"pressure|petition|push|pushes|pushing|campaign)\b[^.;:]{0,60}?\b(resignations?|sacking|sackings|removal|suspension|"
+    r"departure|exit|head|heads|to go|to quit|to resign|to stand down|to step down)\b|"
+    r"\b(resignation|quit|sack) (calls?|demands?|pressure|petition)\b", re.I)
 
 # A headline whose main verb is someone reacting — accusing, attacking,
 # defending, denying — is commentary on a change, not the change itself.
