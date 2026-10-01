@@ -5,7 +5,7 @@
 > [!WARNING]
 > **This view is incomplete.** These sources returned nothing, so treat gaps below with suspicion: `Senedd committee consultations and inquiries`
 
-**17** open consultations · **2** closing within three weeks · **40** developments to review
+**17** open consultations · **2** closing within three weeks · **41** developments to review
 
 ## Respond — things with a deadline
 
@@ -41,7 +41,7 @@
 ## Review — what has happened
 
 **[3. Ofwat’s role in the Welsh context - scene setting session](https://record.senedd.wales/Committee/16234)**  
-<sub>30 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, Chris Walters, Lia Murphy and 7 others</sub>  
+<sub>30 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, Lia Murphy, Chris Walters and 7 others</sub>  
 Touches committee scrutiny, local authority enforcement and planning system. Read and decide whether a line to take is needed.  
 > So, I think that there are some implications for water companies that are not always entirely fair, perhaps—or some feel that way—around outline planning permissions and local development plans, where, basically, they are faced with a situation where they just have to create infrastructure, which, if there was perhaps…
 <sub>[Watch this moment](http://www.senedd.tv/en/16234?startPos=2189&l=en)</sub>
@@ -51,15 +51,20 @@ Touches committee scrutiny, local authority enforcement and planning system. Rea
 Touches private rented sector. Watch for the answer — it will set out the Government's position.  
 > What progress has the Welsh Government made on its plans to protect renters’ rights?
 
-**[OQ64665](https://record.senedd.wales/OrderPaper/OralQuestions/07-10-2026/)**  
-<sub>30 September 2026 · Plenary · Marc Jones</sub>  
-Touches planning system. Watch for the answer — it will set out the Government's position.  
-> How is the Cabinet Minister improving community engagement on local development plans?
+**[Questions to the Deputy First Minister and Cabinet Minister for Social Justice and Equality](https://record.senedd.wales/Plenary/16265)**  
+<sub>30 September 2026 · Plenary</sub>  
+Touches homelessness, social housing and named welsh legislation. Watch for the answer — it will set out the Government's position.  
+> I recognise that any child living in temporary accommodation is a serious concern. That is why this Government is taking action to prevent homelessness, reduce dependence on temporary accommodation and implement the Homelessness and Social Housing Allocation (Wales) Act 2026, with children's rights and well-being at…
 
 **[OQ64640](https://record.senedd.wales/OrderPaper/OralQuestions/07-10-2026/)**  
 <sub>30 September 2026 · Plenary · David Hughes</sub>  
 Touches planning system. Watch for the answer — it will set out the Government's position.  
 > What action is the Cabinet Minister taking to speed up the processing of planning applications by local authorities?
+
+**[OQ64665](https://record.senedd.wales/OrderPaper/OralQuestions/07-10-2026/)**  
+<sub>30 September 2026 · Plenary · Marc Jones</sub>  
+Touches planning system. Watch for the answer — it will set out the Government's position.  
+> How is the Cabinet Minister improving community engagement on local development plans?
 
 **[2. Ministerial scrutiny session: Cabinet Minister for Education and the Welsh Language](https://record.senedd.wales/Committee/16239)**  
 <sub>28 September 2026 · Culture, Communications, Cymraeg and Sport Committee · Rebeca Phillips, Anna Brychan</sub>  
@@ -119,13 +124,7 @@ Touches committee scrutiny, hmos & property standards and homelessness. Read and
 > So, you mentioned about the data sets. What type of secondary data sets are being used, to be used alongside the council tax data? And would there be a recommended core set of data sets or would that be determined by each local authority independently?
 <sub>[Watch this moment](http://www.senedd.tv/en/16256?startPos=2327&l=en)</sub>
 
-**[3. The Representation of the People (Electoral Registration without Applications) (Electoral Reform) (Wales) Regulations 2026: Evidence session 2](https://record.senedd.wales/Committee/16256)**  
-<sub>17 September 2026 · Local Government, Housing and Planning Committee · Mike Hedges, Carmelo Colasanto, Sandra Matthews and 9 others</sub>  
-Touches committee scrutiny, hmos & property standards and property taxation. Read and decide whether a line to take is needed.  
-> You will have a lot of students joining in the next couple of weeks. So, the matching system and the work with universities will, obviously, help you with that and you'd hope to get the halls of residence and other university accommodation picked up. So, this is the time of year to do that, isn't it, for universities?…
-<sub>[Watch this moment](http://www.senedd.tv/en/16256?startPos=5079&l=en)</sub>
-
-_25 further items in the full dashboard._
+_26 further items in the full dashboard._
 
 ## Coming up
 
@@ -142,4 +141,4 @@ _25 further items in the full dashboard._
 
 ---
 
-<sub>183 items scored from 1246 collected records, 01 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>186 items scored from 1249 collected records, 01 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
