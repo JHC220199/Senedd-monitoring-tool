@@ -69,10 +69,16 @@ SEEN_DAYS = 30
 
 # (kind, label, pattern) — first match wins, so the more specific come first.
 TRIGGERS: list[tuple[str, str, re.Pattern]] = [(k, l, re.compile(p, re.I)) for k, l, p in [
+    # The party must be what is joined or left: "MS quits Labour", "leaves
+    # Reform for Plaid", "joins the Welsh Conservatives". Anywhere within 40
+    # characters was too loose: "Badenoch leaves door open to Tory support
+    # for Plaid government's budget" (BBC, 1 October 2026) was alerted as a
+    # defection. "Joins Plaid in calling for..." is not a defection either.
     ("defection", "Defection",
      r"\bdefect(s|ed|ing)\b|\bcross(es|ed)? the floor\b|"
-     r"\b(joins|joined|quits|quit|leaves|left)\b.{0,40}\b(Plaid|Labour|Reform|"
-     r"Conservatives?|Tories|Lib ?Dems?|Liberal Democrats|Greens?|the party)\b"),
+     r"\b(joins|joined|quits|quit|leaves|left)\s+(the\s+)?((Welsh|Senedd)\s+)?"
+     r"(Plaid|Labour|Reform|Conservatives?|Tories|Tory party|Lib ?Dems?|"
+     r"Liberal Democrats|Greens?|Green Party|party)\b(?!\s+(in|on|with|over)\b)"),
     ("shadow_cabinet", "Shadow cabinet",
      r"\bshadow cabinet\b|\bfront ?bench\b|\bshadow (housing|finance|health) "
      r"(minister|secretary|spokesperson)\b"),
