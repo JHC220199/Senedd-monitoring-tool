@@ -4551,6 +4551,8 @@ class TestNewsAlertTriggers(unittest.TestCase):
     ALERTS = {
         "Sarah Cooper-Lesadd MS defects to Plaid Cymru from Reform UK": "defection",
         "Dan Thomas MS stands down as Reform UK in Wales leader": "resignation",
+        # A real resignation still alerts, even after calls for it.
+        "Welsh Government minister resigns after calls for her resignation": "resignation",
         "Reform UK unveils new Senedd shadow cabinet": "shadow_cabinet",
         "Laura Anne Jones elected Reform's deputy Welsh leader": "leadership",
         "Helen Jenner unveiled by Nigel Farage as new leader of Reform in Wales": "leadership",
@@ -4595,6 +4597,11 @@ class TestNewsAlertTriggers(unittest.TestCase):
         "Plaid calls for Cabinet Minister to resign over waiting lists",
         "Reform MS should resign, says Welsh Conservative leader",
         "Should MSs who switch parties face a by-election?",
+        # 1 October 2026: alerted as a "Resignation", wrongly. A call for
+        # resignations, in the noun form, not a resignation.
+        "Green activist calls for resignation of Welsh Government ministers in trans surgery row",
+        "Plaid demands resignation of Welsh Government health secretary",
+        "Calls grow for the Welsh Government minister's resignation",
     ]
 
     def test_political_changes_alert(self):
