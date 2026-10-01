@@ -4550,6 +4550,8 @@ class TestNewsAlertTriggers(unittest.TestCase):
 
     ALERTS = {
         "Sarah Cooper-Lesadd MS defects to Plaid Cymru from Reform UK": "defection",
+        "Senedd member leaves Reform for Plaid Cymru": "defection",
+        "Welsh Labour MS quits the party": "defection",
         "Dan Thomas MS stands down as Reform UK in Wales leader": "resignation",
         # A real resignation still alerts, even after calls for it.
         "Welsh Government minister resigns after calls for her resignation": "resignation",
@@ -4602,6 +4604,10 @@ class TestNewsAlertTriggers(unittest.TestCase):
         "Green activist calls for resignation of Welsh Government ministers in trans surgery row",
         "Plaid demands resignation of Welsh Government health secretary",
         "Calls grow for the Welsh Government minister's resignation",
+        # 1 October 2026: alerted as a "Defection", wrongly. "Leaves" and a
+        # party name 40 characters apart is not someone leaving a party.
+        "Badenoch leaves door open to Tory support for Plaid government's budget",
+        "Reform MS joins Plaid in calling for inquiry into Senedd standards",
     ]
 
     def test_political_changes_alert(self):
