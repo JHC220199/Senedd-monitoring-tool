@@ -116,6 +116,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: senedd-debate-summaries-${{ github.run_number }}
-          path: out/debates.html
+          path: out/debates*.html
           retention-days: 30
           if-no-files-found: ignore
