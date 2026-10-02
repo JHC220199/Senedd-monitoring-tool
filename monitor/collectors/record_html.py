@@ -106,6 +106,9 @@ class Record:
     forum: str                  # "Plenary" or the committee's name
     url: str
     items: list[AgendaItem] = field(default_factory=list)
+    # "Others in Attendance" — witnesses and officials, with their posts in
+    # English ("Executive Director, Empty Homes Network"). Committees only.
+    attendees: dict[str, str] = field(default_factory=dict)
 
     @property
     def is_plenary(self) -> bool:
@@ -247,7 +250,8 @@ def parse_record(html: str, meeting_id: str, forum: str, url: str = "") -> Recor
     # The page prints a speaker's role on their first contribution of an item
     # and leaves it off after that. Carry it forward, so a minister replying
     # for the third time is still labelled as the minister.
-    roles: dict[str, str] = {}
+    record.attendees = parse_attendees(soup)
+    roles: dict[str, str] = dict(record.attendees)
     for it in record.items:
         it.blocks = [b for b in it.blocks if b.contributions or b.heading]
         for c in it.contributions:
@@ -256,6 +260,33 @@ def parse_record(html: str, meeting_id: str, forum: str, url: str = "") -> Recor
             elif c.speaker in roles:
                 c.role = roles[c.speaker]
     return record
+
+
+def parse_attendees(soup) -> dict[str, str]:
+    """Name -> post (English) from the "Others in Attendance" table. Each
+    person is two rows: the name and the Welsh post, then the English post."""
+    out: dict[str, str] = {}
+    head = next((h for h in soup.select("h3.attendees__title")
+                 if _clean(h.get_text(" ", strip=True)).lower() == "others in attendance"),
+                None)
+    table = head.find_next("table") if head else None
+    if table is None:
+        return out
+    rows = table.find_all("tr")
+    for i, tr in enumerate(rows):
+        name = tr.select_one("td.nameCol")
+        if name is None:
+            continue
+        who = _clean(name.get_text(" ", strip=True))
+        post = ""
+        if i + 1 < len(rows):
+            post = _clean(rows[i + 1].get_text(" ", strip=True))
+        if not post:
+            cells = tr.find_all("td")
+            post = _clean(cells[-1].get_text(" ", strip=True)) if len(cells) > 1 else ""
+        if who:
+            out[who] = post
+    return out
 
 
 class RecordPageCollector(Collector):
