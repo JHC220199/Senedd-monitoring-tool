@@ -783,8 +783,11 @@ def _debate_card(d: Debate) -> str:
 
 
 def render_debates(debates: list[Debate], pending: list[str] | None = None,
-                   page_url: str = "") -> tuple[str, str, int]:
-    """Return ``(subject, html_body, count)``. Count 0 means send nothing."""
+                   page_url: str = "", late: bool = False) -> tuple[str, str, int]:
+    """Return ``(subject, html_body, count)``. Count 0 means send nothing.
+
+    ``late``: the Record of one past meeting, published after the
+    morning-after summaries had gone — sent as an email of its own."""
     count = len(debates)
     if not count:
         return "", "", 0
@@ -799,6 +802,15 @@ def render_debates(debates: list[Debate], pending: list[str] | None = None,
         if "Plenary" in forums else "committees"
     subject = (f"Senedd debate summaries — {where}, {day_text} "
                f"({count} item{'s' if count != 1 else ''})")
+    title = "What was said — Senedd debate summaries"
+    late_note = ""
+    if late:
+        subject = (f"Record now published — {where}, {day_text} "
+                   f"({count} item{'s' if count != 1 else ''})")
+        title = "Record now published — what was said"
+        late_note = (f"The Senedd has now published the Record of this meeting, "
+                     f"held on {day_text}. It was not ready in time for the "
+                     f"next morning's debate summaries. ")
 
     ai = any(d.mode == "ai" for d in debates)
     how = (
@@ -834,7 +846,7 @@ border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
 
   <tr><td bgcolor="{DARK_BLUE}" style="padding:24px 28px 20px;font-family:{FONT};color:#ffffff">
     <div style="font-size:20px;font-weight:700;letter-spacing:-.2px;color:#ffffff">
-      What was said — Senedd debate summaries</div>
+      {_e(title)}</div>
     <div style="font-size:13px;color:#C3D2DC;padding-top:5px">
       National Residential Landlords Association &nbsp;·&nbsp; {_e(day_text)}</div>
   </td></tr>
@@ -844,7 +856,7 @@ border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
   <tr><td style="padding:20px 28px 0;font-family:{FONT}">
     <p style="font-size:12.5px;color:{MUTED};line-height:1.55;margin:0 0 16px">
       Debates and exchanges that match the NRLA's relevance rules — the same
-      rules as the live page. {_e(how)}</p>
+      rules as the live page. {_e(late_note)}{_e(how)}</p>
     {cards}
     {pending_html}
   </td></tr>

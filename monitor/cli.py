@@ -900,43 +900,80 @@ def cmd_debates(args) -> int:
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     page_url = (f"https://{repo.split('/')[0].lower()}.github.io/"
                 f"{repo.split('/')[1]}/") if "/" in repo else ""
-    subject, html_body, count = render_debates(debates, pending, page_url=page_url)
-    if count and test_day:
-        subject = "TEST — " + subject
-    if count:
+
+    # A meeting whose Record came out late gets an email of its own, so a
+    # committee session from last week does not arrive buried in the
+    # morning-after summaries (the directorate, 2 October 2026: committee
+    # Records take about three working days). "Late" means it sat before the
+    # last working day; Monday's run treats Friday's sittings as on time.
+    prev_day = previous_working_day(today)
+    late_ids = {mid for mid, row in finished.items()
+                if row.get("date") and date.fromisoformat(row["date"]) < prev_day}
+    emails = [(None, [d for d in debates if d.record.meeting_id not in late_ids],
+               pending)]
+    for mid in sorted(late_ids, key=lambda m: finished[m]["date"]):
+        group = [d for d in debates if d.record.meeting_id == mid]
+        if group:
+            emails.append((mid, group, []))
+
+    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
+    failed_ids: set[str] = set()
+    any_failed = False
+    last_message = ""
+    for mid, group, waiting in emails:
+        subject, html_body, count = render_debates(group, waiting, page_url=page_url,
+                                                   late=mid is not None)
+        if count == 0:
+            if mid is None:
+                print("Nothing relevant in the meetings read for the morning "
+                      "summaries — no email sent, deliberately.")
+            continue
+        if test_day:
+            subject = "TEST — " + subject
         print(f"Subject: {subject}")
         if args.out:
             out = Path(args.out)
+            if mid is not None:
+                out = out.with_name(f"{out.stem}-record-{mid}{out.suffix}")
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(html_body, encoding="utf-8")
             print(f"Written to {out}")
-
-    flow_url = os.environ.get("MONITOR_FLOW_URL", "")
-    sent, message = alerts_mod.post_to_flow(
-        flow_url, subject, html_body, count, dry_run=not args.send)
-    if count == 0:
-        message = ("Nothing relevant in the meetings read — no email sent, "
-                   "deliberately.")
-    print(message)
+        sent, message = alerts_mod.post_to_flow(
+            flow_url, subject, html_body, count, dry_run=not args.send)
+        print(message)
+        last_message = message
+        if args.send and not sent:
+            any_failed = True
+            failed_ids |= ({mid} if mid is not None else
+                           {m for m in finished if m not in late_ids})
 
     # Remember a meeting only once its summary has gone (or there was nothing
-    # to send). If the email failed, tomorrow's run tries the same meetings.
+    # to send). If an email failed, tomorrow's run tries those meetings again.
     if test_day:
         print("TEST: nothing recorded as done.")
-    elif args.send and (sent or count == 0) or args.remember:
-        state["meetings"].update(finished)
+    elif args.send or args.remember:
+        done_now = {m: row for m, row in finished.items() if m not in failed_ids}
+        state["meetings"].update(done_now)
         save_state(state, today, args.state)
-        print(f"Recorded {len(finished)} meeting(s) as done in {args.state}")
+        print(f"Recorded {len(done_now)} meeting(s) as done in {args.state}")
 
-    if sent or not args.send or count == 0:
+    if not any_failed:
         return 0
     if not flow_url:
         _summary_note("NOTE", "**Debate summaries are not switched on yet.** "
                       "They use the same Power Automate flow as the Friday "
                       "email: see `FORWARD-EMAIL-SETUP.md`.")
         return 0
-    _summary_note("WARNING", f"**The debate summaries were not sent.** {message}")
+    _summary_note("WARNING", f"**The debate summaries were not sent.** {last_message}")
     return 2
+
+
+def previous_working_day(day: date) -> date:
+    """The weekday before ``day`` (Friday, for a Monday)."""
+    d = day - timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d
 
 
 def cmd_news(args) -> int:
