@@ -148,6 +148,10 @@ way, and "houses in multiple occupancy" was added.
 - **Committees**: the Record usually appears the next day, and sometimes two
   or three days later. A committee meeting is summarised on the first morning
   its Record is up. Until then, the email lists it under **Still awaited**.
+  A meeting whose Record comes out after the morning-after email (it sat
+  before the last working day) gets an email of its own, headed **Record now
+  published**, rather than being mixed in with the latest day's business.
+  Monday's run treats Friday's sittings as on time.
 - The run starts when the morning briefing finishes, at about 07.35, including
   on days the Senedd is not sitting, so Thursday's committees can appear on
   Friday.
