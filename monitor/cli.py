@@ -920,9 +920,24 @@ def cmd_debates(args) -> int:
     failed_ids: set[str] = set()
     any_failed = False
     last_message = ""
+    from .debates_document import build_debates_document
+    from .debates_document import filename as doc_filename
     for mid, group, waiting in emails:
+        # The fuller account of every contribution, as a Word document
+        # (2 October 2026: "a short summary in the email body and another
+        # word document that outlines the session in more detail").
+        attachments = []
+        try:
+            docx_bytes = build_debates_document(group, late=mid is not None,
+                                                page_url=page_url)
+        except Exception as exc:            # noqa: BLE001 — the email still goes
+            docx_bytes = None
+            print(f"  the Word document could not be built: {exc}")
+        if docx_bytes:
+            attachments.append((doc_filename(group, late=mid is not None), docx_bytes))
         subject, html_body, count = render_debates(group, waiting, page_url=page_url,
-                                                   late=mid is not None)
+                                                   late=mid is not None,
+                                                   document=bool(docx_bytes))
         if count == 0:
             if mid is None:
                 print("Nothing relevant in the meetings read for the morning "
@@ -938,8 +953,12 @@ def cmd_debates(args) -> int:
             out.parent.mkdir(parents=True, exist_ok=True)
             out.write_text(html_body, encoding="utf-8")
             print(f"Written to {out}")
+            if docx_bytes:
+                out.with_suffix(".docx").write_bytes(docx_bytes)
+                print(f"Written to {out.with_suffix('.docx')}")
         sent, message = alerts_mod.post_to_flow(
-            flow_url, subject, html_body, count, dry_run=not args.send)
+            flow_url, subject, html_body, count, dry_run=not args.send,
+            attachments=attachments or None)
         print(message)
         last_message = message
         if args.send and not sent:

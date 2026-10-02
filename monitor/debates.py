@@ -111,6 +111,7 @@ class Point:
     contribution: Contribution
     summary: str = ""
     verbatim: bool = False      # key sentences, not an AI summary
+    detail: str = ""            # the fuller AI account, for the Word document
 
     @property
     def speaker_label(self) -> str:
@@ -380,7 +381,8 @@ landlords, renters, building safety, homelessness, property taxation and \
 local authority enforcement.
 - Do not name private individuals — constituents, residents, campaigners, \
 company employees. Describe them generically ("a resident in Cardiff"). \
-Members, ministers, public bodies and companies may be named.
+Members, ministers, public bodies, companies and witnesses giving evidence \
+to a committee may be named.
 - Refer to a minister by title ("The Cabinet Minister said..."), and to other \
 speakers by name without "MS" (the email adds it).
 - The only contribution that may have an empty summary is one that is \
@@ -389,9 +391,16 @@ speaker).
 - "overview" is one sentence of no more than 30 words saying what the item \
 was about. Leave it empty if the item is a set of unrelated questions or \
 requests.
+- "detail" is a fuller account of the same contribution, for a document \
+read later: two to four sentences, no more than 90 words, covering each \
+question asked or point made, in order, as a public affairs consultancy's \
+note of proceedings would ("Marc Jones asked how the Welsh Government could \
+address the variation across Wales. Andrew Lavender said..."). Every rule \
+above applies to it too. Leave it empty when the summary already says \
+everything.
 
 Reply with JSON only, no prose around it, in exactly this shape:
-{"overview": "...", "points": [{"n": 1, "summary": "..."}, ...]}"""
+{"overview": "...", "points": [{"n": 1, "summary": "...", "detail": "..."}, ...]}"""
 
 
 _NUMBER = re.compile(r"\d[\d,.]*")
@@ -564,7 +573,7 @@ def _ask(prompt: str, api_key: str, model: str, post, usage) -> dict:
         "content-type": "application/json",
     }, json={
         "model": model or DEFAULT_MODEL,
-        "max_tokens": 4000,
+        "max_tokens": 8000,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -587,7 +596,7 @@ def _ask(prompt: str, api_key: str, model: str, post, usage) -> dict:
     return data
 
 
-def _by_n(data: dict, count: int) -> dict[int, str]:
+def _by_n(data: dict, count: int, key: str = "summary") -> dict[int, str]:
     out: dict[int, str] = {}
     for p in data.get("points", []) or []:
         try:
@@ -595,8 +604,14 @@ def _by_n(data: dict, count: int) -> dict[int, str]:
         except (TypeError, ValueError, AttributeError):
             continue
         if 1 <= n <= count:
-            out[n] = re.sub(r"\s+", " ", str(p.get("summary") or "")).strip()
+            out[n] = re.sub(r"\s+", " ", str(p.get(key) or "")).strip()
     return out
+
+
+# The Word document's fuller account of a contribution (2 October 2026: "a
+# short summary in the email body and another word document that outlines
+# the session in more detail", like the consultancy's note of proceedings).
+WORDS_DETAIL = 90
 
 
 def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
@@ -631,9 +646,16 @@ def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
         if overview and figures_check(overview, source_all) else ""
 
     got: dict[int, str] = {}
+    detail: dict[int, str] = {}
     failed: set[int] = set()        # a summary came back but could not be used
 
     def take(reply: dict, picks: list[int], last_try: bool) -> None:
+        for n, s in _by_n(reply, len(picks), "detail").items():
+            i = picks[n - 1]
+            if s and figures_check(s, flat[i].text):
+                d = fit(s, WORDS_DETAIL) or ""
+                if d:
+                    detail[i] = d
         for n, s in _by_n(reply, len(picks)).items():
             i = picks[n - 1]
             c = flat[i]
@@ -674,7 +696,8 @@ def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
         row = []
         for c in ex.contributions:
             if i in got:
-                row.append(Point(contribution=c, summary=got[i]))
+                row.append(Point(contribution=c, summary=got[i],
+                                 detail=detail.get(i, "")))
             elif i in failed or len(c.text.split()) >= MUST_SUMMARISE_WORDS:
                 fallback = key_sentences(c, tax)
                 if fallback:
@@ -783,7 +806,8 @@ def _debate_card(d: Debate) -> str:
 
 
 def render_debates(debates: list[Debate], pending: list[str] | None = None,
-                   page_url: str = "", late: bool = False) -> tuple[str, str, int]:
+                   page_url: str = "", late: bool = False,
+                   document: bool = False) -> tuple[str, str, int]:
     """Return ``(subject, html_body, count)``. Count 0 means send nothing.
 
     ``late``: the Record of one past meeting, published after the
@@ -831,6 +855,11 @@ def render_debates(debates: list[Debate], pending: list[str] | None = None,
             + _e("; ".join(pending)) +
             ". The Senedd has not yet published the Record of these meetings; "
             "any relevant debate will be summarised on the morning it appears.</p>")
+    doc_note = "" if not document else (
+        f'<p style="font-size:12.5px;color:{MUTED};margin:0;padding-top:14px;'
+        f'font-family:{FONT};line-height:1.55"><b>In more detail:</b> the attached '
+        f'Word document gives the witnesses and a fuller account of every '
+        f'contribution above.</p>')
     footer_link = (
         f'<p style="font-size:12.5px;color:{MUTED};margin:0;padding-top:18px;'
         f'font-family:{FONT}">Everything else said in the Chamber and in '
@@ -859,6 +888,7 @@ border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
       rules as the live page. {_e(late_note)}{_e(how)}</p>
     {cards}
     {pending_html}
+    {doc_note}
   </td></tr>
 
   <tr><td style="padding:0 28px 34px;font-family:{FONT}">
