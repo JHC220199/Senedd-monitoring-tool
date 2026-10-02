@@ -4338,7 +4338,7 @@ class TestDebateCandidatesAndState(unittest.TestCase):
 class TestDebatesCommand(unittest.TestCase):
     """A meeting is remembered only once its summary has gone."""
 
-    def _run(self, send_result):
+    def _run(self, send_result, today="2026-09-23", post=None):
         from monitor import cli
         from monitor.collectors.record_html import parse_record
         from monitor.collectors.seneddtv import Meeting
@@ -4348,7 +4348,7 @@ class TestDebatesCommand(unittest.TestCase):
         Path(state).write_text('{"baseline": "2026-09-20", "meetings": {}}')
         plenary = Meeting(guid="g", name="Plenary", committee_id="908",
                           when=date(2026, 9, 22), meeting_id="16262")
-        args = SimpleNamespace(taxonomy=None, date="2026-09-23", interval=0,
+        args = SimpleNamespace(taxonomy=None, date=today, interval=0,
                                state=state, lookback=10, remember=False,
                                send=True, out=os.path.join(tmp, "d.html"))
         with mock.patch("monitor.collectors.seneddtv.SeneddTVScheduleCollector.schedule",
@@ -4362,13 +4362,50 @@ class TestDebatesCommand(unittest.TestCase):
              mock.patch("monitor.collectors.record_html.RecordPageCollector.record",
                         return_value=parse_record(PLENARY_FIXTURE, "16262", "Plenary")), \
              mock.patch.object(cli.alerts_mod, "post_to_flow",
-                               return_value=send_result), \
+                               **({"side_effect": post} if post else
+                                  {"return_value": send_result})), \
              mock.patch.dict(os.environ, {"MONITOR_FLOW_URL": "https://example.invalid/x",
                                           "ANTHROPIC_API_KEY": ""}), \
              contextlib.redirect_stdout(io.StringIO()):
             code = cli.cmd_debates(args)
         import json as _json
         return code, _json.loads(Path(state).read_text())["meetings"]
+
+    def test_a_record_published_late_gets_its_own_email(self):
+        """2 October 2026: committee Records take about three working days,
+        and the directorate wants one arriving late as an alert of its own,
+        not folded into the morning-after summaries."""
+        sent = []
+
+        def post(url, subject, body, count, dry_run=False, **kw):
+            sent.append((subject, body))
+            return True, "sent"
+        # The meeting sat on Tuesday 22nd; its Record is read on Friday 25th.
+        code, meetings = self._run(None, today="2026-09-25", post=post)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(sent), 1)
+        subject, body = sent[0]
+        self.assertTrue(subject.startswith("Record now published — Plenary, Tue 22 September"),
+                        subject)
+        self.assertIn("It was not ready in time for the next morning", body)
+        self.assertIn("16262", meetings)
+
+    def test_the_morning_after_is_not_late(self):
+        from monitor.cli import previous_working_day
+        self.assertEqual(previous_working_day(date(2026, 9, 23)), date(2026, 9, 22))
+        self.assertEqual(previous_working_day(date(2026, 9, 28)), date(2026, 9, 25),
+                         "Monday's run treats Friday's sittings as on time")
+        sent = []
+
+        def post(url, subject, body, count, dry_run=False, **kw):
+            sent.append(subject)
+            return True, "sent"
+        self._run(None, today="2026-09-23", post=post)
+        self.assertTrue(sent[0].startswith("Senedd debate summaries"), sent[0])
+
+    def test_late_records_are_kept_with_the_email_copies(self):
+        wf = (Path(__file__).resolve().parent.parent / ".github/workflows/debates.yml").read_text()
+        self.assertIn("path: out/debates*.html", wf)
 
     def test_sent_means_remembered(self):
         code, meetings = self._run((True, "sent"))
