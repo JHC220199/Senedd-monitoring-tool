@@ -4196,6 +4196,21 @@ class TestDebateSummaries(unittest.TestCase):
         self.assertEqual(kw["headers"]["x-api-key"], "key")
         self.assertIn("Do not name private individuals", kw["json"]["system"])
 
+    def test_the_fuller_account_is_checked_too(self):
+        from monitor.debates import summarise_ai
+        post, calls = self._fake_post({"overview": "", "points": [
+            {"n": 1, "summary": "The Cabinet Minister said 11 of 161 buildings were complete.",
+             "detail": "The Cabinet Minister said 11 of 161 buildings were complete, and "
+                       "that remediation had not moved quickly enough."},
+            {"n": 2, "summary": "Francesca O'Brien asked about leaseholders.",
+             "detail": "Francesca O'Brien said 99 buildings were untouched."},   # 99: not said
+            {"n": 3, "summary": "The Cabinet Minister said the alarm grant would open soon."}]})
+        d = summarise_ai(self.statement, TAX, "key", post=post)
+        pts = d.points[0]
+        self.assertIn("not moved quickly enough", pts[0].detail)
+        self.assertEqual(pts[1].detail, "", "a figure she never gave: no fuller account")
+        self.assertIn('"detail"', calls[0][1]["json"]["system"])
+
     def test_a_failed_call_falls_back_to_key_sentences(self):
         from monitor.debates import summarise_ai
         post, _ = self._fake_post({"error": "overloaded"}, status=529)
@@ -4390,6 +4405,70 @@ class TestDebatesCommand(unittest.TestCase):
         self.assertIn("It was not ready in time for the next morning", body)
         self.assertIn("16262", meetings)
 
+    def test_the_email_carries_a_word_document_in_more_detail(self):
+        """2 October 2026: "a short summary in the email body and another word
+        document that outlines the session in more detail", like the
+        consultancy's committee notes."""
+        import docx
+        sent = []
+
+        def post(url, subject, body, count, dry_run=False, attachments=None, **kw):
+            sent.append((subject, body, attachments))
+            return True, "sent"
+        self._run(None, today="2026-09-23", post=post)
+        subject, body, attachments = sent[0]
+        self.assertIn("the attached Word document", body)
+        self.assertEqual(len(attachments), 1)
+        name, data = attachments[0]
+        self.assertTrue(name.endswith(".docx"))
+        self.assertIn("22 September 2026", name)
+        text = "\n".join(p.text for p in docx.Document(io.BytesIO(data)).paragraphs)
+        self.assertIn("in detail", text)
+        self.assertIn("Open Government Licence", text)
+
+    def test_the_document_lists_witnesses_and_the_fuller_account(self):
+        import docx
+        from monitor.collectors.record_html import (AgendaItem, Block, Contribution,
+                                                    Record)
+        from monitor.debates import Debate, Exchange, Point
+        from monitor.debates_document import build_debates_document, filename
+        chair = Contribution(anchor="C1", speaker="Marc Jones", member=True,
+                             text="Where do the figures for empty properties stand?")
+        witness = Contribution(anchor="C2", speaker="Henry Dawson",
+                               text="There are several classifications of empty property.")
+        item = AgendaItem(title="2. Follow-up inquiry into Empty Properties: Evidence session 1",
+                          anchor="A1", blocks=[Block(contributions=[chair, witness])])
+        rec = Record(meeting_id="16305", forum="Local Government, Housing and Planning Committee",
+                     url="https://record.senedd.wales/Committee/16305", items=[item],
+                     attendees={"Henry Dawson": "Senior Lecturer, Cardiff Metropolitan University"})
+        deb = Debate(record=rec, item=item, meeting_date=date(2026, 10, 1), whole=True,
+                     exchanges=[Exchange(heading="", contributions=[chair, witness])],
+                     mode="ai",
+                     points=[[Point(contribution=chair, summary="Marc Jones asked about figures.",
+                                    detail="Marc Jones said there was no accepted figure for "
+                                           "empty properties and asked where it stood."),
+                              Point(contribution=witness, summary="Henry Dawson said data varied.")]])
+        data = build_debates_document([deb], late=True)
+        text = "\n".join(p.text for p in docx.Document(io.BytesIO(data)).paragraphs)
+        self.assertIn("Witnesses", text)
+        self.assertIn("Henry Dawson, Senior Lecturer, Cardiff Metropolitan University", text)
+        self.assertIn("there was no accepted figure for empty properties", text)
+        self.assertIn("Henry Dawson said data varied.", text, "no detail: the summary")
+        self.assertIn("Record now published", text)
+        self.assertEqual(filename([deb], late=True),
+                         "Local Government, Housing and Planning Committee, 1 October 2026.docx")
+
+    def test_the_record_gives_witnesses_posts(self):
+        from monitor.collectors.record_html import parse_attendees
+        from bs4 import BeautifulSoup
+        html = ('<h3 class="attendees__title">Others in Attendance</h3><table>'
+                '<tr><td rowspan="2" class="nameCol"><span>Adam Cliff</span></td>'
+                '<td><span>Cyfarwyddwr Gweithredol</span></td></tr>'
+                '<tr><td><span>Executive Director, Empty Homes Network</span></td></tr>'
+                '</table>')
+        self.assertEqual(parse_attendees(BeautifulSoup(html, "html.parser")),
+                         {"Adam Cliff": "Executive Director, Empty Homes Network"})
+
     def test_the_morning_after_is_not_late(self):
         from monitor.cli import previous_working_day
         self.assertEqual(previous_working_day(date(2026, 9, 23)), date(2026, 9, 22))
@@ -4405,7 +4484,7 @@ class TestDebatesCommand(unittest.TestCase):
 
     def test_late_records_are_kept_with_the_email_copies(self):
         wf = (Path(__file__).resolve().parent.parent / ".github/workflows/debates.yml").read_text()
-        self.assertIn("path: out/debates*.html", wf)
+        self.assertIn("path: out/debates*", wf)
 
     def test_sent_means_remembered(self):
         code, meetings = self._run((True, "sent"))
