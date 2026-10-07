@@ -2,7 +2,7 @@
 
 *As at Wednesday 07 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
-**17** open consultations · **3** closing within three weeks · **49** developments to review
+**17** open consultations · **3** closing within three weeks · **50** developments to review
 
 ## Respond — things with a deadline
 
@@ -36,6 +36,12 @@
 </details>
 
 ## Review — what has happened
+
+**[2. Scrutiny of Accounts - Senedd Commission 2025-26: evidence session](https://record.senedd.wales/Committee/16319)**  
+<sub>05 October 2026 · Public Accounts and Public Administration Committee · Peredur Owen Griffiths, Manon Bonner, Andrew Griffin</sub>  
+Touches committee scrutiny and budget & legislative programme. Read and decide whether a line to take is needed.  
+> I think, just from a process point of view, if you were to give the money back into—. This is the thinking behind—. From memory, the Finance Committee would have thought that if the money goes back to the consolidated fund then there'd be a potential overspend in the Chamber, then you'd have to have a supplementary…
+<sub>[Watch this moment](http://www.senedd.tv/en/16319?startPos=3405&l=en)</sub>
 
 **[5. Follow-up inquiry into Empty Properties: Evidence session 3](https://record.senedd.wales/Committee/16305)**  
 <sub>01 October 2026 · Local Government, Housing and Planning Committee · Chris Bailey, Marc Jones, Wendy Dearden and 7 others</sub>  
@@ -117,12 +123,7 @@ Touches budget & legislative programme and planning system. Read and decide whet
 > Thank you very much, Chair. Welcome, Minister. Thank you for joining us this morning.   Embedding the Welsh language across Government is critical, of course. I believe, in the past, Ministers perhaps have been working in silos in terms of the Welsh language, so I really welcome this new focus. The planning system…
 <sub>[Watch this moment](http://www.senedd.tv/en/16239?startPos=2277&l=en)</sub>
 
-**[Written Statement: Consultation on making the “general crisis” provision in the Allocation of Housing and Homelessness (Eligibility) (Wales) (Amendment) Regulations 2026 permanent](https://www.gov.wales/written-statement-consultation-making-general-crisis-provision-allocation-housing-and-homelessness?utm_source=rss-announcements&utm_medium=rss-feed&utm_campaign=announcements-Written+Statement%3A+Consultation+on+making+the+%E2%80%9Cgeneral+crisis%E2%80%9D+provision+in+the+Allocation+of+Housing+and+Homelessness+%28Eligibility%29+%28Wales%29+%28Amendment%29+Regulations+2026+permanent)**  
-<sub>28 September 2026 · Welsh Government</sub>  
-Touches homelessness. Read and decide whether a line to take is needed.  
-> Written Statement: Consultation on making the “general crisis” provision in the Allocation of Housing and Homelessness (Eligibility) (Wales) (Amendment) Regulations 2026 permanent
-
-_34 further items in the full dashboard._
+_35 further items in the full dashboard._
 
 ## Coming up
 
@@ -139,4 +140,4 @@ _34 further items in the full dashboard._
 
 ---
 
-<sub>249 items scored from 1995 collected records, 07 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>249 items scored from 2000 collected records, 07 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
