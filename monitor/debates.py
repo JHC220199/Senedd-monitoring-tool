@@ -111,7 +111,7 @@ class Point:
     contribution: Contribution
     summary: str = ""
     verbatim: bool = False      # key sentences, not an AI summary
-    detail: str = ""            # the fuller AI account, for the Word document
+    rank: int = 0               # verbatim: 0 is the most relevant in the item
 
     @property
     def speaker_label(self) -> str:
@@ -135,6 +135,11 @@ class Debate:
     exchanges: list[Exchange] = field(default_factory=list)
     overview: str = ""
     points: list[list[Point]] = field(default_factory=list)   # per exchange
+    # With the key (7 October 2026): the few points that matter most, for
+    # the email, and a short note of proceedings, for the Word document.
+    # Each Point's contribution is the first one it draws on.
+    key_points: list[Point] = field(default_factory=list)
+    note: list[Point] = field(default_factory=list)
     mode: str = "verbatim"      # "ai" or "verbatim"
     papers_url: str = ""
     notes: list[str] = field(default_factory=list)
@@ -158,6 +163,10 @@ class Debate:
     @property
     def contribution_count(self) -> int:
         return sum(len(e.contributions) for e in self.exchanges)
+
+    @property
+    def has_content(self) -> bool:
+        return bool(self.key_points or self.note or any(self.points))
 
 
 class Relevance:
@@ -343,6 +352,10 @@ def summarise_verbatim(debate: Debate, tax: Taxonomy) -> Debate:
             if text:
                 row.append(Point(contribution=c, summary=text, verbatim=True))
         debate.points.append(row)
+    # Only the most relevant contributions, so the fallback is no longer than
+    # the AI version: VERBATIM_DOCUMENT for the document, the first
+    # VERBATIM_EMAIL of those (by rank) for the email.
+    debate.points = most_relevant(debate, tax, VERBATIM_DOCUMENT)
     return debate
 
 
@@ -354,53 +367,52 @@ API_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL = "claude-sonnet-5"
 MAX_INPUT_CHARS = 150_000       # about 35,000 words; a long debate is 10,000
 
-SYSTEM_PROMPT = """You summarise debates in the Senedd (the Welsh Parliament) \
-for the policy team of the National Residential Landlords Association.
+SYSTEM_PROMPT = """You write short notes on debates in the Senedd (the \
+Welsh Parliament) for the policy team of the National Residential Landlords \
+Association (NRLA), which represents private landlords.
 
 You will be given the draft Record of one agenda item: numbered contributions, \
-each with the speaker and their role. Write a short summary of each \
-contribution in reported speech, in the style of a public affairs consultancy \
-note: neutral, British English, past tense.
+each with the speaker and their role. Write in the style of a public affairs \
+consultancy note: reported speech, neutral, British English, past tense.
 
-Rules:
+Reply with three things:
+- "overview": one or two sentences, no more than 40 words, saying what the \
+item was about and what in it matters most to the NRLA. Leave it empty if the \
+item is a set of unrelated questions.
+- "key_points": for the email, the {k} points from the item that matter most \
+to the NRLA — a question and its answer, a commitment, a figure. Each is one \
+sentence, two at most, no more than 35 words, naming who said it.
+- "note": for a document read later, a short note of proceedings: the main \
+exchanges, in the order they happened, at most {m} entries. Combine a \
+question and its answer in one entry where you can ("Marc Jones MS asked \
+where the figures for empty properties stood. Dr Henry Dawson said..."). \
+Each entry is no more than 60 words. Leave out introductions, thanks, \
+procedure, repetition and minor follow-ups: this is a summary, not a \
+transcript.
+
+For each key point and note entry, "n" lists the numbered contributions it \
+draws on.
+
+Rules for all three:
 - Use ONLY what is in the text you are given. Add no facts, context, figures, \
 dates, party labels or opinions of your own. If you are unsure, leave it out.
-- Summarise EVERY numbered contribution, including political exchanges and \
-contributions that are not about housing. Be brief: each summary is ONE \
-sentence of no more than 30 words, giving only the speaker's main point or \
-question and any commitment or figure that matters to the NRLA. A \
-contribution marked (opening statement) may have up to two sentences and 50 \
-words. Leave out background, examples, anecdotes, thanks and rhetoric. Never \
-copy a speech out.
 - Keep commitments, dates and named policies as the speaker gave them. Write \
 a figure either as the speaker said it or as the same number in digits \
 ("seventy per cent" or "70 per cent"). Never work out a new figure: no \
 totals, differences or percentages the speaker did not give.
-- Give most space to anything touching housing, the private rented sector, \
-landlords, renters, building safety, homelessness, property taxation and \
-local authority enforcement.
+- Give most weight to anything touching housing, the private rented sector, \
+landlords, tenants, building safety, empty homes, homelessness, property \
+taxation and local authority enforcement.
 - Do not name private individuals — constituents, residents, campaigners, \
 company employees. Describe them generically ("a resident in Cardiff"). \
 Members, ministers, public bodies, companies and witnesses giving evidence \
 to a committee may be named.
-- Refer to a minister by title ("The Cabinet Minister said..."), and to other \
-speakers by name without "MS" (the email adds it).
-- The only contribution that may have an empty summary is one that is \
-nothing but thanks or procedure ("Thank you, Llywydd", calling the next \
-speaker).
-- "overview" is one sentence of no more than 30 words saying what the item \
-was about. Leave it empty if the item is a set of unrelated questions or \
-requests.
-- "detail" is a fuller account of the same contribution, for a document \
-read later: two to four sentences, no more than 90 words, covering each \
-question asked or point made, in order, as a public affairs consultancy's \
-note of proceedings would ("Marc Jones asked how the Welsh Government could \
-address the variation across Wales. Andrew Lavender said..."). Every rule \
-above applies to it too. Leave it empty when the summary already says \
-everything.
+- Refer to a minister by title ("The Cabinet Minister said..."), to other \
+Members as "Name MS", and to witnesses by name.
 
 Reply with JSON only, no prose around it, in exactly this shape:
-{"overview": "...", "points": [{"n": 1, "summary": "...", "detail": "..."}, ...]}"""
+{{"overview": "...", "key_points": [{{"n": [3, 4], "text": "..."}}], \
+"note": [{{"n": [1, 2], "text": "..."}}]}}"""
 
 
 _NUMBER = re.compile(r"\d[\d,.]*")
@@ -513,46 +525,50 @@ def figures_check(summary: str, source: str) -> bool:
     return _numbers(summary) <= have
 
 
-# A contribution this long must come back summarised (asked for a second
-# time if need be); a shorter one with no summary is thanks or procedure.
-MUST_SUMMARISE_WORDS = 40
-WORDS_POINT = 30
-WORDS_OPENING = 50
+# Length limits, in words (7 October 2026: the housing committee's 1 October
+# email ran to 9,000 words and its document to 20 pages, against the
+# consultancy's 1,700 and seven. "In no world should it ever be 20 pages").
+WORDS_OVERVIEW = 40
+WORDS_KEY_POINT = 35
+WORDS_NOTE = 60
 
 
-def _is_opening(debate: Debate, index: int, c: Contribution) -> bool:
-    """A minister's first contribution to a whole debate or statement."""
-    return debate.whole and index == 0 and bool(_MINISTERIAL.search(c.role or ""))
+def limits(n_contributions: int) -> tuple[int, int]:
+    """(key points for the email, note entries for the document) for an
+    item of this many contributions. A three-hour evidence session gets four
+    key points and a ten-entry note, not 80 of each."""
+    k = 3 if n_contributions <= 6 else 4
+    m = min(10, max(2, -(-n_contributions // 3)))
+    return k, m
 
 
-def _prompt(debate: Debate, only: list[int] | None = None,
-            again: bool = False) -> tuple[str, list[Contribution]]:
-    """The prompt, and the contributions it numbers. ``only`` limits it to
-    those positions (for the second pass)."""
+# Verbatim (no key, or the call failed): the most relevant contributions
+# only, so the fallback is no longer than the AI version.
+VERBATIM_EMAIL = 4
+VERBATIM_DOCUMENT = 10
+
+
+def _prompt(debate: Debate) -> tuple[str, list[Contribution]]:
+    """The prompt, and the contributions it numbers."""
     flat = [c for ex in debate.exchanges for c in ex.contributions]
-    picks = list(range(len(flat))) if only is None else only
-    budget = MAX_INPUT_CHARS // max(1, len(picks))
+    budget = MAX_INPUT_CHARS // max(1, len(flat))
+    k, m = limits(len(flat))
     lines = [f"Meeting: {debate.record.forum}",
              f"Agenda item: {debate.title}",
-             ("These contributions still need a summary. Every one of them must "
-              "have one, no longer than the rules allow (one sentence, 30 words at "
-              "most): none of them is only thanks or procedure. Leave \"overview\" "
-              "empty." if again else
-              "This is the whole debate." if debate.whole else
+             ("This is the whole item." if debate.whole else
               "These are selected exchanges from the item; each is a question "
-              "or request and the reply to it."), ""]
+              "or request and the reply to it."),
+             f"Give at most {k} key points and at most {m} note entries.", ""]
     last_heading = None
-    for n, i in enumerate(picks, 1):
-        c = flat[i]
+    for n, c in enumerate(flat, 1):
         heading = next((ex.heading for ex in debate.exchanges if c in ex.contributions), "")
         if heading and heading != last_heading:
             lines.append(f"[Question: {heading}]")
             last_heading = heading
-        who = c.speaker + (f" ({c.role})" if c.role else "")
-        mark = " (opening statement)" if _is_opening(debate, i, c) else ""
+        who = (f"{c.speaker} MS" if c.member else c.speaker) + (f" ({c.role})" if c.role else "")
         text = c.text if len(c.text) <= budget else c.text[:budget] + " …"
-        lines.append(f"{n}. {who}{mark}:\n{text}\n")
-    return "\n".join(lines), [flat[i] for i in picks]
+        lines.append(f"{n}. {who}:\n{text}\n")
+    return "\n".join(lines), flat
 
 
 def _parse_json(text: str) -> dict | None:
@@ -566,15 +582,16 @@ def _parse_json(text: str) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-def _ask(prompt: str, api_key: str, model: str, post, usage) -> dict:
+def _ask(prompt: str, api_key: str, model: str, post, usage, k: int = 4,
+         m: int = 10) -> dict:
     resp = post(API_URL, timeout=180, headers={
         "x-api-key": api_key,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
     }, json={
         "model": model or DEFAULT_MODEL,
-        "max_tokens": 8000,
-        "system": SYSTEM_PROMPT,
+        "max_tokens": 4000,
+        "system": SYSTEM_PROMPT.format(k=k, m=m),
         "messages": [{"role": "user", "content": prompt}],
     })
     if usage is not None:
@@ -596,121 +613,92 @@ def _ask(prompt: str, api_key: str, model: str, post, usage) -> dict:
     return data
 
 
-def _by_n(data: dict, count: int, key: str = "summary") -> dict[int, str]:
-    out: dict[int, str] = {}
-    for p in data.get("points", []) or []:
-        try:
-            n = int(p.get("n"))
-        except (TypeError, ValueError, AttributeError):
+def _entries(data: dict, key: str, flat: list[Contribution], cap: int,
+             limit: int, usage=None) -> list[Point]:
+    """Checked, length-limited entries from a reply: each must keep to the
+    figures in the contributions it cites, and fit in ``cap`` words."""
+    from .weekly_ai import fit
+
+    out: list[Point] = []
+    for e in data.get(key, []) or []:
+        if not isinstance(e, dict):
             continue
-        if 1 <= n <= count:
-            out[n] = re.sub(r"\s+", " ", str(p.get(key) or "")).strip()
+        text = re.sub(r"\s+", " ", str(e.get("text") or "")).strip()
+        if not text:
+            continue
+        ns = e.get("n")
+        ns = ns if isinstance(ns, list) else [ns]
+        cited = []
+        for n in ns:
+            try:
+                n = int(n)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= n <= len(flat) and flat[n - 1] not in cited:
+                cited.append(flat[n - 1])
+        source = "\n".join(c.text for c in (cited or flat))
+        if not figures_check(text, source):
+            if usage is not None:
+                usage.rejected += 1
+            continue
+        short = fit(text, cap)
+        if not short:
+            if usage is not None:
+                usage.too_long += 1
+            continue
+        out.append(Point(contribution=cited[0] if cited else flat[0], summary=short))
+        if len(out) >= limit:
+            break
     return out
-
-
-# The Word document's fuller account of a contribution (2 October 2026: "a
-# short summary in the email body and another word document that outlines
-# the session in more detail", like the consultancy's note of proceedings).
-WORDS_DETAIL = 90
 
 
 def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
                  model: str = "", post=None, usage=None) -> Debate:
-    """Claude's summary of every contribution, short and checked.
-
-    Every summary must pass the figures check and fit the length limit (one
-    sentence of 30 words; 50 for a minister's opening statement — the
-    directorate's limits for the Friday document, 1 October 2026). Anything
-    of substance left without one is asked for once more on its own; only if
-    that fails too are the speaker's key sentences shown, marked as quotes.
-    If the call fails entirely, the whole email falls back to key sentences.
-    """
+    """An overview, the few key points for the email, and a short note of
+    proceedings for the document — every figure checked against what was
+    said, every entry cut to length. If the call fails, or nothing usable
+    comes back after a second try, the speakers' key sentences are used."""
     import requests
     from .weekly_ai import fit
 
     post = post or requests.post
     prompt, flat = _prompt(debate)
-    try:
-        data = _ask(prompt, api_key, model, post, usage)
-    except Exception as exc:                    # noqa: BLE001 — any failure falls back
+    k, m = limits(len(flat))
+    source_all = "\n".join(c.text for c in flat)
+    for attempt in (1, 2):
+        try:
+            data = _ask(prompt, api_key, model, post, usage, k=k, m=m)
+        except Exception as exc:                # noqa: BLE001 — any failure falls back
+            if attempt == 2 or "JSON" not in str(exc):
+                summarise_verbatim(debate, tax)
+                debate.overview = ""
+                debate.notes = [f"AI summary unavailable ({exc}); the speakers' own "
+                                f"sentences are shown instead."]
+                if usage is not None:
+                    usage.failures += 1
+                return debate
+            continue
+        key_points = _entries(data, "key_points", flat, WORDS_KEY_POINT, k, usage)
+        note = _entries(data, "note", flat, WORDS_NOTE, m, usage)
+        if key_points:
+            break
+        if usage is not None:
+            usage.retried += 1
+    if not key_points:
         summarise_verbatim(debate, tax)
         debate.overview = ""
-        debate.notes = [f"AI summary unavailable ({exc}); key sentences shown instead."]
         if usage is not None:
-            usage.failures += 1
+            usage.extracts += 1
         return debate
 
-    source_all = "\n".join(c.text for c in flat)
     overview = re.sub(r"\s+", " ", str(data.get("overview") or "")).strip()
-    debate.overview = (fit(overview, WORDS_POINT) or "") \
+    debate.overview = (fit(overview, WORDS_OVERVIEW) or "") \
         if overview and figures_check(overview, source_all) else ""
-
-    got: dict[int, str] = {}
-    detail: dict[int, str] = {}
-    failed: set[int] = set()        # a summary came back but could not be used
-
-    def take(reply: dict, picks: list[int], last_try: bool) -> None:
-        for n, s in _by_n(reply, len(picks), "detail").items():
-            i = picks[n - 1]
-            if s and figures_check(s, flat[i].text):
-                d = fit(s, WORDS_DETAIL) or ""
-                if d:
-                    detail[i] = d
-        for n, s in _by_n(reply, len(picks)).items():
-            i = picks[n - 1]
-            c = flat[i]
-            if not s:
-                continue
-            if not figures_check(s, c.text):
-                failed.add(i)
-                if usage is not None:
-                    usage.rejected += 1
-                continue
-            cap = WORDS_OPENING if _is_opening(debate, i, c) else WORDS_POINT
-            short = fit(s, cap) or (s if last_try else "")
-            if short:
-                got[i] = short
-                failed.discard(i)
-            else:
-                failed.add(i)
-                if usage is not None:
-                    usage.too_long += 1
-
-    take(data, list(range(len(flat))), last_try=False)
-    missing = [i for i, c in enumerate(flat) if i not in got
-               and (i in failed or len(c.text.split()) >= MUST_SUMMARISE_WORDS)]
-    if missing:
-        if usage is not None:
-            usage.retried += len(missing)
-        try:
-            again, _ = _prompt(debate, missing, again=True)
-            take(_ask(again, api_key, model, post, usage), missing, last_try=True)
-        except Exception as exc:                # noqa: BLE001 — the first pass stands
-            print(f"  second AI pass failed for {debate.title[:60]!r}: {exc}")
-
     debate.mode = "ai"
+    debate.key_points = key_points
+    debate.note = note or key_points
     debate.points = []
-    quoted = 0
-    i = 0
-    for ex in debate.exchanges:
-        row = []
-        for c in ex.contributions:
-            if i in got:
-                row.append(Point(contribution=c, summary=got[i],
-                                 detail=detail.get(i, "")))
-            elif i in failed or len(c.text.split()) >= MUST_SUMMARISE_WORDS:
-                fallback = key_sentences(c, tax)
-                if fallback:
-                    quoted += 1
-                    row.append(Point(contribution=c, summary=fallback, verbatim=True))
-            # else: thanks or procedure, left out as instructed
-            i += 1
-        debate.points.append(row)
-    if usage is not None:
-        usage.extracts += quoted
-    debate.notes = ([f"{quoted} contribution{'s' if quoted != 1 else ''} could not be "
-                     f"summarised and {'are' if quoted != 1 else 'is'} shown as the "
-                     f"speaker's own sentences, in quotation marks."] if quoted else [])
+    debate.notes = []
     return debate
 
 
@@ -723,7 +711,21 @@ def summarise(debates: list[Debate], tax: Taxonomy,
             summarise_ai(d, tax, key, model, usage=usage)
         else:
             summarise_verbatim(d, tax)
-    return [d for d in debates if any(d.points)]
+    return [d for d in debates if d.has_content]
+
+
+def most_relevant(debate: Debate, tax: Taxonomy, limit: int) -> list[list[Point]]:
+    """The verbatim points cut to the ``limit`` most relevant, kept in order
+    and in their exchanges."""
+    terms = [t for spec in tax.themes.values() for t in spec.get("terms", [])]
+    flat = [(x, y, p) for x, row in enumerate(debate.points) for y, p in enumerate(row)]
+    ranked = sorted(flat, key=lambda t: (-len(find_terms(t[2].summary, terms)),
+                                         t[0], t[1]))[:limit]
+    for r, (_x, _y, p) in enumerate(ranked):
+        p.rank = r
+    keep = {(x, y) for x, y, _p in ranked}
+    return [[p for y, p in enumerate(row) if (x, y) in keep]
+            for x, row in enumerate(debate.points)]
 
 
 # ---------------------------------------------------------------------------
@@ -761,6 +763,18 @@ def _point_row(p: Point, record_url: str) -> str:
         f'</td></tr>')
 
 
+def _key_point_row(p: Point, record_url: str) -> str:
+    c = p.contribution
+    anchor = f"{record_url}#{c.anchor}" if c.anchor else record_url
+    return (
+        f'<tr><td style="padding:9px 18px 9px 30px;border-bottom:1px solid {LINE};'
+        f'font-family:{FONT};vertical-align:top;font-size:13.5px;line-height:1.55;'
+        f'color:{OFF_BLACK}">&bull;&nbsp; {_e(p.summary)} '
+        f'<a href="{_e(anchor)}" style="color:{MUTED};font-size:11.5px;'
+        f'text-decoration:none;white-space:nowrap">Record&nbsp;&rsaquo;</a>'
+        f'</td></tr>')
+
+
 def _debate_card(d: Debate) -> str:
     when = d.meeting_date.strftime("%a %-d %B") if d.meeting_date else ""
     links = " · ".join(filter(None, [
@@ -784,7 +798,10 @@ def _debate_card(d: Debate) -> str:
 
     rows = []
     last_heading = ""
-    for ex, pts in zip(d.exchanges, d.points):
+    if d.key_points:
+        rows = [_key_point_row(p, d.record.url) for p in d.key_points]
+    for ex, pts in zip(d.exchanges, d.points if not d.key_points else []):
+        pts = [p for p in pts if p.rank < VERBATIM_EMAIL]
         if not pts:
             continue
         if ex.heading and not d.whole and ex.heading != last_heading:
@@ -833,18 +850,15 @@ def render_debates(debates: list[Debate], pending: list[str] | None = None,
                    f"({count} item{'s' if count != 1 else ''})")
         title = "Record now published — what was said"
         late_note = (f"The Senedd has now published the Record of this meeting, "
-                     f"held on {day_text}. It was not ready in time for the "
-                     f"next morning's debate summaries. ")
+                     f"held on {day_text}. ")
 
     ai = any(d.mode == "ai" for d in debates)
     how = (
-        "Summaries are written by AI (Claude) from the Senedd's draft Record, "
-        "which is not yet final. Figures are checked automatically against "
-        "what was said. Check the Record, linked on every line, before "
+        "Key points summarised by AI (Claude) from the Senedd's draft Record, "
+        "with figures checked against what was said. Check the Record before "
         "quoting anyone." if ai else
-        "Each line is the speaker's own words — the most relevant sentences of "
-        "what they said, taken verbatim from the Senedd's draft Record, which "
-        "is not yet final. Every line links to the Record.")
+        "The most relevant sentences, in the speakers' own words, from the "
+        "Senedd's draft Record.")
 
     cards = "".join(_debate_card(d) for d in debates)
     pending_html = ""
@@ -858,8 +872,7 @@ def render_debates(debates: list[Debate], pending: list[str] | None = None,
     doc_note = "" if not document else (
         f'<p style="font-size:12.5px;color:{MUTED};margin:0;padding-top:14px;'
         f'font-family:{FONT};line-height:1.55"><b>In more detail:</b> the attached '
-        f'Word document gives the witnesses and a fuller account of every '
-        f'contribution above.</p>')
+        f'Word document gives the witnesses and a short note of each item.</p>')
     footer_link = (
         f'<p style="font-size:12.5px;color:{MUTED};margin:0;padding-top:18px;'
         f'font-family:{FONT}">Everything else said in the Chamber and in '
@@ -884,8 +897,7 @@ border="0" style="border-collapse:collapse;width:{WIDTH}px;max-width:{WIDTH}px">
 
   <tr><td style="padding:20px 28px 0;font-family:{FONT}">
     <p style="font-size:12.5px;color:{MUTED};line-height:1.55;margin:0 0 16px">
-      Debates and exchanges that match the NRLA's relevance rules — the same
-      rules as the live page. {_e(late_note)}{_e(how)}</p>
+      {_e(late_note)}{_e(how)}</p>
     {cards}
     {pending_html}
     {doc_note}

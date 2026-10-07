@@ -15,8 +15,14 @@ for every item in the email:
   * the meeting, with links to the Record, Senedd.tv and the agenda papers;
   * for a committee, the witnesses who gave evidence, with their posts (from
     the Record's "Others in Attendance");
-  * every contribution, in order, with the fuller account Claude writes for
-    it (``Point.detail``) — or, without the key, the speaker's own sentences.
+  * a short note of the main exchanges, in order (``Debate.note``: at most
+    ten entries of 60 words an item) — or, without the key, the ten most
+    relevant contributions in the speakers' own words.
+
+7 October 2026: the first one, for the housing committee's 1 October
+meeting, ran to 20 pages, against the consultancy's seven: "in no world
+should it ever be 20 pages long". It now has a hard ceiling of about 650
+words an item.
 
 The evidence papers themselves are not listed one by one: the Senedd's
 business site, where they are published, refuses requests from the server
@@ -79,7 +85,7 @@ def build_debates_document(debates: list, late: bool = False,
     """The .docx as bytes, or None when there is nothing to detail."""
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-    debates = [d for d in debates if any(d.points)]
+    debates = [d for d in debates if d.has_content]
     if not debates:
         return None
     ai = any(d.mode == "ai" for d in debates)
@@ -106,17 +112,13 @@ def build_debates_document(debates: list, late: bool = False,
 
     intro = d.para(after=8)
     intro.add_run(
-        ("This goes with the email of the same name. For each item on NRLA issues "
-         "it gives the witnesses and every contribution in turn, summarised by AI "
-         "(Claude) from the Senedd's draft Record of Proceedings, which is not yet "
-         "final. Every figure is checked against what the speaker said; where a "
-         "summary could not be used, the speaker's own sentences are shown in "
-         "quotation marks. Use the Record, linked under each heading, when "
-         "quoting anyone." if ai else
-         "This goes with the email of the same name. For each item on NRLA issues "
-         "it gives the witnesses and the most relevant sentences of every "
-         "contribution, in the speakers' own words, from the Senedd's draft Record "
-         "of Proceedings, which is not yet final.")).font.size = _pt(10)
+        ("A short note of each item in the email: the witnesses and the main "
+         "exchanges, summarised by AI (Claude) from the Senedd's draft Record, "
+         "with figures checked against what was said. Use the Record, linked "
+         "under each heading, when quoting anyone." if ai else
+         "A short note of each item in the email: the witnesses and the most "
+         "relevant sentences, in the speakers' own words, from the Senedd's "
+         "draft Record.")).font.size = _pt(10)
 
     meetings: list[tuple] = []
     for deb in debates:
@@ -163,6 +165,18 @@ def build_debates_document(debates: list, late: bool = False,
                 ov = d.para(after=6)
                 ov.add_run(deb.overview).italic = True
 
+            if deb.note:
+                for pt in deb.note:
+                    body = d.para(after=4, indent_cm=0.35)
+                    body.add_run(tidy(pt.summary))
+                    _border_left(body)
+                    c = pt.contribution
+                    if c.anchor:
+                        d.muted(body, "  ")
+                        _hyperlink(body, f"{deb.record.url}#{c.anchor}", "Record ›",
+                                   size=8.5, colour=MUTED, underline=False)
+                continue
+
             last = None
             for ex, pts in zip(deb.exchanges, deb.points):
                 if not pts:
@@ -180,18 +194,13 @@ def build_debates_document(debates: list, late: bool = False,
                     rw.font.color.rgb = _rgb(DARK_BLUE)
                     if c.role:
                         d.muted(who, f"  {c.role}")
-                    text = tidy(pt.detail or pt.summary)
                     body = d.para(after=3, indent_cm=0.35)
-                    if pt.verbatim:
-                        body.add_run(f"“{text}”").italic = True
-                    else:
-                        body.add_run(text)
+                    body.add_run(f"\u201c{tidy(pt.summary)}\u201d").italic = True
                     _border_left(body)
-                    anchor = f"{deb.record.url}#{c.anchor}" if c.anchor else ""
-                    if anchor:
+                    if c.anchor:
                         d.muted(body, "  ")
-                        _hyperlink(body, anchor, "Record ›", size=8.5, colour=MUTED,
-                                   underline=False)
+                        _hyperlink(body, f"{deb.record.url}#{c.anchor}", "Record ›",
+                                   size=8.5, colour=MUTED, underline=False)
 
     end = d.para(after=0)
     end.paragraph_format.space_before = _pt(18)
