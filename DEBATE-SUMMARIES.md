@@ -152,12 +152,14 @@ way, and "houses in multiple occupancy" was added.
   before the last working day) gets an email of its own, headed **Record now
   published**, rather than being mixed in with the latest day's business.
   Monday's run treats Friday's sittings as on time.
-- **The Word document** (since 2 October 2026): every email carries one, in
-  the style of the consultancy's committee notes. For each item it gives the
-  links to the Record, Senedd.tv and the agenda papers; for a committee, the
-  witnesses with their posts; and every contribution in turn, in two to four
-  sentences (90 words at most), checked for figures like the email. Without
-  the API key, it gives each speaker's most relevant sentences instead.
+- **Length** (since 7 October 2026, after a 9,000-word email and a 20-page
+  document for one committee meeting): the email gives each item a one- or
+  two-sentence overview and at most four key points of 35 words. The Word
+  document gives the witnesses and a short note of the main exchanges, at
+  most ten entries of 60 words an item, so a three-session committee comes
+  to about five pages. Without the API key, the email shows the four most
+  relevant contributions an item in the speakers' own words, and the
+  document ten.
 - The run starts when the morning briefing finishes, at about 07.35, including
   on days the Senedd is not sitting, so Thursday's committees can appear on
   Friday.
