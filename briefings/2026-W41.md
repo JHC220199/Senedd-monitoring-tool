@@ -1,8 +1,8 @@
 # NRLA Senedd policy briefing
 
-*As at Tuesday 06 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Wednesday 07 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
-**17** open consultations · **3** closing within three weeks · **45** developments to review
+**17** open consultations · **3** closing within three weeks · **49** developments to review
 
 ## Respond — things with a deadline
 
@@ -18,8 +18,8 @@
 | **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 10 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| 13 days left | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| 9 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| 12 days left | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _5 more — see the full dashboard_ | |
 
 <details><summary>Open, but no closing date published yet (14)</summary>
@@ -36,6 +36,30 @@
 </details>
 
 ## Review — what has happened
+
+**[5. Follow-up inquiry into Empty Properties: Evidence session 3](https://record.senedd.wales/Committee/16305)**  
+<sub>01 October 2026 · Local Government, Housing and Planning Committee · Chris Bailey, Marc Jones, Wendy Dearden and 7 others</sub>  
+Touches committee scrutiny, energy efficiency & retrofit and homelessness. Read and decide whether a line to take is needed.  
+> Yes. Actually, one of the things that I would probably chip in on that aspect is that we've got, in the English environment, a number of new databases coming in. We've got a short-lets register, we've got a private landlord register, now called 'list your rented property' or something—it's got some kind of title. And…
+<sub>[Watch this moment](http://www.senedd.tv/en/16305?startPos=14748&l=en)</sub>
+
+**[2. Follow-up inquiry into Empty Properties: Evidence session 1](https://record.senedd.wales/Committee/16305)**  
+<sub>01 October 2026 · Local Government, Housing and Planning Committee · Marc Jones, Andrew Lavender, Dr Henry Dawson and 6 others</sub>  
+Touches committee scrutiny, energy efficiency & retrofit and homelessness. Read and decide whether a line to take is needed.  
+> There's a pot of money there, the £50 million being perhaps the biggest. Only £5 million has been spent since it was opened. Does that suggest a failure? I don't want to be critical, because I know how difficult it is to engage with some landlords. In Swansea, I have a property just around the corner from where I…
+<sub>[Watch this moment](http://www.senedd.tv/en/16305?startPos=2138&l=en)</sub>
+
+**[3. Follow-up inquiry into Empty Properties: Evidence session 2](https://record.senedd.wales/Committee/16305)**  
+<sub>01 October 2026 · Local Government, Housing and Planning Committee · Marc Jones, James Wagenaar, David Hughes and 9 others</sub>  
+Touches committee scrutiny, energy efficiency & retrofit and hmos & property standards. Read and decide whether a line to take is needed.  
+> Yes, this afternoon we're talking to more community-based agencies, who may be able to access different sources of funding and be able to act in a different way in terms of bringing back especially the long-term eyesore properties, which I think we've all got in our areas and you are probably sick to death of having…
+<sub>[Watch this moment](http://www.senedd.tv/en/16305?startPos=6460&l=en)</sub>
+
+**[4. Scrutiny of the Cabinet Minister for Local Government, Housing and Planning on the Representation of the People (Electoral Registration without Applications) (Electoral Reform) (Wales) Regulations 2026](https://record.senedd.wales/Committee/16305)**  
+<sub>01 October 2026 · Local Government, Housing and Planning Committee · David Hughes, Carmelo Colasanto, Michael Kay and 7 others</sub>  
+Touches committee scrutiny, local authority enforcement and social housing. Read and decide whether a line to take is needed.  
+> One question I've got is—. We've just had empty homes organisations in earlier on, and there is a disparity in numbers from the council records and the actual empty homes. I'm led to believe that most of our information will come from the electoral roll and the council tax roll. So, what about those who are not on…
+<sub>[Watch this moment](http://www.senedd.tv/en/16305?startPos=9596&l=en)</sub>
 
 **[3. Audit Wales - Scrutiny of Annual Report and Accounts 2025-26 and the Annual Plan 2026-27: Evidence Session 1](https://record.senedd.wales/Committee/16294)**  
 <sub>01 October 2026 · Finance Committee · Kevin Thomas, Sam Rowlands, Lyn Ackerman and 8 others</sub>  
@@ -98,31 +122,7 @@ Touches budget & legislative programme and planning system. Read and decide whet
 Touches homelessness. Read and decide whether a line to take is needed.  
 > Written Statement: Consultation on making the “general crisis” provision in the Allocation of Housing and Homelessness (Eligibility) (Wales) (Amendment) Regulations 2026 permanent
 
-**[2. General scrutiny session: Deputy First Minister and Cabinet Minister for Equality and Social Justice](https://record.senedd.wales/Committee/16247)**  
-<sub>23 September 2026 · Equality, Human Rights and Social Justice Committee · Sioned Williams, Zaynub Akbar, Jayne Bryant and 11 others</sub>  
-Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
-> I think I responded to that question earlier, in response to Jane Dodds. Early next year is when we’ll be taking the strategy out for consultation.
-<sub>[Watch this moment](http://www.senedd.tv/en/16247?startPos=1328&l=en)</sub>
-
-**[2. General scrutiny of the Cabinet Minister for Rural Resilience and Sustainability](https://record.senedd.wales/Committee/16233)**  
-<sub>23 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, James Evans, Llyr Gruffydd and 10 others</sub>  
-Touches committee scrutiny, energy efficiency & retrofit and budget & legislative programme. Read and decide whether a line to take is needed.  
-> Just picking up on the question that James asked just now, actually, I've got constituents who are very concerned that, say, data centres are being considered to be essential national infrastructure. But I think that, actually, biodiversity habitats also should be considered as essential national infrastructure. But,…
-<sub>[Watch this moment](http://www.senedd.tv/en/16233?startPos=3607&l=en)</sub>
-
-**[7. Statement by the Cabinet Minister for Local Government, Housing and Planning: Building Safety Programme Update](https://record.senedd.wales/Plenary/16262)**  
-<sub>22 September 2026 · Plenary · David Hughes, Jayne Bryant, Sian Gwenllian and 5 others</sub>  
-Touches building safety & leasehold, homelessness and housing supply & development. Read and decide whether a line to take is needed.  
-> Cabinet Minister, the building safety programme risks becoming yet another example of taxpayers being asked to foot the bill for failures that they did not cause. England regulates buildings above 18m under its strictest duties. Wales has brought every multi-occupied residential building of any height into the new…
-<sub>[Watch this moment](http://www.senedd.tv/en/16262?startPos=18785&l=en)</sub>
-
-**[3. Business Statement and Announcement](https://record.senedd.wales/Plenary/16262)**  
-<sub>22 September 2026 · Plenary · Carmelo Colasanto, John Clark, Heledd Fychan</sub>  
-Touches committee scrutiny, budget & legislative programme and hmos & property standards. Read and decide whether a line to take is needed.  
-> I'm raising this as an MS for Carmarthenshire, but I need to declare that I am also the Chair of the Local Government, Housing and Planning Committee. Trefnydd, can I ask for a statement from the Welsh Government on nutrient neutrality and its impact on housing delivery in west Wales?   Following Natural Resources…
-<sub>[Watch this moment](http://www.senedd.tv/en/16262?startPos=7540&l=en)</sub>
-
-_30 further items in the full dashboard._
+_34 further items in the full dashboard._
 
 ## Coming up
 
@@ -139,4 +139,4 @@ _30 further items in the full dashboard._
 
 ---
 
-<sub>240 items scored from 1553 collected records, 06 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>249 items scored from 1995 collected records, 07 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
