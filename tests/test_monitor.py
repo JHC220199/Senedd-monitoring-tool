@@ -4177,39 +4177,44 @@ class TestDebateSummaries(unittest.TestCase):
             return Resp()
         return post, calls
 
-    def test_ai_summary_is_used_and_a_wrong_figure_is_replaced(self):
-        from monitor.debates import summarise_ai
-        post, calls = self._fake_post({"overview": "An update on building safety.",
-            "points": [
-                {"n": 1, "summary": "The Cabinet Minister said 11 of 161 buildings were complete."},
-                {"n": 2, "summary": "Francesca O'Brien said only 40 buildings had been remediated."},
-                {"n": 3, "summary": ""},
-                {"n": 99, "summary": "Invented speaker."}]})
+    def test_ai_key_points_and_note_are_checked_and_short(self):
+        """7 October 2026: the first committee email ran to 9,000 words and
+        its document to 20 pages. Now: a few key points for the email and a
+        short note for the document, figures checked, lengths capped."""
+        from monitor.debates import WORDS_KEY_POINT, summarise_ai
+        long = " ".join(["The Cabinet Minister said remediation had not moved quickly "
+                         "enough and leaseholders had waited far too long."] * 4)
+        post, calls = self._fake_post({
+            "overview": "An update on building safety remediation.",
+            "key_points": [
+                {"n": [1], "text": "The Cabinet Minister said 11 of 161 buildings were complete."},
+                {"n": [2], "text": "Francesca O'Brien MS said only 40 buildings were done."},  # 40: not said
+                {"n": [3], "text": "The Cabinet Minister said the alarm grant would open very soon."},
+                {"n": [1], "text": "One too many."},
+                {"n": [1], "text": "And another beyond the limit."}],
+            "note": [
+                {"n": [2, 3], "text": "Francesca O'Brien MS said only four of 161 private "
+                                      "buildings had been remediated. The Cabinet Minister "
+                                      "said the alarm grant would open very soon."},
+                {"n": [1], "text": long}]})                       # far over 60 words
         d = summarise_ai(self.statement, TAX, "key", post=post)
         self.assertEqual(d.mode, "ai")
-        points = d.points[0]
-        self.assertEqual(len(points), 2, "empty summaries are skipped, out-of-range refs ignored")
-        self.assertFalse(points[0].verbatim)
-        self.assertTrue(points[1].verbatim, "40 is not in her words, so her own sentences are shown")
-        self.assertTrue(d.notes)
-        _, kw = calls[0]
-        self.assertEqual(kw["headers"]["x-api-key"], "key")
-        self.assertIn("Do not name private individuals", kw["json"]["system"])
+        texts = [p.summary for p in d.key_points]
+        self.assertEqual(len(texts), 3, "three contributions: at most three key points")
+        self.assertFalse(any("40 buildings" in t for t in texts))
+        self.assertTrue(all(len(t.split()) <= WORDS_KEY_POINT for t in texts))
+        self.assertEqual(d.note[0].contribution.speaker, "Francesca O'Brien")
+        self.assertTrue(all(len(p.summary.split()) <= 60 for p in d.note),
+                        "an over-long entry is cut back to whole sentences")
+        self.assertEqual(d.points, [])
+        system = calls[0][1]["json"]["system"]
+        self.assertIn("Do not name private individuals", system)
+        self.assertIn("this is a summary, not a transcript", system)
 
-    def test_the_fuller_account_is_checked_too(self):
-        from monitor.debates import summarise_ai
-        post, calls = self._fake_post({"overview": "", "points": [
-            {"n": 1, "summary": "The Cabinet Minister said 11 of 161 buildings were complete.",
-             "detail": "The Cabinet Minister said 11 of 161 buildings were complete, and "
-                       "that remediation had not moved quickly enough."},
-            {"n": 2, "summary": "Francesca O'Brien asked about leaseholders.",
-             "detail": "Francesca O'Brien said 99 buildings were untouched."},   # 99: not said
-            {"n": 3, "summary": "The Cabinet Minister said the alarm grant would open soon."}]})
-        d = summarise_ai(self.statement, TAX, "key", post=post)
-        pts = d.points[0]
-        self.assertIn("not moved quickly enough", pts[0].detail)
-        self.assertEqual(pts[1].detail, "", "a figure she never gave: no fuller account")
-        self.assertIn('"detail"', calls[0][1]["json"]["system"])
+    def test_a_long_session_is_capped(self):
+        from monitor.debates import limits
+        self.assertEqual(limits(3), (3, 2))
+        self.assertEqual(limits(80), (4, 10), "a three-hour session: 4 and 10, not 80")
 
     def test_a_failed_call_falls_back_to_key_sentences(self):
         from monitor.debates import summarise_ai
@@ -4219,57 +4224,19 @@ class TestDebateSummaries(unittest.TestCase):
         self.assertTrue(all(p.verbatim for row in d.points for p in row))
         self.assertIn("unavailable", d.notes[0])
 
-    def test_ai_summaries_are_short_and_a_missing_one_is_asked_for_again(self):
-        """30 September 2026: the debate email uses the Friday document's
-        limits — one sentence, 30 words at most."""
-        import json as _json
-        from monitor.debates import WORDS_POINT, summarise_ai
-        from monitor.weekly_ai import Usage
+    def test_the_verbatim_fallback_is_capped_too(self):
         from monitor.collectors.record_html import Contribution
+        from monitor.debates import (VERBATIM_DOCUMENT, VERBATIM_EMAIL, render_debates,
+                                     summarise_verbatim)
         d = self.statement
-        long = ("Only four of 161 private buildings have been remediated, and "
-                "seventy per cent have not started. " * 3).strip()
-        d.exchanges[0].contributions[1] = Contribution(
-            anchor="C2", speaker="Francesca O'Brien", member=True, text=long)
-        replies = []
-
-        class Resp:
-            status_code = 200
-            text = ""
-
-            def __init__(self, payload):
-                self.payload = payload
-
-            def json(self):
-                return {"content": [{"type": "text", "text": _json.dumps(self.payload)}],
-                        "usage": {"input_tokens": 1000, "output_tokens": 100}}
-
-        def post(url, **kw):
-            prompt = kw["json"]["messages"][0]["content"]
-            replies.append(prompt)
-            if "still need a summary" in prompt:
-                return Resp({"overview": "", "points": [{"n": 1, "summary":
-                             "Francesca O'Brien said only four of 161 buildings had been "
-                             "remediated and 70 per cent had not started."}]})
-            return Resp({"overview": "An update on building safety.", "points": [
-                {"n": 1, "summary": "The Cabinet Minister said remediation had not moved "
-                 "quickly enough. She said the alarm grant would open soon. She thanked "
-                 "leaseholders for their patience over many difficult years."},
-                {"n": 2, "summary": ""}]})
-
-        usage = Usage()
-        summarise_ai(d, TAX, "key", post=post, usage=usage)
-        self.assertEqual(len(replies), 2)
-        self.assertIn("(opening statement)", replies[0])
-        points = d.points[0]
-        self.assertTrue(all(not p.verbatim for p in points))
-        self.assertIn("70 per cent", points[1].summary)
-        for p in points:
-            self.assertLessEqual(len(p.summary.split()), 50)
-        self.assertLessEqual(len(points[1].summary.split()), WORDS_POINT)
-        self.assertEqual(usage.calls, 2)
-        self.assertEqual(usage.retried, 1)
-        self.assertIn("about $", usage.report())
+        many = [Contribution(anchor=f"C{i}", speaker=f"Member {i}", member=True,
+                             text=f"Landlords in the private rented sector point {i}.")
+                for i in range(30)]
+        d.exchanges[0].contributions = many
+        summarise_verbatim(d, TAX)
+        self.assertEqual(sum(len(r) for r in d.points), VERBATIM_DOCUMENT)
+        _, body, _ = render_debates([d])
+        self.assertEqual(body.count("Record&nbsp;&rsaquo;"), VERBATIM_EMAIL)
 
     def test_without_a_key_nothing_leaves_the_runner(self):
         from monitor import debates as mod
@@ -4287,8 +4254,8 @@ class TestDebateSummaries(unittest.TestCase):
         self.assertIn("Senedd debate summaries — Plenary, Tue 22 September (3 items)", subject)
         self.assertIn("John Clark MS", body)
         self.assertIn("record.senedd.wales/Plenary/16262#C14", body)
-        self.assertIn("verbatim", body)
-        self.assertNotIn("written by AI", body)
+        self.assertIn("speakers&#x27; own words", body)
+        self.assertNotIn("by AI", body)
         self.assertIn("Still awaited:", body)
         self.assertNotIn("Kerry Ferguson", body)
         self.assertEqual(render_debates([], []), ("", "", 0))
@@ -4300,7 +4267,7 @@ class TestDebateSummaries(unittest.TestCase):
         summarise_verbatim(d, TAX)
         d.mode = "ai"
         _, body, _ = render_debates([d])
-        self.assertIn("written by AI (Claude)", body)
+        self.assertIn("summarised by AI (Claude)", body)
         self.assertIn("Check the Record", body)
 
 
@@ -4402,7 +4369,7 @@ class TestDebatesCommand(unittest.TestCase):
         subject, body = sent[0]
         self.assertTrue(subject.startswith("Record now published — Plenary, Tue 22 September"),
                         subject)
-        self.assertIn("It was not ready in time for the next morning", body)
+        self.assertIn("has now published the Record of this meeting", body)
         self.assertIn("16262", meetings)
 
     def test_the_email_carries_a_word_document_in_more_detail(self):
@@ -4426,7 +4393,7 @@ class TestDebatesCommand(unittest.TestCase):
         self.assertIn("in detail", text)
         self.assertIn("Open Government Licence", text)
 
-    def test_the_document_lists_witnesses_and_the_fuller_account(self):
+    def test_the_document_is_a_short_note_with_witnesses(self):
         import docx
         from monitor.collectors.record_html import (AgendaItem, Block, Contribution,
                                                     Record)
@@ -4441,20 +4408,19 @@ class TestDebatesCommand(unittest.TestCase):
         rec = Record(meeting_id="16305", forum="Local Government, Housing and Planning Committee",
                      url="https://record.senedd.wales/Committee/16305", items=[item],
                      attendees={"Henry Dawson": "Senior Lecturer, Cardiff Metropolitan University"})
+        note = Point(contribution=chair,
+                     summary="Marc Jones MS asked where the figures for empty properties "
+                             "stood. Henry Dawson said there were several classifications.")
         deb = Debate(record=rec, item=item, meeting_date=date(2026, 10, 1), whole=True,
                      exchanges=[Exchange(heading="", contributions=[chair, witness])],
-                     mode="ai",
-                     points=[[Point(contribution=chair, summary="Marc Jones asked about figures.",
-                                    detail="Marc Jones said there was no accepted figure for "
-                                           "empty properties and asked where it stood."),
-                              Point(contribution=witness, summary="Henry Dawson said data varied.")]])
+                     mode="ai", key_points=[note], note=[note])
         data = build_debates_document([deb], late=True)
         text = "\n".join(p.text for p in docx.Document(io.BytesIO(data)).paragraphs)
         self.assertIn("Witnesses", text)
         self.assertIn("Henry Dawson, Senior Lecturer, Cardiff Metropolitan University", text)
-        self.assertIn("there was no accepted figure for empty properties", text)
-        self.assertIn("Henry Dawson said data varied.", text, "no detail: the summary")
+        self.assertIn("Marc Jones MS asked where the figures for empty properties stood", text)
         self.assertIn("Record now published", text)
+        self.assertLess(len(text.split()), 250)
         self.assertEqual(filename([deb], late=True),
                          "Local Government, Housing and Planning Committee, 1 October 2026.docx")
 
