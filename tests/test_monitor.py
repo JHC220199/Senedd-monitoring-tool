@@ -4203,13 +4203,149 @@ class TestDebateSummaries(unittest.TestCase):
         self.assertEqual(len(texts), 3, "three contributions: at most three key points")
         self.assertFalse(any("40 buildings" in t for t in texts))
         self.assertTrue(all(len(t.split()) <= WORDS_KEY_POINT for t in texts))
-        self.assertEqual(d.note[0].contribution.speaker, "Francesca O'Brien")
-        self.assertTrue(all(len(p.summary.split()) <= 60 for p in d.note),
+        self.assertTrue(any(p.contribution.speaker == "Francesca O'Brien" and not p.verbatim
+                            for p in d.note))
+        self.assertTrue(all(len(p.summary.split()) <= 70 for p in d.note),
                         "an over-long entry is cut back to whole sentences")
         self.assertEqual(d.points, [])
         system = calls[0][1]["json"]["system"]
         self.assertIn("Do not name private individuals", system)
         self.assertIn("this is a summary, not a transcript", system)
+
+    # 8 October 2026: private renting front and centre; nothing relevant
+    # missing from the document; no debates that only mention housing.
+
+    def _item(self, title, rows, headings=None):
+        from monitor.collectors.record_html import (AgendaItem, Block, Contribution,
+                                                    Record)
+        blocks = []
+        n = 0
+        for heading, contribs in (headings or [("", rows)]):
+            cs = []
+            for who, role, text in contribs:
+                n += 1
+                cs.append(Contribution(anchor=f"C{n}", speaker=who, role=role,
+                                       member=True, text=text))
+            blocks.append(Block(heading=heading, contributions=cs))
+        item = AgendaItem(title=title, anchor="A1", blocks=blocks)
+        rec = Record(meeting_id="16314", forum="Plenary",
+                     url="https://record.senedd.wales/Plenary/16314", items=[item])
+        return rec, item
+
+    def test_private_renting_is_recognised(self):
+        from monitor.debates import is_prs
+        self.assertTrue(is_prs("Will you commit to ending no-fault evictions and freezing "
+                               "rents in the private rental sector?", TAX))
+        self.assertTrue(is_prs("Leasing Scheme Wales allows councils to lease properties "
+                               "from private landlords.", TAX))
+        self.assertTrue(is_prs("HMO licence holders should check every occupant.", TAX))
+        self.assertFalse(is_prs("plans across whole areas and across different tenancies",
+                                TAX), "one everyday word, once, is not enough")
+        self.assertFalse(is_prs("Trivallis and other social landlords and their tenants.",
+                                TAX), "social housing is not the NRLA's")
+
+    def test_a_debate_that_only_mentions_housing_is_left_out(self):
+        """7 October 2026: a debate on family drug and alcohol courts came
+        through because a Member said care leavers risk homelessness."""
+        from monitor.debates import Relevance, select
+        MIN = "Deputy Minister for Social Care"
+        rec, _ = self._item("7. Member Debate under Standing Order 11.21(iv): Family Drug "
+                            "and Alcohol Courts", [
+            ("Tom Montgomery", "", "Care leavers are on a predictable route into "
+                                   "homelessness, and family courts can help."),
+            ("Delyth Jewell", MIN, "The evidence for the courts is strong.")])
+        self.assertEqual(select(rec, Relevance(TAX)), [])
+        rec, _ = self._item("8. Member Debate: Cost of living", [
+            ("Anthony Slaughter", "", "Families spend a third of their income on rent "
+                                      "and still face no-fault evictions from private "
+                                      "landlords."),
+            ("Delyth Jewell", MIN, "We will look at that.")])
+        self.assertEqual(len(select(rec, Relevance(TAX))), 1,
+                         "a debate's part about private renting still comes through")
+
+    def test_private_renting_comes_first_and_every_part_is_in_the_note(self):
+        from monitor.debates import Debate, Exchange, summarise_ai
+        CM = "Cabinet Minister for Local Government, Housing and Planning"
+        rec, item = self._item("3. Questions to the Cabinet Minister", None, headings=[
+            ("Housing Developers", [
+                ("John Davies", "", "How will negligent developers be held to account "
+                                    "for building safety remediation?"),
+                ("Sian Gwenllian", CM, "I will name developers who fail to remediate.")]),
+            ("Local Development Plans", [
+                ("Marc Jones", "", "How will communities be engaged on local development "
+                                   "plans and housing allocations?"),
+                ("Sian Gwenllian", CM, "A consultation on local development plans will "
+                                       "follow.")]),
+            ("Renters' Rights", [
+                ("Anthony Slaughter", "", "Will you end no-fault evictions and freeze "
+                                          "private rents for renters?"),
+                ("Sian Gwenllian", CM, "We will take a phased approach for renters: the "
+                                       "first renters Bill gathers data for a second and "
+                                       "third Bill.")])])
+        from monitor.debates import _chairs, exchanges
+        deb = Debate(record=rec, item=item, meeting_date=date(2026, 10, 7), whole=False,
+                     exchanges=exchanges(item, _chairs(rec)))
+        post, calls = self._fake_post({
+            "overview": "Questions on building safety, planning and renters' rights.",
+            "key_points": [
+                {"n": [1, 2], "text": "Sian Gwenllian MS said she would name developers."},
+                {"n": [5, 6], "text": "Anthony Slaughter MS asked about no-fault evictions "
+                                      "and a rent freeze; the Cabinet Minister did not "
+                                      "commit, describing a phased approach."}],
+            # The note leaves out the local development plans question.
+            "note": [
+                {"n": [1, 2], "text": "John Davies MS asked about developers; Sian "
+                                      "Gwenllian MS said she would name them."},
+                {"n": [5, 6], "text": "Anthony Slaughter MS asked about no-fault evictions "
+                                      "and a rent freeze; Sian Gwenllian MS described a "
+                                      "phased approach, with a second and third Bill."}]})
+        summarise_ai(deb, TAX, "key", post=post)
+        self.assertIn("Anthony Slaughter", deb.key_points[0].summary,
+                      "private renting leads the email")
+        self.assertTrue(deb.key_points[0].priority)
+        self.assertIn("Anthony Slaughter", deb.note[0].summary,
+                      "and the document")
+        filled = [p for p in deb.note if p.verbatim]
+        self.assertTrue(filled and filled[0].contribution.speaker == "Marc Jones",
+                        "a part the AI left out is in the document in the speaker's words")
+        self.assertEqual([p.contribution.speaker for p in deb.note[1:]],
+                         ["John Davies", "Marc Jones", "Sian Gwenllian"],
+                         "then the rest, in the order it happened")
+        prompt = calls[0][1]["json"]["messages"][0]["content"]
+        self.assertIn("★ Anthony Slaughter MS — Renters' Rights: contributions 5–6", prompt)
+        self.assertIn("- Marc Jones MS — Local Development Plans: contributions 3–4", prompt)
+        system = calls[0][1]["json"]["system"]
+        self.assertIn("whether the Government agreed, refused or would not commit", system)
+        self.assertIn("never work out a year", system)
+
+        from monitor.debates import render_debates
+        _s, body, _n = render_debates([deb])
+        self.assertLess(body.index("Private renting"), body.index("Anthony Slaughter"))
+        self.assertLess(body.index("Anthony Slaughter"), body.index("Also raised"))
+
+        import docx
+        from monitor.debates_document import build_debates_document
+        doc = docx.Document(io.BytesIO(build_debates_document([deb])))
+        text = "\n".join(p.text for p in doc.paragraphs)
+        self.assertLess(text.index("PRIVATE RENTING"), text.index("Anthony Slaughter"))
+        self.assertLess(text.index("ALSO RAISED"), text.index("John Davies"))
+        self.assertIn("Marc Jones MS: \u201c", text)
+
+    def test_the_item_most_about_private_renting_comes_first(self):
+        from monitor.debates import Debate, Exchange, summarise
+        rec, qs = self._item("3. Questions to the Cabinet Minister", [
+            ("Peter Fox", "", "Will planning reform speed up house building?"),
+            ("Sian Gwenllian", "Cabinet Minister", "We will consult on planning.")])
+        rec2, hmo = self._item("9. Reform UK Debate: Access to HMOs", [
+            ("Francesca O'Brien", "", "HMO licence holders should verify occupants."),
+            ("Marc Jones", "", "HMOs are private housing for renters.")])
+        a = Debate(record=rec, item=qs, meeting_date=date(2026, 10, 7), whole=True,
+                   exchanges=[Exchange(heading="", contributions=qs.contributions)])
+        b = Debate(record=rec, item=hmo, meeting_date=date(2026, 10, 7), whole=True,
+                   exchanges=[Exchange(heading="", contributions=hmo.contributions)])
+        out = summarise([a, b], TAX, api_key="")
+        self.assertEqual([d.title for d in out],
+                         ["Reform UK Debate: Access to HMOs", "Questions to the Cabinet Minister"])
 
     def test_a_long_session_is_capped(self):
         from monitor.debates import limits
