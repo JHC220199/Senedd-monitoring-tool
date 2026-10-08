@@ -131,6 +131,35 @@ It uses the same rules as the live page, applied to each thing said.
 - **Committees** are summarised as whole evidence sessions when the session
   is relevant. The housing committee's sessions on electoral regulations are
   not.
+- **Debates on other subjects** (Member, opposition and short debates) come
+  through only for a part about private renting, or a part that is really
+  about housing (two housing terms or more). Since 8 October 2026, when a
+  debate on family drug and alcohol courts came through because one Member
+  mentioned care leavers' risk of homelessness.
+
+### Private renting goes first (since 8 October 2026)
+
+On 7 October the email led with building safety, and Anthony Slaughter MS's
+questions on no-fault evictions and a rent freeze, the closing dates of
+Leasing Scheme Wales and the debate on HMOs were buried or missing. Now:
+
+- Anything about **private renting** — landlords, tenants, renters, rents,
+  evictions, HMOs, licensing, Rent Smart Wales, leasing schemes — is marked.
+  Social housing landlords, tenants and rents do not count. One everyday
+  word said once ("across different tenancies") is not enough.
+- The **item** most about private renting comes first in the email and the
+  document (a debate on HMOs before questions on planning).
+- Within each item, the email's key points and the document's note start
+  with private renting, under a **Private renting** heading, then **Also
+  raised**.
+- Those points say what was asked, what the answer was — including whether
+  the Government agreed, refused or would not commit — and every date,
+  deadline and next step given. They may be longer (50 words in the email,
+  70 in the document).
+- **Nothing relevant is left out of the document.** It has one entry for
+  each Member's question (or, in a whole debate, each speaker who said
+  something relevant). If the AI leaves one out, that part is added in the
+  speaker's own words, and the run's log says so.
 
 If it picks something irrelevant, or misses something, the fix is the same as
 for the live page: add a term, or an `exclude_if` term, in
@@ -154,10 +183,10 @@ way, and "houses in multiple occupancy" was added.
   Monday's run treats Friday's sittings as on time.
 - **Length** (since 7 October 2026, after a 9,000-word email and a 20-page
   document for one committee meeting): the email gives each item a one- or
-  two-sentence overview and at most four key points of 35 words. The Word
-  document gives the witnesses and a short note of the main exchanges, at
-  most ten entries of 60 words an item, so a three-session committee comes
-  to about five pages. Without the API key, the email shows the four most
+  two-sentence overview and three to five key points of 35 words (50 for
+  private renting). The Word document gives the witnesses and a note with
+  one entry for each relevant question or speaker, of 45 words (70 for
+  private renting), at most 20 entries an item. Without the API key, the email shows the four most
   relevant contributions an item in the speakers' own words, and the
   document ten. In the document's notes, each speaker's name is in bold so
   it is clear where one person stops and the next starts (since 8 October
@@ -179,6 +208,9 @@ again the next morning.
   The email is attached to the run as an artifact.
 - **Run workflow** on that page runs it at any time. It sends only what has
   not been sent before.
+- To see what a past sitting would look like **without sending anything**,
+  give its date in "TEST a past sitting" and tick **Preview only**. The email
+  and the Word document are attached to the run as an artifact.
 
 ---
 
