@@ -24,7 +24,9 @@
 # TESTING ON A PAST SITTING
 #   Actions → Senedd debate summaries → Run workflow, with the sitting's date
 #   in "TEST a past sitting". The email is marked TEST and nothing is recorded
-#   as done, so the next morning's run is unaffected.
+#   as done, so the next morning's run is unaffected. Tick "Preview only" to
+#   send nothing at all: the email and Word document are kept as the run's
+#   artifact (at the bottom of the run's page) to download and read.
 #
 # WHY IT CAN WRITE TO THE REPOSITORY
 #   To remember which meetings it has done (data/debates-sent.json), so a
@@ -43,6 +45,11 @@ on:
         description: "TEST a past sitting: its date, e.g. 2026-09-29 (leave empty for a normal run)"
         required: false
         default: ""
+      preview_only:
+        description: "Preview only: send no email, keep the email and document as the run's artifact"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: senedd-debates
@@ -85,8 +92,16 @@ jobs:
           DEBATE_SUMMARY_MODEL: ${{ vars.DEBATE_SUMMARY_MODEL }}
           DEBATE_SUMMARIES_AI: ${{ vars.DEBATE_SUMMARIES_AI }}
           TEST_SITTING: ${{ inputs.test_sitting }}
+          PREVIEW_ONLY: ${{ inputs.preview_only }}
         run: |
-          if [ -n "$TEST_SITTING" ]; then
+          if [ "$PREVIEW_ONLY" = "true" ]; then
+            echo "Preview only: nothing will be sent or recorded."
+            if [ -n "$TEST_SITTING" ]; then
+              python -m monitor.cli debates --out out/debates.html --test-sitting "$TEST_SITTING"
+            else
+              python -m monitor.cli debates --out out/debates.html
+            fi
+          elif [ -n "$TEST_SITTING" ]; then
             python -m monitor.cli debates --send --out out/debates.html --test-sitting "$TEST_SITTING"
           else
             python -m monitor.cli debates --send --out out/debates.html
