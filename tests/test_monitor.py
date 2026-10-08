@@ -4424,6 +4424,47 @@ class TestDebatesCommand(unittest.TestCase):
         self.assertEqual(filename([deb], late=True),
                          "Local Government, Housing and Planning Committee, 1 October 2026.docx")
 
+    def test_the_document_puts_each_speaker_in_bold(self):
+        """8 October 2026: in a note entry it was "slightly hard to ...
+        differentiate when one MS is talking vs another". Speakers are bold;
+        nothing else is."""
+        import docx
+        from monitor.collectors.record_html import (AgendaItem, Block, Contribution,
+                                                    Record)
+        from monitor.debates import Debate, Exchange, Point
+        from monitor.debates_document import build_debates_document
+        q = Contribution(anchor="C1", speaker="Francesca O'Brien", member=True,
+                         text="Will you reinstate section 35?")
+        a = Contribution(anchor="C2", speaker="Sian Gwenllian", member=True,
+                         role="Cabinet Minister for Local Government, Housing and Planning",
+                         text="Housing is allocated according to need.")
+        w = Contribution(anchor="C3", speaker="Dr Henry Dawson", text="Several classifications.")
+        item = AgendaItem(title="3. Questions", anchor="A1",
+                          blocks=[Block(contributions=[q, a, w])])
+        rec = Record(meeting_id="1", forum="Plenary",
+                     url="https://record.senedd.wales/Plenary/1", items=[item])
+        notes = [
+            "Francesca O\u2019Brien MS asked whether section 35 would return; "
+            "Sian Gwenllian MS said housing was allocated by need.",
+            "Jane Dodds MS was not in this item; O'Brien MS replied.",
+            "The Cabinet Minister for Local Government, Housing and Planning said "
+            "councils held the data. Henry Dawson agreed.",
+        ]
+        deb = Debate(record=rec, item=item, meeting_date=date(2026, 10, 7), whole=True,
+                     exchanges=[Exchange(heading="", contributions=[q, a, w])], mode="ai",
+                     key_points=[], note=[Point(contribution=q, summary=n) for n in notes])
+        doc = docx.Document(io.BytesIO(build_debates_document([deb])))
+        bold = [r.text for p in doc.paragraphs for r in p.runs
+                if r.bold and p.text.startswith(
+                    ("Francesca", "Jane", "The Cabinet"))]
+        self.assertEqual(bold, ["Francesca O\u2019Brien MS", "Sian Gwenllian MS",
+                                "O'Brien MS",
+                                "The Cabinet Minister for Local Government, Housing and Planning",
+                                "Henry Dawson"])
+        text = "\n".join(p.text for p in doc.paragraphs)
+        for n in notes:
+            self.assertIn(n, text)
+
     def test_the_record_gives_witnesses_posts(self):
         from monitor.collectors.record_html import parse_attendees
         from bs4 import BeautifulSoup
