@@ -4331,6 +4331,16 @@ class TestDebateSummaries(unittest.TestCase):
         self.assertLess(text.index("ALSO RAISED"), text.index("John Davies"))
         self.assertIn("Marc Jones MS: \u201c", text)
 
+    def test_a_reply_quoting_a_speaker_in_double_quotes_still_reads(self):
+        """8 October 2026: the preview of 7 October's housing questions fell
+        back to extracts twice with "the reply was not the JSON asked for"."""
+        from monitor.debates import _parse_json
+        reply = ('{"overview": "", "key_points": [{"n": [5, 6], "text": "The Cabinet '
+                 'Minister said "a second and third Bill" would follow."}], "note": []}')
+        data = _parse_json(reply)
+        self.assertEqual(data["key_points"][0]["text"],
+                         'The Cabinet Minister said "a second and third Bill" would follow.')
+
     def test_the_item_most_about_private_renting_comes_first(self):
         from monitor.debates import Debate, Exchange, summarise
         rec, qs = self._item("3. Questions to the Cabinet Minister", [
