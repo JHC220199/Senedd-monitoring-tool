@@ -159,7 +159,9 @@ way, and "houses in multiple occupancy" was added.
   most ten entries of 60 words an item, so a three-session committee comes
   to about five pages. Without the API key, the email shows the four most
   relevant contributions an item in the speakers' own words, and the
-  document ten.
+  document ten. In the document's notes, each speaker's name is in bold so
+  it is clear where one person stops and the next starts (since 8 October
+  2026).
 - The run starts when the morning briefing finishes, at about 07.35, including
   on days the Senedd is not sitting, so Thursday's committees can appear on
   Friday.
