@@ -4341,6 +4341,24 @@ class TestDebateSummaries(unittest.TestCase):
         self.assertEqual(data["key_points"][0]["text"],
                          'The Cabinet Minister said "a second and third Bill" would follow.')
 
+    def test_an_entry_keeps_its_answer(self):
+        """8 October 2026: cutting an entry at its word limit dropped the
+        answer, leaving "Anthony Slaughter MS asked ..." on its own."""
+        from monitor.debates import WORDS_NOTE_PRS, _fit_entry
+        question = ("Anthony Slaughter MS asked what progress had been made on renters' "
+                    "rights and whether the Cabinet Minister would commit to ending "
+                    "no-fault evictions at the earliest opportunity and to an immediate "
+                    "freeze of private rents during the cost-of-living crisis.")
+        answer = ("The Cabinet Minister did not commit, citing a minority Government, and "
+                  "described a phased approach: a first renters Bill to gather data, then "
+                  "a second and third Bill, with the aim of placing in law in Wales the "
+                  "right to an adequate home.")
+        text = f"{question} {answer}"
+        self.assertGreater(len(text.split()), WORDS_NOTE_PRS)
+        self.assertIn("did not commit", _fit_entry(text, WORDS_NOTE_PRS))
+        self.assertLessEqual(len(_fit_entry(text * 3, WORDS_NOTE_PRS).split()),
+                             WORDS_NOTE_PRS * 1.5)
+
     def test_the_item_most_about_private_renting_comes_first(self):
         from monitor.debates import Debate, Exchange, summarise
         rec, qs = self._item("3. Questions to the Cabinet Minister", [
