@@ -460,7 +460,10 @@ item was about and what in it matters most to the NRLA, starting with \
 anything marked ★. Leave it empty if the item is a set of unrelated questions.
 - "key_points": for the email, the {k} points from the item that matter most \
 to the NRLA — a question and its answer, a commitment, a figure. Points about \
-★ parts come first, the most important first. Each is one sentence, two at \
+★ parts come first, the most important first. Most important of all is \
+anything that would change what private landlords must do or may charge — \
+new duties, licence conditions, rent or eviction rules — and the \
+Government's answer to it. Each is one sentence, two at \
 most, no more than 35 words (50 for a ★ point), naming who said it.
 - "note": for a document read later, ONE ENTRY FOR EACH PART in the list, \
 and no more: {m} entries. ★ parts first, then the rest in the order they \
