@@ -80,6 +80,63 @@ def _speaker(c) -> str:
     return f"{c.speaker} MS" if c.member else c.speaker
 
 
+# 8 October 2026: in a note entry ("John Davies MS asked ...; Sian Gwenllian
+# MS said ...") it was "slightly hard to ... differentiate when one MS is
+# talking vs another". So whoever speaks is in bold: the item's speakers by
+# name ("Sian Gwenllian MS", "O'Brien MS", "Henry Dawson"), their roles as
+# the Record gives them, and a minister's title at the start of a sentence
+# ("The Deputy Minister ..."). Nothing else is bolded.
+_HONORIFIC = re.compile(r"^(Dr|Professor|Prof|Mr|Mrs|Ms|Miss|Cllr|Councillor|Sir|Dame)\.?\s+")
+_TITLES = re.compile(
+    r"\bThe (?:Deputy First Minister|First Minister|Cabinet Secretary|Cabinet Minister"
+    r"|Deputy Minister|Minister|Trefnydd|Counsel General|Llywydd|Chair)"
+    r"(?: for [A-Z][\w’'-]*(?:(?:,| and)? [A-Z][\w’'-]*)*)?")
+
+
+def speaker_labels(debate) -> list[str]:
+    """How a note may name the people who spoke in this item."""
+    labels: set[str] = set()
+    for c in debate.item.contributions:
+        name = (c.speaker or "").strip()
+        if not name:
+            continue
+        labels.add(name)
+        bare = _HONORIFIC.sub("", name)
+        labels.add(bare)
+        if c.member:
+            labels.add(f"{name} MS")
+            parts = bare.split()
+            if len(parts) > 1:
+                labels.add(f"{parts[-1]} MS")
+        if c.role and not c.is_chair:
+            labels.add(c.role.strip())
+    return [x for x in labels if len(x) > 2]
+
+
+def _names_pattern(labels: list[str]):
+    if not labels:
+        return _TITLES
+    alts = []
+    for x in sorted(labels, key=len, reverse=True):
+        alts.append(re.escape(x.replace("’", "'")).replace("'", "['’]"))
+    return re.compile(r"(?<![\w’'])(?:The )?(?:" + "|".join(alts) + r")(?![\w])"
+                      r"|" + _TITLES.pattern)
+
+
+def _with_speakers_bold(p, text: str, pattern) -> None:
+    """Add ``text`` to ``p`` with each speaker's name in bold."""
+    at = 0
+    for m in pattern.finditer(text):
+        if m.start() > at:
+            p.add_run(text[at:m.start()])
+        r = p.add_run(m.group(0))
+        r.bold = True
+        r.font.color.rgb = _rgb(DARK_BLUE)
+        at = m.end()
+    if at < len(text):
+        p.add_run(text[at:])
+
+
 def build_debates_document(debates: list, late: bool = False,
                            page_url: str = "") -> bytes | None:
     """The .docx as bytes, or None when there is nothing to detail."""
@@ -166,9 +223,10 @@ def build_debates_document(debates: list, late: bool = False,
                 ov.add_run(deb.overview).italic = True
 
             if deb.note:
+                names = _names_pattern(speaker_labels(deb))
                 for pt in deb.note:
                     body = d.para(after=4, indent_cm=0.35)
-                    body.add_run(tidy(pt.summary))
+                    _with_speakers_bold(body, tidy(pt.summary), names)
                     _border_left(body)
                     c = pt.contribution
                     if c.anchor:
@@ -228,4 +286,4 @@ def build_debates_document(debates: list, late: bool = False,
     return buf.getvalue()
 
 
-__all__ = ["build_debates_document", "filename", "OFF_BLACK"]
+__all__ = ["build_debates_document", "filename", "speaker_labels", "OFF_BLACK"]
