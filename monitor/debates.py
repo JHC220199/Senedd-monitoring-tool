@@ -475,9 +475,11 @@ draws on.
 
 For anything marked ★, say exactly what was asked or proposed and what the \
 answer was — including whether the Government agreed, refused or would not \
-commit — and keep every date, deadline, timescale and next step given ("no \
-new properties after December", "a second and third Bill"). Write a date as \
-the speaker gave it ("March next year"); never work out a year.
+commit — and keep every date, deadline, timescale and next step given ('no \
+new properties after December', 'a second and third Bill'). Write a date as \
+the speaker gave it ('March next year'); never work out a year.
+
+Inside the text of an entry, use single quotation marks, never double ones.
 
 Rules for all three:
 - Use ONLY what is in the text you are given. Add no facts, context, figures, \
@@ -738,15 +740,52 @@ def _prompt(debate: Debate, tax: Taxonomy | None = None,
     return "\n".join(lines), flat
 
 
+def _repair_quotes(text: str) -> str:
+    """Escape double quotation marks inside JSON strings.
+
+    8 October 2026: a preview of 7 October's housing questions failed twice
+    with "the reply was not the JSON asked for" — a note quoting a speaker
+    ("a second and third Bill") in plain double quotes ends the string
+    early. A quote mark that is not followed by , : } or ] is inside the
+    text, so it is escaped."""
+    out, in_string, i = [], False, 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\\" and in_string:
+            out.append(text[i:i + 2])
+            i += 2
+            continue
+        if ch == '"':
+            if not in_string:
+                in_string = True
+            else:
+                rest = text[i + 1:].lstrip()
+                if not rest or rest[0] in ",:}]":
+                    in_string = False
+                else:
+                    out.append('\\"')
+                    i += 1
+                    continue
+        elif ch == "\n" and in_string:
+            out.append("\\n")
+            i += 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _parse_json(text: str) -> dict | None:
     m = re.search(r"\{.*\}", text or "", re.S)
     if not m:
         return None
-    try:
-        data = json.loads(m.group(0))
-    except json.JSONDecodeError:
-        return None
-    return data if isinstance(data, dict) else None
+    for candidate in (m.group(0), _repair_quotes(m.group(0))):
+        try:
+            data = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        return data if isinstance(data, dict) else None
+    return None
 
 
 def _ask(prompt: str, api_key: str, model: str, post, usage, k: int = 4,
@@ -757,7 +796,7 @@ def _ask(prompt: str, api_key: str, model: str, post, usage, k: int = 4,
         "content-type": "application/json",
     }, json={
         "model": model or DEFAULT_MODEL,
-        "max_tokens": 6000,
+        "max_tokens": 12000,
         "system": SYSTEM_PROMPT.format(k=k, m=m),
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -776,7 +815,9 @@ def _ask(prompt: str, api_key: str, model: str, post, usage, k: int = 4,
                    if part.get("type") == "text")
     data = _parse_json(text)
     if data is None:
-        raise RuntimeError("the reply was not the JSON asked for")
+        why = ("it was cut off at the length limit" if body.get("stop_reason") == "max_tokens"
+               else f"it began {text[:60]!r}")
+        raise RuntimeError(f"the reply was not the JSON asked for ({why})")
     return data
 
 
