@@ -4601,6 +4601,21 @@ class TestDebatesCommand(unittest.TestCase):
         for n in notes:
             self.assertIn(n, text)
 
+    def test_a_preview_can_be_read_on_the_run_page(self):
+        """8 October 2026: "Preview only" sends nothing; the email and the
+        document are written, as text, to the Actions run page."""
+        import tempfile
+        from monitor.cli import _preview_summary
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "summary.md")
+            with mock.patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": path}):
+                _preview_summary("TEST — Senedd debate summaries",
+                                 "<p>Anthony Slaughter MS asked about &ldquo;rents&rdquo;</p>",
+                                 None)
+            text = open(path, encoding="utf-8").read()
+        self.assertIn("Preview (not sent): TEST — Senedd debate summaries", text)
+        self.assertIn("Anthony Slaughter MS asked about \u201crents\u201d", text)
+
     def test_the_record_gives_witnesses_posts(self):
         from monitor.collectors.record_html import parse_attendees
         from bs4 import BeautifulSoup
