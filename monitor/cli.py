@@ -956,6 +956,8 @@ def cmd_debates(args) -> int:
             if docx_bytes:
                 out.with_suffix(".docx").write_bytes(docx_bytes)
                 print(f"Written to {out.with_suffix('.docx')}")
+        if not args.send:
+            _preview_summary(subject, html_body, docx_bytes)
         sent, message = alerts_mod.post_to_flow(
             flow_url, subject, html_body, count, dry_run=not args.send,
             attachments=attachments or None)
@@ -985,6 +987,34 @@ def cmd_debates(args) -> int:
         return 0
     _summary_note("WARNING", f"**The debate summaries were not sent.** {last_message}")
     return 2
+
+
+def _preview_summary(subject: str, html_body: str, docx_bytes: bytes | None) -> None:
+    """A preview (nothing sent): the email and the Word document as text on
+    the Actions run page, so they can be read without downloading anything."""
+    import html as _html
+    import io as _io
+    import re
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary:
+        return
+    text = re.sub(r"<[^>]+>", " ", html_body)
+    text = _html.unescape(re.sub(r"[ \t\r\f\v]+", " ", text))
+    lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
+    out = [f"\n## Preview (not sent): {subject}\n", "### The email\n", "```text"]
+    out += lines
+    out.append("```")
+    if docx_bytes:
+        try:
+            import docx
+            doc = docx.Document(_io.BytesIO(docx_bytes))
+            out += ["\n### The Word document\n", "```text"]
+            out += [p.text for p in doc.paragraphs if p.text.strip()]
+            out.append("```")
+        except Exception as exc:            # noqa: BLE001 — a preview only
+            out.append(f"(The document could not be read back: {exc})")
+    with open(summary, "a", encoding="utf-8") as fh:
+        fh.write("\n".join(out) + "\n")
 
 
 def previous_working_day(day: date) -> date:
