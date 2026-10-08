@@ -464,9 +464,10 @@ to the NRLA — a question and its answer, a commitment, a figure. Points about 
 most, no more than 35 words (50 for a ★ point), naming who said it.
 - "note": for a document read later, ONE ENTRY FOR EACH PART in the list, \
 and no more: {m} entries. ★ parts first, then the rest in the order they \
-happened. Combine a question and its answer in one entry ("Marc Jones MS \
+happened. Combine a question and its answer in one entry ('Marc Jones MS \
 asked where the figures for empty properties stood. Dr Henry Dawson \
-said..."). No more than 70 words for a ★ part, 45 for any other. Leave out \
+said...'). No more than 70 words for a ★ part, 45 for any other. Never \
+leave out the answer to keep within the limit: shorten the question instead. Leave out \
 introductions, thanks, procedure and repetition: this is a summary, not a \
 transcript.
 
@@ -854,7 +855,7 @@ def _entries(data: dict, key: str, flat: list[Contribution], cap: int,
                 usage.rejected += 1
             continue
         priority = any(id(c) in starred for c in cited)
-        short = fit(text, (cap_prs or cap) if priority else cap)
+        short = _fit_entry(text, (cap_prs or cap) if priority else cap)
         if not short:
             if usage is not None:
                 usage.too_long += 1
@@ -864,6 +865,21 @@ def _entries(data: dict, key: str, flat: list[Contribution], cap: int,
         if len(out) >= limit:
             break
     return out
+
+
+def _fit_entry(text: str, cap: int) -> str:
+    """An entry kept whole if it is within half as much again as ``cap``;
+    otherwise cut back to whole sentences.
+
+    8 October 2026: cutting at ``cap`` itself dropped the second sentence of
+    an entry — the answer: "Anthony Slaughter MS asked ... whether the
+    Minister would commit to ending no-fault evictions", without her
+    reply."""
+    from .weekly_ai import fit
+    soft = int(cap * 1.5)
+    if len(text.split()) <= soft:
+        return text
+    return fit(text, soft)
 
 
 def _fill(the_parts: list[Part], note: list[Point], flat: list[Contribution],
