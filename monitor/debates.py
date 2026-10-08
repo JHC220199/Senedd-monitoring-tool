@@ -112,6 +112,9 @@ class Point:
     summary: str = ""
     verbatim: bool = False      # key sentences, not an AI summary
     rank: int = 0               # verbatim: 0 is the most relevant in the item
+    priority: bool = False      # about private renting: put first
+    at: int = 0                 # where in the item it happened
+    cited: list = field(default_factory=list)   # AI: the contributions drawn on
 
     @property
     def speaker_label(self) -> str:
@@ -167,6 +170,75 @@ class Debate:
     @property
     def has_content(self) -> bool:
         return bool(self.key_points or self.note or any(self.points))
+
+
+# ---------------------------------------------------------------------------
+# Private renting — the NRLA's own ground, which always goes first
+# ---------------------------------------------------------------------------
+#
+# 8 October 2026: the email on 7 October's Plenary led with building safety
+# and energy efficiency. Anthony Slaughter MS asking for an end to no-fault
+# evictions and a rent freeze came third, without the Cabinet Minister's
+# answer; the closing dates of Leasing Scheme Wales were left out; and the
+# debate on HMOs came after one on family drug and alcohol courts. "Those
+# are big parts and ... 100% should have been front and centre of both the
+# email and the document." So anything about private renting is marked,
+# put first in the email and the document, and never left out of the
+# document.
+
+PRS_THEMES = ("private_rented_sector", "rent_controls_and_affordability",
+              "evictions_and_possession", "rent_smart_wales", "tenancy_law",
+              "hmos_and_standards")
+# A strong sign is enough on its own ("renters", "no-fault eviction",
+# "HMOs", "Leasing Scheme Wales"); the everyday words need to come twice —
+# "across different tenancies", said once in an answer on energy
+# efficiency, is not a question about private renting.
+_PRS_STRONG = re.compile(
+    r"\b(renters?|evict\w*|letting agen\w+|leasing scheme\w*|HMOs?|houses? in "
+    r"multiple occupation|private(?:ly)? rent\w*|private landlords?|private tenants?)\b",
+    re.I)
+_PRS_WEAK = re.compile(
+    r"\b(landlords?|tenants?|tenanc(?:y|ies)|renting|rents?|rental|damp|mould|"
+    r"overcrowding)\b", re.I)
+PRS_SCORE = 2
+# Social housing has landlords, tenants and rents too, and is not the NRLA's.
+_NOT_PRS = re.compile(
+    r"\b(?:registered social|social(?: housing)?|council(?: housing)?|housing "
+    r"associations?|community)\s+(?:landlords?|tenants?|tenanc(?:y|ies)|rents?)\b",
+    re.I)
+# What counts as housing in a debate that is not about housing (below).
+_NOT_HOUSING_THEMES = {"planning_system", "fiscal_and_legislative_context",
+                       "committee_scrutiny", "data_and_evidence"}
+
+
+def prs_score(text: str, tax: Taxonomy) -> int:
+    t = _NOT_PRS.sub(" ", text or "")
+    terms = [x for k in PRS_THEMES for x in tax.themes.get(k, {}).get("terms", [])
+             if not _PRS_WEAK.fullmatch(x)]
+    strong = {m.group(0).lower() for m in _PRS_STRONG.finditer(t)}
+    strong |= {x.lower() for x in find_terms(t, terms)}
+    return 2 * len(strong) + len(_PRS_WEAK.findall(t))
+
+
+def is_prs(text: str, tax: Taxonomy) -> bool:
+    """Is this about private renting?"""
+    return prs_score(text, tax) >= PRS_SCORE
+
+
+def housing_terms(text: str, tax: Taxonomy) -> int:
+    """How many different housing terms the text uses."""
+    return sum(len(find_terms(text, spec.get("terms", [])))
+               for k, spec in tax.themes.items() if k not in _NOT_HOUSING_THEMES)
+
+
+# A debate (a Member, opposition or short debate) is one subject argued
+# through. When the subject is not housing, a passing mention is not worth
+# an email: 7 October's debate on family drug and alcohol courts came
+# through because one Member said care leavers risk homelessness. Such a
+# debate now needs a part about private renting, or a part that is really
+# about housing (two housing terms or more).
+_DEBATE_ITEM = re.compile(r"\bdebate\b", re.I)
+DEBATE_HOUSING_TERMS = 2
 
 
 class Relevance:
@@ -275,6 +347,7 @@ def select(record: Record, rel: Relevance,
         if not record.is_plenary:
             continue            # committees: whole sessions only (see above)
 
+        strict = (not is_questions) and bool(_DEBATE_ITEM.search(title))
         chosen = []
         for ex in exchanges(item, chairs):
             # Judged as one text, heading included, so a veto sees the whole
@@ -282,6 +355,9 @@ def select(record: Record, rel: Relevance,
             # the question was headed "Illegally Dumped Waste".
             whole_text = "\n".join([ex.heading] + [c.text for c in ex.contributions])
             if (ex.heading and rel.title(ex.heading)) or rel.text(whole_text):
+                if strict and not (is_prs(whole_text, rel.tax) or
+                                   housing_terms(whole_text, rel.tax) >= DEBATE_HOUSING_TERMS):
+                    continue
                 chosen.append(ex)
         if chosen:
             out.append(Debate(record=record, item=item, meeting_date=meeting_date,
@@ -372,26 +448,36 @@ Welsh Parliament) for the policy team of the National Residential Landlords \
 Association (NRLA), which represents private landlords.
 
 You will be given the draft Record of one agenda item: numbered contributions, \
-each with the speaker and their role. Write in the style of a public affairs \
-consultancy note: reported speech, neutral, British English, past tense.
+each with the speaker and their role, and a list of the parts of the item to \
+cover. Parts and contributions marked ★ are about private renting — \
+landlords, tenants, rents, evictions, HMOs, licensing, leasing schemes — the \
+NRLA's own ground. Write in the style of a public affairs consultancy note: \
+reported speech, neutral, British English, past tense.
 
 Reply with three things:
 - "overview": one or two sentences, no more than 40 words, saying what the \
-item was about and what in it matters most to the NRLA. Leave it empty if the \
-item is a set of unrelated questions.
+item was about and what in it matters most to the NRLA, starting with \
+anything marked ★. Leave it empty if the item is a set of unrelated questions.
 - "key_points": for the email, the {k} points from the item that matter most \
-to the NRLA — a question and its answer, a commitment, a figure. Each is one \
-sentence, two at most, no more than 35 words, naming who said it.
-- "note": for a document read later, a short note of proceedings: the main \
-exchanges, in the order they happened, at most {m} entries. Combine a \
-question and its answer in one entry where you can ("Marc Jones MS asked \
-where the figures for empty properties stood. Dr Henry Dawson said..."). \
-Each entry is no more than 60 words. Leave out introductions, thanks, \
-procedure, repetition and minor follow-ups: this is a summary, not a \
+to the NRLA — a question and its answer, a commitment, a figure. Points about \
+★ parts come first, the most important first. Each is one sentence, two at \
+most, no more than 35 words (50 for a ★ point), naming who said it.
+- "note": for a document read later, ONE ENTRY FOR EACH PART in the list, \
+and no more: {m} entries. ★ parts first, then the rest in the order they \
+happened. Combine a question and its answer in one entry ("Marc Jones MS \
+asked where the figures for empty properties stood. Dr Henry Dawson \
+said..."). No more than 70 words for a ★ part, 45 for any other. Leave out \
+introductions, thanks, procedure and repetition: this is a summary, not a \
 transcript.
 
 For each key point and note entry, "n" lists the numbered contributions it \
 draws on.
+
+For anything marked ★, say exactly what was asked or proposed and what the \
+answer was — including whether the Government agreed, refused or would not \
+commit — and keep every date, deadline, timescale and next step given ("no \
+new properties after December", "a second and third Bill"). Write a date as \
+the speaker gave it ("March next year"); never work out a year.
 
 Rules for all three:
 - Use ONLY what is in the text you are given. Add no facts, context, figures, \
@@ -400,9 +486,8 @@ dates, party labels or opinions of your own. If you are unsure, leave it out.
 a figure either as the speaker said it or as the same number in digits \
 ("seventy per cent" or "70 per cent"). Never work out a new figure: no \
 totals, differences or percentages the speaker did not give.
-- Give most weight to anything touching housing, the private rented sector, \
-landlords, tenants, building safety, empty homes, homelessness, property \
-taxation and local authority enforcement.
+- After private renting, give most weight to housing, building safety, empty \
+homes, homelessness, property taxation and local authority enforcement.
 - Do not name private individuals — constituents, residents, campaigners, \
 company employees. Describe them generically ("a resident in Cardiff"). \
 Members, ministers, public bodies, companies and witnesses giving evidence \
@@ -530,16 +615,84 @@ def figures_check(summary: str, source: str) -> bool:
 # consultancy's 1,700 and seven. "In no world should it ever be 20 pages").
 WORDS_OVERVIEW = 40
 WORDS_KEY_POINT = 35
-WORDS_NOTE = 60
+WORDS_NOTE = 45
+# Private renting gets room for the answer, the dates and the next steps.
+WORDS_KEY_POINT_PRS = 50
+WORDS_NOTE_PRS = 70
+KEY_POINTS_MAX = 5
+NOTE_MAX = 20
 
 
-def limits(n_contributions: int) -> tuple[int, int]:
+def limits(n_contributions: int, n_parts: int = 0, n_prs: int = 0) -> tuple[int, int]:
     """(key points for the email, note entries for the document) for an
-    item of this many contributions. A three-hour evidence session gets four
-    key points and a ten-entry note, not 80 of each."""
+    item of this many contributions, parts to cover and parts about private
+    renting. A three-hour evidence session gets four key points, not 80 —
+    but every part of it that matters gets its line in the document."""
     k = 3 if n_contributions <= 6 else 4
+    k = max(k, min(KEY_POINTS_MAX, n_prs))
     m = min(10, max(2, -(-n_contributions // 3)))
+    m = min(NOTE_MAX, max(m, n_parts))
     return k, m
+
+
+@dataclass
+class Part:
+    """A part of an item the document must cover: one Member's question and
+    the answers to it, or, in a whole debate, one speaker."""
+    label: str
+    contributions: list[Contribution]
+    prs: bool = False
+
+
+def parts(debate: Debate, tax: Taxonomy) -> list[Part]:
+    """What the document must cover, so that nothing relevant is left out
+    (8 October 2026: "all relevant contributions are captured in at least
+    the word document").
+
+    Selected exchanges: each Member's question under each heading, with the
+    answers. A whole debate: each speaker who said something relevant."""
+    out: list[Part] = []
+    if debate.whole:
+        rel = Relevance(tax)
+        by: dict[str, list[Contribution]] = {}
+        for ex in debate.exchanges:
+            for c in ex.contributions:
+                by.setdefault(c.speaker, []).append(c)
+        for who, cs in by.items():
+            prs = any(is_prs(c.text, tax) for c in cs)
+            if prs or any(rel.text(c.text) for c in cs):
+                label = f"{who} MS" if cs[0].member else who
+                out.append(Part(label=label, contributions=cs, prs=prs))
+        return out
+    groups: dict[tuple[str, str], Part] = {}
+    for ex in debate.exchanges:
+        asker = ex.contributions[0]
+        key = (ex.heading, asker.speaker)
+        if key not in groups:
+            label = (f"{asker.speaker} MS" if asker.member else asker.speaker) + \
+                (f" — {ex.heading}" if ex.heading else "")
+            groups[key] = Part(label=label, contributions=[])
+            out.append(groups[key])
+        groups[key].contributions.extend(ex.contributions)
+    for part in out:
+        heading = part.label.split(" — ", 1)[1] if " — " in part.label else ""
+        part.prs = is_prs("\n".join([heading] + [c.text for c in part.contributions]), tax)
+    return out
+
+
+def _numbers_text(ns: list[int]) -> str:
+    """[1, 2, 3, 7] → "1–3, 7"."""
+    out, run = [], []
+    for n in sorted(ns):
+        if run and n == run[-1] + 1:
+            run.append(n)
+            continue
+        if run:
+            out.append(f"{run[0]}–{run[-1]}" if len(run) > 1 else str(run[0]))
+        run = [n]
+    if run:
+        out.append(f"{run[0]}–{run[-1]}" if len(run) > 1 else str(run[0]))
+    return ", ".join(out)
 
 
 # Verbatim (no key, or the call failed): the most relevant contributions
@@ -548,17 +701,30 @@ VERBATIM_EMAIL = 4
 VERBATIM_DOCUMENT = 10
 
 
-def _prompt(debate: Debate) -> tuple[str, list[Contribution]]:
+def _prompt(debate: Debate, tax: Taxonomy | None = None,
+            the_parts: list[Part] | None = None) -> tuple[str, list[Contribution]]:
     """The prompt, and the contributions it numbers."""
     flat = [c for ex in debate.exchanges for c in ex.contributions]
     budget = MAX_INPUT_CHARS // max(1, len(flat))
-    k, m = limits(len(flat))
+    the_parts = the_parts if the_parts is not None else (parts(debate, tax) if tax else [])
+    n_prs = sum(1 for p in the_parts if p.prs)
+    k, m = limits(len(flat), len(the_parts), n_prs)
+    starred = {id(c) for p in the_parts if p.prs for c in p.contributions}
+    index = {id(c): n for n, c in enumerate(flat, 1)}
     lines = [f"Meeting: {debate.record.forum}",
              f"Agenda item: {debate.title}",
              ("This is the whole item." if debate.whole else
               "These are selected exchanges from the item; each is a question "
               "or request and the reply to it."),
-             f"Give at most {k} key points and at most {m} note entries.", ""]
+             f"Give at most {k} key points and exactly one note entry for each "
+             f"part below ({len(the_parts) or m} entries).", ""]
+    if the_parts:
+        lines.append("Parts to cover in the note (★ = private renting):")
+        for p in sorted(the_parts, key=lambda p: not p.prs):
+            ns = [index[id(c)] for c in p.contributions if id(c) in index]
+            lines.append(f"{'★ ' if p.prs else '- '}{p.label}: contributions "
+                         f"{_numbers_text(ns)}")
+        lines.append("")
     last_heading = None
     for n, c in enumerate(flat, 1):
         heading = next((ex.heading for ex in debate.exchanges if c in ex.contributions), "")
@@ -566,8 +732,9 @@ def _prompt(debate: Debate) -> tuple[str, list[Contribution]]:
             lines.append(f"[Question: {heading}]")
             last_heading = heading
         who = (f"{c.speaker} MS" if c.member else c.speaker) + (f" ({c.role})" if c.role else "")
+        star = " ★" if id(c) in starred else ""
         text = c.text if len(c.text) <= budget else c.text[:budget] + " …"
-        lines.append(f"{n}. {who}:\n{text}\n")
+        lines.append(f"{n}.{star} {who}:\n{text}\n")
     return "\n".join(lines), flat
 
 
@@ -590,7 +757,7 @@ def _ask(prompt: str, api_key: str, model: str, post, usage, k: int = 4,
         "content-type": "application/json",
     }, json={
         "model": model or DEFAULT_MODEL,
-        "max_tokens": 4000,
+        "max_tokens": 6000,
         "system": SYSTEM_PROMPT.format(k=k, m=m),
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -614,11 +781,14 @@ def _ask(prompt: str, api_key: str, model: str, post, usage, k: int = 4,
 
 
 def _entries(data: dict, key: str, flat: list[Contribution], cap: int,
-             limit: int, usage=None) -> list[Point]:
+             limit: int, usage=None, starred: set[int] | None = None,
+             cap_prs: int | None = None) -> list[Point]:
     """Checked, length-limited entries from a reply: each must keep to the
-    figures in the contributions it cites, and fit in ``cap`` words."""
+    figures in the contributions it cites, and fit in ``cap`` words
+    (``cap_prs`` for one about private renting)."""
     from .weekly_ai import fit
 
+    starred = starred or set()
     out: list[Point] = []
     for e in data.get(key, []) or []:
         if not isinstance(e, dict):
@@ -628,7 +798,7 @@ def _entries(data: dict, key: str, flat: list[Contribution], cap: int,
             continue
         ns = e.get("n")
         ns = ns if isinstance(ns, list) else [ns]
-        cited = []
+        cited, at = [], []
         for n in ns:
             try:
                 n = int(n)
@@ -636,34 +806,72 @@ def _entries(data: dict, key: str, flat: list[Contribution], cap: int,
                 continue
             if 1 <= n <= len(flat) and flat[n - 1] not in cited:
                 cited.append(flat[n - 1])
+                at.append(n)
         source = "\n".join(c.text for c in (cited or flat))
         if not figures_check(text, source):
             if usage is not None:
                 usage.rejected += 1
             continue
-        short = fit(text, cap)
+        priority = any(id(c) in starred for c in cited)
+        short = fit(text, (cap_prs or cap) if priority else cap)
         if not short:
             if usage is not None:
                 usage.too_long += 1
             continue
-        out.append(Point(contribution=cited[0] if cited else flat[0], summary=short))
+        out.append(Point(contribution=cited[0] if cited else flat[0], summary=short,
+                         priority=priority, at=min(at) if at else 0, cited=cited))
         if len(out) >= limit:
             break
     return out
 
 
+def _fill(the_parts: list[Part], note: list[Point], flat: list[Contribution],
+          tax: Taxonomy, usage=None) -> list[Point]:
+    """Points, in the speakers' own words, for any part the AI note left
+    out — so nothing relevant is missing from the document."""
+    covered = set()
+    for pt in note:
+        covered.update(id(c) for c in (pt.cited or [pt.contribution]))
+    index = {id(c): n for n, c in enumerate(flat, 1)}
+    cited_ok = lambda p: any(id(c) in covered for c in p.contributions)  # noqa: E731
+    terms = [t for spec in tax.themes.values() for t in spec.get("terms", [])]
+
+    def best(cs):
+        return max(cs, key=lambda c: (is_prs(c.text, tax),
+                                      len(find_terms(c.text, terms)), -index.get(id(c), 0)))
+    extra: list[Point] = []
+    for p in the_parts:
+        if cited_ok(p):
+            continue
+        asker = p.contributions[0].speaker
+        asked = [c for c in p.contributions if c.speaker == asker]
+        answers = [c for c in p.contributions if c.speaker != asker]
+        for c in [best(asked)] + ([best(answers)] if answers else []):
+            text = key_sentences(c, tax)
+            if text:
+                extra.append(Point(contribution=c, summary=text, verbatim=True,
+                                   priority=p.prs, at=index.get(id(c), 0)))
+        if usage is not None:
+            usage.filled += 1
+    return extra
+
+
 def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
                  model: str = "", post=None, usage=None) -> Debate:
-    """An overview, the few key points for the email, and a short note of
+    """An overview, the few key points for the email, and a note of
     proceedings for the document — every figure checked against what was
-    said, every entry cut to length. If the call fails, or nothing usable
-    comes back after a second try, the speakers' key sentences are used."""
+    said, every entry cut to length, private renting first, and every
+    relevant part covered (in the speakers' own words if the AI left it
+    out). If the call fails, or nothing usable comes back after a second
+    try, the speakers' key sentences are used."""
     import requests
     from .weekly_ai import fit
 
     post = post or requests.post
-    prompt, flat = _prompt(debate)
-    k, m = limits(len(flat))
+    the_parts = parts(debate, tax)
+    prompt, flat = _prompt(debate, tax, the_parts)
+    k, m = limits(len(flat), len(the_parts), sum(1 for p in the_parts if p.prs))
+    starred = {id(c) for p in the_parts if p.prs for c in p.contributions}
     source_all = "\n".join(c.text for c in flat)
     for attempt in (1, 2):
         try:
@@ -678,8 +886,10 @@ def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
                     usage.failures += 1
                 return debate
             continue
-        key_points = _entries(data, "key_points", flat, WORDS_KEY_POINT, k, usage)
-        note = _entries(data, "note", flat, WORDS_NOTE, m, usage)
+        key_points = _entries(data, "key_points", flat, WORDS_KEY_POINT, k, usage,
+                              starred, WORDS_KEY_POINT_PRS)
+        note = _entries(data, "note", flat, WORDS_NOTE, m, usage,
+                        starred, WORDS_NOTE_PRS)
         if key_points:
             break
         if usage is not None:
@@ -695,15 +905,28 @@ def summarise_ai(debate: Debate, tax: Taxonomy, api_key: str,
     debate.overview = (fit(overview, WORDS_OVERVIEW) or "") \
         if overview and figures_check(overview, source_all) else ""
     debate.mode = "ai"
-    debate.key_points = key_points
-    debate.note = note or key_points
+    # Private renting first; in the document, each group in the order it
+    # happened.
+    debate.key_points = sorted(key_points, key=lambda p: not p.priority)
+    note = (note or list(key_points)) + _fill(the_parts, note, flat, tax, usage)
+    debate.note = sorted(note, key=lambda p: (not p.priority, p.at))
     debate.points = []
     debate.notes = []
     return debate
 
 
+def prs_weight(debate: Debate, tax: Taxonomy) -> int:
+    """How much of the item is about private renting: its title counts for
+    a great deal, then each contribution."""
+    n = sum(1 for ex in debate.exchanges for c in ex.contributions if is_prs(c.text, tax))
+    return n + (100 if is_prs(debate.title, tax) else 0)
+
+
 def summarise(debates: list[Debate], tax: Taxonomy,
               api_key: str | None = None, model: str = "", usage=None) -> list[Debate]:
+    """Summarised, with the items most about private renting first (a
+    debate on HMOs before questions on planning), otherwise in the order
+    they happened."""
     key = api_key if api_key is not None else os.environ.get("ANTHROPIC_API_KEY", "")
     model = model or os.environ.get("DEBATE_SUMMARY_MODEL", "")
     for d in debates:
@@ -711,7 +934,9 @@ def summarise(debates: list[Debate], tax: Taxonomy,
             summarise_ai(d, tax, key, model, usage=usage)
         else:
             summarise_verbatim(d, tax)
-    return [d for d in debates if d.has_content]
+    kept = [d for d in debates if d.has_content]
+    weight = {id(d): prs_weight(d, tax) for d in kept}
+    return sorted(kept, key=lambda d: -weight[id(d)])
 
 
 def most_relevant(debate: Debate, tax: Taxonomy, limit: int) -> list[list[Point]]:
@@ -719,7 +944,8 @@ def most_relevant(debate: Debate, tax: Taxonomy, limit: int) -> list[list[Point]
     and in their exchanges."""
     terms = [t for spec in tax.themes.values() for t in spec.get("terms", [])]
     flat = [(x, y, p) for x, row in enumerate(debate.points) for y, p in enumerate(row)]
-    ranked = sorted(flat, key=lambda t: (-len(find_terms(t[2].summary, terms)),
+    ranked = sorted(flat, key=lambda t: (not is_prs(t[2].summary, tax),
+                                         -len(find_terms(t[2].summary, terms)),
                                          t[0], t[1]))[:limit]
     for r, (_x, _y, p) in enumerate(ranked):
         p.rank = r
@@ -763,6 +989,12 @@ def _point_row(p: Point, record_url: str) -> str:
         f'</td></tr>')
 
 
+def _group_row(label: str) -> str:
+    return (f'<tr><td style="padding:10px 18px 0;font-family:{FONT};'
+            f'font-size:11px;font-weight:700;letter-spacing:.6px;'
+            f'text-transform:uppercase;color:{ORANGE}">{_e(label)}</td></tr>')
+
+
 def _key_point_row(p: Point, record_url: str) -> str:
     c = p.contribution
     anchor = f"{record_url}#{c.anchor}" if c.anchor else record_url
@@ -799,7 +1031,14 @@ def _debate_card(d: Debate) -> str:
     rows = []
     last_heading = ""
     if d.key_points:
-        rows = [_key_point_row(p, d.record.url) for p in d.key_points]
+        first = [p for p in d.key_points if p.priority]
+        rest = [p for p in d.key_points if not p.priority]
+        if first:
+            rows.append(_group_row("Private renting"))
+            rows.extend(_key_point_row(p, d.record.url) for p in first)
+            if rest:
+                rows.append(_group_row("Also raised"))
+        rows.extend(_key_point_row(p, d.record.url) for p in rest)
     for ex, pts in zip(d.exchanges, d.points if not d.key_points else []):
         pts = [p for p in pts if p.rank < VERBATIM_EMAIL]
         if not pts:

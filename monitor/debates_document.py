@@ -15,8 +15,11 @@ for every item in the email:
   * the meeting, with links to the Record, Senedd.tv and the agenda papers;
   * for a committee, the witnesses who gave evidence, with their posts (from
     the Record's "Others in Attendance");
-  * a short note of the main exchanges, in order (``Debate.note``: at most
-    ten entries of 60 words an item) — or, without the key, the ten most
+  * a note of the item (``Debate.note``): private renting first, under its
+    own heading, then everything else relevant, each in the order it
+    happened — one entry for each Member's question, or each speaker in a
+    whole debate, so nothing relevant is left out; any part the AI missed
+    is given in the speaker's own words. Without the key, the ten most
     relevant contributions in the speakers' own words.
 
 7 October 2026: the first one, for the housing committee's 1 October
@@ -224,15 +227,34 @@ def build_debates_document(debates: list, late: bool = False,
 
             if deb.note:
                 names = _names_pattern(speaker_labels(deb))
-                for pt in deb.note:
-                    body = d.para(after=4, indent_cm=0.35)
-                    _with_speakers_bold(body, tidy(pt.summary), names)
-                    _border_left(body)
-                    c = pt.contribution
-                    if c.anchor:
-                        d.muted(body, "  ")
-                        _hyperlink(body, f"{deb.record.url}#{c.anchor}", "Record ›",
-                                   size=8.5, colour=MUTED, underline=False)
+                first = [pt for pt in deb.note if pt.priority]
+                rest = [pt for pt in deb.note if not pt.priority]
+                groups = ([("Private renting", first), ("Also raised", rest)]
+                          if first and rest else [("Private renting" if first else "",
+                                                   deb.note)])
+                for label, pts in groups:
+                    if label:
+                        g = d.para(after=3)
+                        g.paragraph_format.space_before = _pt(4)
+                        g.paragraph_format.keep_with_next = True
+                        rg = g.add_run(label.upper())
+                        rg.bold, rg.font.size, rg.font.color.rgb = True, _pt(8.5), _rgb(ORANGE)
+                    for pt in pts:
+                        body = d.para(after=4, indent_cm=0.35)
+                        if pt.verbatim:
+                            # A part the AI note missed, in the speaker's own words.
+                            rs = body.add_run(_speaker(pt.contribution) + ": ")
+                            rs.bold = True
+                            rs.font.color.rgb = _rgb(DARK_BLUE)
+                            body.add_run(f"\u201c{tidy(pt.summary)}\u201d").italic = True
+                        else:
+                            _with_speakers_bold(body, tidy(pt.summary), names)
+                        _border_left(body)
+                        c = pt.contribution
+                        if c.anchor:
+                            d.muted(body, "  ")
+                            _hyperlink(body, f"{deb.record.url}#{c.anchor}", "Record ›",
+                                       size=8.5, colour=MUTED, underline=False)
                 continue
 
             last = None

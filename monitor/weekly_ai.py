@@ -118,6 +118,7 @@ class Usage:
     retried: int = 0             # contributions asked for a second time
     too_long: int = 0            # summaries far over length, asked for again
     extracts: int = 0            # still unsummarised: a short extract is shown
+    filled: int = 0              # debates: a part the note missed, shown verbatim
     input_tokens: int = 0
     output_tokens: int = 0
 
@@ -138,6 +139,8 @@ class Usage:
                 + (f"; {self.retried} contribution(s) asked for again" if self.retried else "")
                 + (f" ({self.too_long} for being too long)" if self.too_long else "")
                 + (f"; {self.extracts} left as a short extract" if self.extracts else "")
+                + (f"; {self.filled} part(s) of a debate the AI note missed, shown "
+                   f"in the speakers' own words" if self.filled else "")
                 + ".")
 
 
