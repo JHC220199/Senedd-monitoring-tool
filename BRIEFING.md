@@ -2,7 +2,7 @@
 
 *As at Friday 09 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
-**17** open consultations · **3** closing within three weeks · **51** developments to review
+**17** open consultations · **3** closing within three weeks · **53** developments to review
 
 ## Respond — things with a deadline
 
@@ -36,6 +36,18 @@
 </details>
 
 ## Review — what has happened
+
+**[3. Scrutiny of the Senedd Commission Draft Budget 2027-28: Evidence Session](https://record.senedd.wales/Committee/16295)**  
+<sub>08 October 2026 · Finance Committee · Peredur Owen Griffiths, Sam Rowlands, Manon Bonner and 8 others</sub>  
+Touches committee scrutiny, budget & legislative programme and homelessness. Read and decide whether a line to take is needed.  
+> As you'll be aware, we've got quite a few new Members, so it was an interesting time when we all came back or came for the first time. What the new Commission did in the engagement was—. The initial engagement was with groups. When I took the role on for finance after the second meeting of the Commission, we sent a…
+<sub>[Watch this moment](http://www.senedd.tv/en/16295?startPos=702&l=en)</sub>
+
+**[6. Public Services Ombudsman for Wales- Annual Report and Accounts 2025-26, and Estimate 2027-28: Evidence session](https://record.senedd.wales/Committee/16295)**  
+<sub>08 October 2026 · Finance Committee · Michelle Morris, Katrin Shaw, Sarah King and 7 others</sub>  
+Touches committee scrutiny, budget & legislative programme and private rented sector. Read and decide whether a line to take is needed.  
+> Yes, and particularly around health, that's quite a way off. We've talked a bit about health already. That shouldn't be there. We should, given our complaints standards work, you're right, be seeing fewer coming through from health boards and indeed local authorities as well.   What do I attribute that to? Our focus…
+<sub>[Watch this moment](http://www.senedd.tv/en/16295?startPos=10037&l=en)</sub>
 
 **[OQ64688](https://record.senedd.wales/OrderPaper/OralQuestions/14-10-2026/)**  
 <sub>07 October 2026 · Plenary · Stephen Senior</sub>  
@@ -85,7 +97,7 @@ Touches committee scrutiny and budget & legislative programme. Read and decide w
 <sub>[Watch this moment](http://www.senedd.tv/en/16294?startPos=9176&l=en)</sub>
 
 **[3. Ofwat’s role in the Welsh context - scene setting session](https://record.senedd.wales/Committee/16234)**  
-<sub>30 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, Lia Murphy, Chris Walters and 7 others</sub>  
+<sub>30 September 2026 · Climate Change, Environment, Sustainability and Rural Affairs Committee · Paul Rock, Lia Murphy, Chris Walters and 3 others</sub>  
 Touches committee scrutiny, local authority enforcement and planning system. Read and decide whether a line to take is needed.  
 > So, I think that there are some implications for water companies that are not always entirely fair, perhaps—or some feel that way—around outline planning permissions and local development plans, where, basically, they are faced with a situation where they just have to create infrastructure, which, if there was perhaps…
 <sub>[Watch this moment](http://www.senedd.tv/en/16234?startPos=2189&l=en)</sub>
@@ -111,18 +123,7 @@ Touches homelessness, social housing and named welsh legislation. Watch for the 
 Touches planning system. Watch for the answer — it will set out the Government's position.  
 > What action is the Cabinet Minister taking to speed up the processing of planning applications by local authorities?
 
-**[OQ64665](https://record.senedd.wales/OrderPaper/OralQuestions/07-10-2026/)**  
-<sub>30 September 2026 · Plenary · Marc Jones</sub>  
-Touches planning system. Watch for the answer — it will set out the Government's position.  
-> How is the Cabinet Minister improving community engagement on local development plans?
-
-**[5. Statement by the Cabinet Minister for Local Government, Housing and Planning: The Revision of the National Development Framework and National Conversation](https://record.senedd.wales/Plenary/16264)**  
-<sub>29 September 2026 · Plenary · Francesca O'Brien, Natasha Asghar, Sian Gwenllian and 4 others</sub>  
-Touches energy efficiency & retrofit, budget & legislative programme and housing supply & development. Read and decide whether a line to take is needed.  
-> Thank you to the Minister for her response this afternoon. Minister, Wales is not short of plans, it is short of homes, though, and this statement offers the people of Wales potentially four more years of plans. So, this really is just a plan for a plan.   The Minister has told us that this revision will cut costs,…
-<sub>[Watch this moment](http://www.senedd.tv/en/16264?startPos=8262&l=en)</sub>
-
-_36 further items in the full dashboard._
+_38 further items in the full dashboard._
 
 ## Coming up
 
@@ -139,4 +140,4 @@ _36 further items in the full dashboard._
 
 ---
 
-<sub>253 items scored from 2000 collected records, 09 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>231 items scored from 2000 collected records, 09 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
