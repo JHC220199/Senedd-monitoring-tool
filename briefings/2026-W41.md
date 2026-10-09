@@ -1,6 +1,6 @@
 # NRLA Senedd policy briefing
 
-*As at Thursday 08 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Friday 09 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
 **17** open consultations · **3** closing within three weeks · **51** developments to review
 
@@ -18,8 +18,8 @@
 | **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| 8 days left | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| 11 days left | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **7 days left** | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| 10 days left | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _5 more — see the full dashboard_ | |
 
 <details><summary>Open, but no closing date published yet (14)</summary>
@@ -126,17 +126,17 @@ _36 further items in the full dashboard._
 
 ## Coming up
 
-- **08 October 2026** — [Finance Committee — 8 October 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16295)
-- **08 October 2026** — [Local Government, Housing and Planning Committee — 08 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16306)
-- **08 October 2026** — [Local Government, Housing and Planning Committee — 08 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=987&MId=16306)
-- **08 October 2026** — [Finance Committee — 08 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16295)
-- **08 October 2026** — [Finance Committee — 08 October 2026, 09.00](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16295)
-- **08 October 2026** — [Finance Committee — 8 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=984&MId=16295)
 - **12 October 2026** — [Legislation Committee — 12 October 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16303)
 - **12 October 2026** — [Legislation Committee — 12 October 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16303)
 - **12 October 2026** — [Legislation Committee — 12 October 2026, 13.30](https://business.senedd.wales/ieListDocuments.aspx?CId=986&MId=16303)
 - **13 October 2026** — [Legislative Consent Motion: The Armed Forces Bill](https://business.senedd.wales/ieListDocuments.aspx?CId=908&MId=16315#item-8)
+- **14 October 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 14 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16276)
+- **14 October 2026** — [Equality, Human Rights and Social Justice Committee — 14 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16292)
+- **14 October 2026** — [Climate Change, Environment, Sustainability and Rural Affairs Committee — 14 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=978&MId=16276)
+- **14 October 2026** — [Equality, Human Rights and Social Justice Committee — 14 October 2026, 09.25](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16292)
+- **14 October 2026** — [Equality, Human Rights and Social Justice Committee — 14 October 2026, 09.30](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16292)
+- **14 October 2026** — [Equality, Human Rights and Social Justice Committee — 14 October 2026, 09.25](https://business.senedd.wales/ieListDocuments.aspx?CId=983&MId=16292)
 
 ---
 
-<sub>251 items scored from 2000 collected records, 08 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>253 items scored from 2000 collected records, 09 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
