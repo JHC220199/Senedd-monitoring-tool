@@ -1,8 +1,8 @@
 # NRLA Senedd policy briefing
 
-*As at Friday 09 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
+*As at Saturday 10 October 2026. Rebuilt automatically on every run — there is nothing to refresh.*
 
-**17** open consultations · **3** closing within three weeks · **53** developments to review
+**17** open consultations · **3** closing within three weeks · **57** developments to review
 
 ## Respond — things with a deadline
 
@@ -18,11 +18,11 @@
 | **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Codes of practice for the management of student accommodation](https://www.gov.wales/codes-practice-management-student-accommodation-0)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | **Closed** | [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgConsultationDisplay.aspx?ID=632)<br><sub>Senedd — committee consultation</sub> | Decide whether to respond, and who drafts it. |
-| **7 days left** | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
-| 10 days left | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| **6 days left** | [Regulations for designating Building Safety Authorities](https://www.gov.wales/regulations-designating-building-safety-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
+| 9 days left | [Rent Guarantor Guidance for Local Housing Authorities](https://www.gov.wales/rent-guarantor-guidance-local-housing-authorities)<br><sub>Welsh Government — Consultation</sub> | Decide whether to respond, and who drafts it. |
 | … | _5 more — see the full dashboard_ | |
 
-<details><summary>Open, but no closing date published yet (14)</summary>
+<details><summary>Open, but no closing date published yet (11)</summary>
 
 - [Follow-up inquiry into Empty Properties](https://business.senedd.wales/mgIssueHistoryHome.aspx?IId=47957) — Senedd — Committee inquiry
 - [Welsh Government Draft Budget 2027-28](https://business.senedd.wales/mgIssueHistoryHome.aspx?IId=47822) — Senedd — Committee work
@@ -38,7 +38,7 @@
 ## Review — what has happened
 
 **[3. Scrutiny of the Senedd Commission Draft Budget 2027-28: Evidence Session](https://record.senedd.wales/Committee/16295)**  
-<sub>08 October 2026 · Finance Committee · Peredur Owen Griffiths, Sam Rowlands, Manon Bonner and 8 others</sub>  
+<sub>08 October 2026 · Finance Committee · Peredur Owen Griffiths, Sam Rowlands, Ed Williams and 8 others</sub>  
 Touches committee scrutiny, budget & legislative programme and homelessness. Read and decide whether a line to take is needed.  
 > As you'll be aware, we've got quite a few new Members, so it was an interesting time when we all came back or came for the first time. What the new Commission did in the engagement was—. The initial engagement was with groups. When I took the role on for finance after the second meeting of the Commission, we sent a…
 <sub>[Watch this moment](http://www.senedd.tv/en/16295?startPos=702&l=en)</sub>
@@ -48,6 +48,29 @@ Touches committee scrutiny, budget & legislative programme and homelessness. Rea
 Touches committee scrutiny, budget & legislative programme and private rented sector. Read and decide whether a line to take is needed.  
 > Yes, and particularly around health, that's quite a way off. We've talked a bit about health already. That shouldn't be there. We should, given our complaints standards work, you're right, be seeing fewer coming through from health boards and indeed local authorities as well.   What do I attribute that to? Our focus…
 <sub>[Watch this moment](http://www.senedd.tv/en/16295?startPos=10037&l=en)</sub>
+
+**[2. Legislative Consent: Health Bill - evidence session 4](https://record.senedd.wales/Committee/16299)**  
+<sub>08 October 2026 · Health and Social Care Committee · Jayne Bryant, Mabon ap Gwynfor</sub>  
+Touches committee scrutiny and budget & legislative programme. Read and decide whether a line to take is needed.  
+> Thanks. I should have said as well, we have received a copy of the letter that you sent in response to the legislation committee and their questions. We have got that information. But we do know that the Welsh Government, obviously, hasn't given a view on this LCM yet. When do you think you'll be in a position to do…
+<sub>[Watch this moment](http://www.senedd.tv/en/16299?startPos=2760&l=en)</sub>
+
+**[8. Reform UK Debate: Access to HMOs and social housing for foreign nationals](https://record.senedd.wales/Plenary/16314)**  
+<sub>07 October 2026 · Plenary · Kiera Marshall, Sian Gwenllian, Marc Jones and 15 others</sub>  
+Touches evictions & possession, hmos & property standards and homelessness. Read and decide whether a line to take is needed.  
+> I'd like to start by declaring an interest as a recent tenant in the private rental sector. Hopefully, this makes it clear from the outset where my priorities lie, because my priority lies with people who need a home, not people who profit from other people's basic need for shelter—and I'm not sure the same can be…
+<sub>[Watch this moment](http://www.senedd.tv/en/16314?startPos=15198&l=en)</sub>
+
+**[2. Questions to the Cabinet Minister for Local Government, Housing and Planning](https://record.senedd.wales/Plenary/16314)**  
+<sub>07 October 2026 · Plenary · Anthony Slaughter, Jayne Bryant, Huw Thomas and 13 others</sub>  
+Touches building safety & leasehold, energy efficiency & retrofit and evictions & possession. Read and decide whether a line to take is needed.  
+> Diolch, Minister. Strengthening the rights and protection for renters is, as you know, fundamental for ending the housing emergency in Wales. The Government's response so far does not meet the scale of the challenge. We are approaching another winter where people will be living in cold, freezing, damp, inadequate…
+<sub>[Watch this moment](http://www.senedd.tv/en/16314?startPos=7481&l=en)</sub>
+
+**[Questions to the Cabinet Minister for Local Government, Housing and Planning](https://record.senedd.wales/Plenary/16314)**  
+<sub>07 October 2026 · Plenary</sub>  
+Touches building safety & leasehold and named welsh legislation. Watch for the answer — it will set out the Government's position.  
+> We are working quickly to introduce regulations under the Building Safety (Wales) Act 2026 to provide enhanced leaseholder protections. I am also pleased to confirm that the Wales interim measures alarm grant is now open for applications, to help ease the financial burden of simultaneous evacuation while works are…
 
 **[OQ64688](https://record.senedd.wales/OrderPaper/OralQuestions/14-10-2026/)**  
 <sub>07 October 2026 · Plenary · Stephen Senior</sub>  
@@ -102,28 +125,7 @@ Touches committee scrutiny, local authority enforcement and planning system. Rea
 > So, I think that there are some implications for water companies that are not always entirely fair, perhaps—or some feel that way—around outline planning permissions and local development plans, where, basically, they are faced with a situation where they just have to create infrastructure, which, if there was perhaps…
 <sub>[Watch this moment](http://www.senedd.tv/en/16234?startPos=2189&l=en)</sub>
 
-**[OQ64622](https://record.senedd.wales/OrderPaper/OralQuestions/07-10-2026/)**  
-<sub>30 September 2026 · Plenary · Anthony Slaughter</sub>  
-Touches private rented sector. Watch for the answer — it will set out the Government's position.  
-> What progress has the Welsh Government made on its plans to protect renters’ rights?
-
-**[6. Reform UK Debate: Default 20 mph speed limit](https://record.senedd.wales/Plenary/16265)**  
-<sub>30 September 2026 · Plenary · David Mills</sub>  
-Touches rent controls & rent data and property taxation. Read and decide whether a line to take is needed.  
-> It's a pleasure to be able to speak in this debate today, tabled in the name of my friend Llŷr Powell, on scrapping one of the most hated pieces of legislation to come out of this Chamber in a decade. A policy cooked up by Labour and Plaid Cymru, not in response to public demand, not with solid evidential basis, but…
-<sub>[Watch this moment](http://www.senedd.tv/en/16265?startPos=13675&l=en)</sub>
-
-**[Questions to the Deputy First Minister and Cabinet Minister for Social Justice and Equality](https://record.senedd.wales/Plenary/16265)**  
-<sub>30 September 2026 · Plenary</sub>  
-Touches homelessness, social housing and named welsh legislation. Watch for the answer — it will set out the Government's position.  
-> I recognise that any child living in temporary accommodation is a serious concern. That is why this Government is taking action to prevent homelessness, reduce dependence on temporary accommodation and implement the Homelessness and Social Housing Allocation (Wales) Act 2026, with children's rights and well-being at…
-
-**[OQ64640](https://record.senedd.wales/OrderPaper/OralQuestions/07-10-2026/)**  
-<sub>30 September 2026 · Plenary · David Hughes</sub>  
-Touches planning system. Watch for the answer — it will set out the Government's position.  
-> What action is the Cabinet Minister taking to speed up the processing of planning applications by local authorities?
-
-_38 further items in the full dashboard._
+_42 further items in the full dashboard._
 
 ## Coming up
 
@@ -140,4 +142,4 @@ _38 further items in the full dashboard._
 
 ---
 
-<sub>231 items scored from 2000 collected records, 09 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
+<sub>219 items scored from 2000 collected records, 10 October 2026. Every quotation is verbatim published text — nothing on this page is summarised by a language model. Senedd Cymru and Welsh Government material reproduced under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).</sub>
